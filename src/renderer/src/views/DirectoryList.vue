@@ -1,8 +1,11 @@
-﻿﻿<template>
+﻿﻿﻿﻿<template>
   <div class="directory-list">
     <div class="header">
       <h1>选择科目</h1>
       <div class="header-actions">
+        <el-button class="settings-btn" @click="openGlobalQuizSettings">
+          <el-icon><Setting /></el-icon>出题设置
+        </el-button>
         <el-button class="fullscreen-btn" @click="toggleFullscreen">
           <el-icon><FullScreen /></el-icon>
           {{ isFullscreen ? '取消全屏' : '全屏' }}
@@ -17,19 +20,12 @@
         v-for="dir in directories"
         :key="dir.id"
         class="directory-card"
+        @click="enterQuiz(dir.id)"
       >
         <div class="card-content">
           <el-icon size="56" color="#c4a882"><Folder /></el-icon>
           <span class="directory-name">{{ dir.name }}</span>
           <span class="directory-count">{{ getQuestionCount(dir.id) }} 题</span>
-        </div>
-        <div class="card-actions">
-          <el-button class="quiz-btn" @click.stop="enterQuiz(dir.id)">
-            直接做题
-          </el-button>
-          <el-button class="settings-btn" @click.stop="openQuizSettings(dir.id)">
-            出题设置
-          </el-button>
         </div>
       </div>
     </div>
@@ -76,7 +72,7 @@
       </el-form>
       <template #footer>
         <el-button @click="showSettingsDialog = false">取消</el-button>
-        <el-button class="add-btn" @click="startQuizWithSettings">开始做题</el-button>
+        <el-button class="add-btn" @click="saveQuizSettings">保存设置</el-button>
       </template>
     </el-dialog>
   </div>
@@ -96,11 +92,37 @@ const newDirectory = ref({ name: '' });
 const isFullscreen = ref(false);
 const showSettingsDialog = ref(false);
 const selectedDirId = ref<number>(0);
+const SETTINGS_KEY = 'quizSettings';
+
 const quizSettings = ref({
   mode: 'all',
   count: 20,
-  repeat: 1
+  repeat: 5
 });
+
+// 从缓存加载设置
+const loadSettingsFromStorage = () => {
+  try {
+    const stored = localStorage.getItem(SETTINGS_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      quizSettings.value.mode = parsed.mode ?? 'all';
+      quizSettings.value.count = parsed.count ?? 20;
+      quizSettings.value.repeat = parsed.repeat ?? 5;
+    }
+  } catch (e) {
+    console.error('加载设置失败:', e);
+  }
+};
+
+// 保存设置到缓存
+const saveSettingsToStorage = () => {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(quizSettings.value));
+  } catch (e) {
+    console.error('保存设置失败:', e);
+  }
+};
 
 // 切换全屏
 const toggleFullscreen = async () => {
@@ -146,31 +168,27 @@ const enterQuiz = (directoryId: number) => {
     ElMessage.warning('该科目暂无题目');
     return;
   }
-  router.push({ name: 'Quiz', params: { directoryId: directoryId.toString() } });
-};
-
-// 打开出题设置
-const openQuizSettings = (directoryId: number) => {
-  if (getQuestionCount(directoryId) === 0) {
-    ElMessage.warning('该科目暂无题目');
-    return;
-  }
-  selectedDirId.value = directoryId;
-  showSettingsDialog.value = true;
-};
-
-// 使用设置开始做题
-const startQuizWithSettings = () => {
-  showSettingsDialog.value = false;
   router.push({
     name: 'Quiz',
-    params: { directoryId: selectedDirId.value.toString() },
+    params: { directoryId: directoryId.toString() },
     query: {
       mode: quizSettings.value.mode,
       count: quizSettings.value.count.toString(),
       repeat: quizSettings.value.repeat.toString()
     }
   });
+};
+
+// 打开全局出题设置（不绑定具体科目）
+const openGlobalQuizSettings = () => {
+  showSettingsDialog.value = true;
+};
+
+// 保存设置
+const saveQuizSettings = () => {
+  saveSettingsToStorage();
+  showSettingsDialog.value = false;
+  ElMessage.success('设置已保存');
 };
 
 const addDirectory = async () => {
@@ -197,6 +215,7 @@ const addDirectory = async () => {
 onMounted(() => {
   loadDirectories();
   checkFullscreen();
+  loadSettingsFromStorage();
 });
 </script>
 
@@ -274,6 +293,7 @@ h1 {
   display: flex;
   flex-direction: column;
   align-items: center;
+  cursor: pointer;
 }
 
 .directory-card:hover {
@@ -298,31 +318,17 @@ h1 {
   justify-content: center;
 }
 
-.quiz-btn {
-  background-color: #1a1a1a;
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  padding: 14px 28px;
-  font-size: 16px;
-  transition: all 0.2s ease;
-}
-
-.quiz-btn:hover {
-  background-color: #333;
-}
-
-.settings-btn {
+.header-actions .settings-btn {
   background-color: transparent;
   color: #1a1a1a;
   border: 1.5px solid #e8e4df;
-  border-radius: 10px;
-  padding: 14px 28px;
-  font-size: 16px;
+  border-radius: 12px;
+  padding: 18px 28px;
+  font-size: 18px;
   transition: all 0.2s ease;
 }
 
-.settings-btn:hover {
+.header-actions .settings-btn:hover {
   border-color: #c4a882;
   background-color: #fdfbf8;
 }

@@ -1,119 +1,133 @@
-﻿﻿<template>
+﻿﻿﻿﻿<template>
   <div class="quiz-container">
     <el-page-header @back="goBack" :content="directoryName" />
 
     <div class="quiz-content" v-if="questions.length > 0 && currentQuestion">
-      <!-- 中间内容 -->
-      <div class="quiz-center">
-        <!-- 题目进度 -->
-        <div class="progress-bar">
-          <span class="progress-text">题目 {{ currentIndex + 1 }} / {{ questions.length }}</span>
-          <el-progress :percentage="progressPercent" :show-text="false" />
-        </div>
+      <!-- 题目进度 -->
+      <div class="progress-bar">
+        <span class="progress-text">题目 {{ currentIndex + 1 }} / {{ questions.length }}</span>
+        <el-progress :percentage="progressPercent" :show-text="false" />
+      </div>
 
-        <!-- 题目内容 -->
-        <el-card class="question-card">
-          <template #header>
-            <div class="question-header">
-              <el-tag :type="questionTypeTag.type">
-                {{ questionTypeTag.text }}
-              </el-tag>
-              <el-button
-                class="next-question-btn"
-                @click="nextQuestion"
-                :disabled="currentIndex === questions.length - 1"
+      <!-- 左右布局主体 -->
+      <div class="quiz-main">
+        <!-- 左侧：题目内容 -->
+        <div class="quiz-left">
+          <el-card class="question-card">
+            <template #header>
+              <div class="question-header">
+                <el-tag :type="questionTypeTag.type">
+                  {{ questionTypeTag.text }}
+                </el-tag>
+              </div>
+            </template>
+
+            <div class="question-title">{{ currentQuestion.title }}</div>
+
+            <!-- 选择题选项 -->
+            <div v-if="currentQuestion.question_type === 'single' || currentQuestion.question_type === 'multiple'" class="options-list">
+              <div
+                v-for="option in optionsList"
+                :key="option.key"
+                class="option-row"
+                :class="{ 
+                  'selected': currentQuestion.question_type === 'multiple' ? selectedAnswers.has(option.key) : selectedAnswer === option.key, 
+                  'deleted': option.deleted,
+                  'correct': showAnswer && isCorrectOption(option.key),
+                  'wrong': showAnswer && isWrongOption(option.key)
+                }"
               >
-                下一题 <el-icon><ArrowRight /></el-icon>
+                <el-button
+                  type="danger"
+                  circle
+                  size="small"
+                  class="delete-btn"
+                  @click.stop="toggleDelete(option.key)"
+                >
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+                <div
+                  class="option-item"
+                  @click="selectOption(option.key)"
+                >
+                  <span class="option-key">{{ option.key }}.</span>
+                  <span class="option-text" :class="{ 'strikethrough': option.deleted }">
+                    {{ option.text || '无内容' }}
+                  </span>
+                  <!-- 答案对错的图标显示 -->
+                  <el-icon v-if="showAnswer && isCorrectOption(option.key)" class="result-icon correct-icon"><CircleCheck /></el-icon>
+                  <el-icon v-if="showAnswer && isWrongOption(option.key)" class="result-icon wrong-icon"><CircleClose /></el-icon>
+                </div>
+              </div>
+              <!-- 多选题确认按钮 -->
+              <el-button
+                v-if="currentQuestion.question_type === 'multiple' && !showAnswer"
+                class="confirm-btn"
+                @click="confirmMultipleAnswer"
+              >
+                确认答案
               </el-button>
             </div>
-          </template>
 
-          <div class="question-title">{{ currentQuestion.title }}</div>
-
-          <!-- 选择题选项 -->
-          <div v-if="currentQuestion.question_type === 'single' || currentQuestion.question_type === 'multiple'" class="options-list">
-            <div
-              v-for="option in optionsList"
-              :key="option.key"
-              class="option-item"
-              :class="{ 
-                'selected': currentQuestion.question_type === 'multiple' ? selectedAnswers.has(option.key) : selectedAnswer === option.key, 
-                'deleted': option.deleted,
-                'correct': showAnswer && isCorrectOption(option.key),
-                'wrong': showAnswer && isWrongOption(option.key)
-              }"
-              @click="selectOption(option.key)"
-            >
-              <el-button
-                type="danger"
-                circle
-                size="small"
-                class="delete-btn"
-                @click.stop="toggleDelete(option.key)"
+            <!-- 判断题选项 -->
+            <div v-else class="options-list judge-options">
+              <div
+                v-for="option in judgeOptions"
+                :key="option.key"
+                class="option-row"
+                :class="{ 'selected': selectedAnswer === option.key, 'deleted': option.deleted }"
               >
-                <el-icon><Delete /></el-icon>
-              </el-button>
-              <span class="option-key">{{ option.key }}.</span>
-              <span class="option-text" :class="{ 'strikethrough': option.deleted }">
-                {{ option.text || '无内容' }}
-              </span>
-              <!-- 答案对错的图标显示 -->
-              <el-icon v-if="showAnswer && isCorrectOption(option.key)" class="result-icon correct-icon"><CircleCheck /></el-icon>
-              <el-icon v-if="showAnswer && isWrongOption(option.key)" class="result-icon wrong-icon"><CircleClose /></el-icon>
-            </div>
-            <!-- 多选题确认按钮 -->
-            <el-button
-              v-if="currentQuestion.question_type === 'multiple' && !showAnswer"
-              class="confirm-btn"
-              @click="confirmMultipleAnswer"
-            >
-              确认答案
-            </el-button>
-          </div>
-
-          <!-- 判断题选项 -->
-          <div v-else class="options-list judge-options">
-            <div
-              v-for="option in judgeOptions"
-              :key="option.key"
-              class="option-item"
-              :class="{ 'selected': selectedAnswer === option.key, 'deleted': option.deleted }"
-              @click="selectOption(option.key)"
-            >
-              <el-button
-                type="danger"
-                circle
-                size="small"
-                class="delete-btn"
-                @click.stop="toggleDelete(option.key)"
-              >
-                <el-icon><Delete /></el-icon>
-              </el-button>
-              <span class="option-text" :class="{ 'strikethrough': option.deleted }">
-                {{ option.text }}
-              </span>
-            </div>
-          </div>
-
-          <!-- 答案显示 -->
-          <div v-if="showAnswer" class="answer-result">
-            <el-divider />
-            <div class="result-content">
-              <el-result
-                :icon="isCorrect ? 'success' : 'error'"
-                :title="isCorrect ? '答对了！' : '答错了！'"
-                :sub-title="`正确答案：${currentQuestion.correct_answer}`"
-              />
-              <div v-if="currentQuestion.explanation" class="explanation">
-                <el-alert type="info" :closable="false">
-                  <template #title>
-                    <strong>解析：</strong>{{ currentQuestion.explanation }}
-                  </template>
-                </el-alert>
+                <el-button
+                  type="danger"
+                  circle
+                  size="small"
+                  class="delete-btn"
+                  @click.stop="toggleDelete(option.key)"
+                >
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+                <div
+                  class="option-item"
+                  @click="selectOption(option.key)"
+                >
+                  <span class="option-text" :class="{ 'strikethrough': option.deleted }">
+                    {{ option.text }}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        </el-card>
+
+            <!-- 答案显示 -->
+            <div v-if="showAnswer" class="answer-result">
+              <el-divider />
+              <div class="result-content">
+                <el-result
+                  :icon="isCorrect ? 'success' : 'error'"
+                  :title="isCorrect ? '答对了！' : '答错了！'"
+                  :sub-title="`正确答案：${currentQuestion.correct_answer}`"
+                />
+                <div v-if="currentQuestion.explanation" class="explanation">
+                  <el-alert type="info" :closable="false">
+                    <template #title>
+                      <strong>解析：</strong>{{ currentQuestion.explanation }}
+                    </template>
+                  </el-alert>
+                </div>
+              </div>
+            </div>
+          </el-card>
+        </div>
+
+        <!-- 右侧：下一题按钮 -->
+        <div class="quiz-right">
+          <el-button
+            class="next-question-btn"
+            @click="nextQuestion"
+            :disabled="currentIndex === questions.length - 1"
+          >
+            下一题 <el-icon><ArrowRight /></el-icon>
+          </el-button>
+        </div>
       </div>
     </div>
 
@@ -389,26 +403,42 @@ onMounted(() => {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.quiz-center {
+.progress-bar {
+  margin-bottom: 20px;
+  flex-shrink: 0;
+}
+
+.quiz-main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 20px;
+}
+
+.quiz-left {
   flex: 1;
   min-width: 0;
   height: 100%;
   overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
 }
 
-.quiz-center::-webkit-scrollbar {
+.quiz-left::-webkit-scrollbar {
   display: none;
 }
 
-.progress-bar {
-  margin-bottom: 28px;
+.quiz-right {
+  width: 120px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 20px;
 }
 
 .progress-text {
@@ -459,10 +489,13 @@ onMounted(() => {
   background-color: #1a1a1a;
   color: #fff;
   border: none;
-  border-radius: 10px;
-  padding: 12px 24px;
+  border-radius: 12px;
+  padding: 18px 20px;
   font-size: 16px;
   transition: all 0.2s ease;
+  height: auto;
+  min-height: 56px;
+  width: 100%;
 }
 
 .next-question-btn:hover:not(:disabled) {
@@ -489,16 +522,29 @@ onMounted(() => {
   gap: 14px;
 }
 
+.option-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.option-row .delete-btn {
+  flex-shrink: 0;
+  align-self: center;
+}
+
 .option-item {
+  flex: 1;
   display: flex;
   align-items: center;
-  padding: 20px 24px;
+  padding: 22px 24px;
   border: 1.5px solid #e8e4df;
   border-radius: 14px;
   cursor: pointer;
   transition: all 0.25s ease;
   gap: 14px;
   background: #fff;
+  min-height: 64px;
 }
 
 .option-item:hover:not(.deleted) {
@@ -506,22 +552,22 @@ onMounted(() => {
   background-color: #fdfbf8;
 }
 
-.option-item.selected {
+.option-row.selected .option-item {
   border-color: #8b9a6d;
   background-color: #f5f7f0;
 }
 
-.option-item.correct {
+.option-row.correct .option-item {
   border-color: #67C23A;
   background-color: #f0f9eb;
 }
 
-.option-item.wrong {
+.option-row.wrong .option-item {
   border-color: #F56C6C;
   background-color: #fef0f0;
 }
 
-.option-item.deleted {
+.option-row.deleted .option-item {
   opacity: 0.5;
   cursor: not-allowed;
   background-color: #f5f3f0;
@@ -541,9 +587,6 @@ onMounted(() => {
   color: #F56C6C;
 }
 
-.delete-btn {
-  flex-shrink: 0;
-}
 
 .option-key {
   font-weight: 600;
@@ -589,13 +632,14 @@ onMounted(() => {
 .confirm-btn {
   margin-top: 20px;
   width: 100%;
-  padding: 16px 24px;
+  padding: 18px 24px;
   font-size: 18px;
   background: #1a1a1a;
   color: #fff;
   border: none;
   border-radius: 12px;
   transition: all 0.2s ease;
+  min-height: 56px;
 }
 
 .confirm-btn:hover {
