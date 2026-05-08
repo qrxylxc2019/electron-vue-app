@@ -14,7 +14,7 @@
         @click="enterQuiz(dir.id)"
       >
         <div class="card-content">
-          <el-icon size="48" color="#c4a882"><Folder /></el-icon>
+          <el-icon size="56" color="#c4a882"><Folder /></el-icon>
           <span class="directory-name">{{ dir.name }}</span>
           <span class="directory-count">{{ getQuestionCount(dir.id) }} 题</span>
         </div>
@@ -126,7 +126,7 @@ onMounted(() => {
 h1 {
   color: #1a1a1a;
   margin: 0;
-  font-size: 32px;
+  font-size: 36px;
   font-weight: 500;
   letter-spacing: -0.5px;
 }
@@ -135,9 +135,9 @@ h1 {
   background-color: #1a1a1a;
   color: #fff;
   border: none;
-  border-radius: 8px;
-  padding: 12px 24px;
-  font-size: 14px;
+  border-radius: 10px;
+  padding: 14px 28px;
+  font-size: 16px;
   transition: all 0.2s ease;
 }
 
@@ -148,8 +148,8 @@ h1 {
 
 .directory-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 28px;
 }
 
 .directory-card {
@@ -157,8 +157,8 @@ h1 {
   transition: all 0.3s ease;
   background: #fff;
   border: 1px solid #e8e4df;
-  border-radius: 16px;
-  padding: 32px 24px;
+  border-radius: 20px;
+  padding: 40px 28px;
 }
 
 .directory-card:hover {
@@ -171,17 +171,17 @@ h1 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
 }
 
 .directory-name {
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 500;
   color: #1a1a1a;
 }
 
 .directory-count {
-  font-size: 13px;
+  font-size: 15px;
   color: #9a9590;
 }
 </style>

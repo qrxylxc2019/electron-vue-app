@@ -296,13 +296,13 @@ onMounted(() => {
 }
 
 :deep(.el-page-header__content) {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 500;
   color: #1a1a1a;
 }
 
 .quiz-content {
-  margin-top: 24px;
+  margin-top: 28px;
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -311,7 +311,7 @@ onMounted(() => {
 .quiz-main {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 24px;
   height: 100%;
 }
 
@@ -329,20 +329,21 @@ onMounted(() => {
 }
 
 .progress-bar {
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 
 .progress-text {
   display: block;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   color: #6b6560;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
 }
 
 :deep(.el-progress-bar__outer) {
   background-color: #e8e4df;
   border-radius: 4px;
+  height: 8px !important;
 }
 
 :deep(.el-progress-bar__inner) {
@@ -351,8 +352,8 @@ onMounted(() => {
 }
 
 .question-card {
-  margin-bottom: 20px;
-  border-radius: 16px;
+  margin-bottom: 24px;
+  border-radius: 20px;
   border: 1px solid #e8e4df;
   background: #fff;
   box-shadow: none;
@@ -360,7 +361,13 @@ onMounted(() => {
 
 :deep(.el-card__header) {
   border-bottom: 1px solid #f0ece7;
-  padding: 16px 20px;
+  padding: 20px 24px;
+}
+
+:deep(.el-tag) {
+  font-size: 15px;
+  padding: 6px 14px;
+  border-radius: 8px;
 }
 
 .question-header {
@@ -370,28 +377,28 @@ onMounted(() => {
 }
 
 .question-title {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 600;
   color: #1a1a1a;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
   line-height: 1.6;
 }
 
 .options-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .option-item {
   display: flex;
   align-items: center;
-  padding: 16px 20px;
+  padding: 20px 24px;
   border: 1.5px solid #e8e4df;
-  border-radius: 12px;
+  border-radius: 14px;
   cursor: pointer;
   transition: all 0.25s ease;
-  gap: 12px;
+  gap: 14px;
   background: #fff;
 }
 
@@ -419,13 +426,13 @@ onMounted(() => {
   font-weight: 600;
   color: #1a1a1a;
   flex-shrink: 0;
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .option-text {
   flex: 1;
   color: #4a4540;
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .strikethrough {
@@ -434,32 +441,32 @@ onMounted(() => {
 }
 
 .judge-options .option-text {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 500;
 }
 
 .answer-section {
-  margin-top: 20px;
+  margin-top: 24px;
   text-align: center;
 }
 
 .answer-result {
-  margin-top: 10px;
+  margin-top: 14px;
 }
 
 .result-content {
-  padding: 10px 0;
+  padding: 14px 0;
 }
 
 .explanation {
-  margin-top: 10px;
+  margin-top: 14px;
 }
 
 .nav-arrow {
   flex-shrink: 0;
-  width: 48px;
-  height: 48px;
-  font-size: 20px;
+  width: 56px;
+  height: 56px;
+  font-size: 24px;
   border: 1.5px solid #e8e4df;
   background: #fff;
   color: #6b6560;
