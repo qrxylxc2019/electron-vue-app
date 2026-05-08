@@ -410,9 +410,6 @@ const deleteCurrentQuestion = async () => {
   const itemName = isArticle ? '文章' : '题目';
 
   try {
-    const confirmed = confirm(`确定要删除本道${itemName}吗？此操作不可恢复！`);
-    if (!confirmed) return;
-
     const id = currentQuestion.value.id;
     let success: boolean;
 
@@ -425,11 +422,11 @@ const deleteCurrentQuestion = async () => {
     if (success) {
       ElMessage.success(`${itemName}已删除`);
 
-      // 从本地数组中移除
+      // 从本地数组中移除所有相同id的题目（处理重复出题的情况）
       if (isArticle) {
-        articles.value.splice(currentIndex.value, 1);
+        articles.value = articles.value.filter(a => a.id !== id);
       } else {
-        questions.value.splice(currentIndex.value, 1);
+        questions.value = questions.value.filter(q => q.id !== id);
       }
 
       // 如果删除后没有题目了，返回上一页
