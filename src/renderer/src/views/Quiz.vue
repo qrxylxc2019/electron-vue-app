@@ -1,4 +1,4 @@
-﻿<template>
+﻿﻿<template>
   <div class="quiz-container">
     <el-page-header @back="goBack" :content="directoryName" />
 
@@ -92,13 +92,26 @@
         </div>
       </el-card>
 
-      <!-- 导航按钮 -->
-      <div class="nav-buttons">
-        <el-button @click="prevQuestion" :disabled="currentIndex === 0">
-          上一题
+      <!-- 左右导航箭头 -->
+      <div class="nav-arrows">
+        <el-button
+          class="nav-arrow nav-arrow-left"
+          circle
+          size="large"
+          @click="prevQuestion"
+          :disabled="currentIndex === 0"
+        >
+          <el-icon><ArrowLeft /></el-icon>
         </el-button>
-        <el-button type="primary" @click="nextQuestion" :disabled="currentIndex === questions.length - 1">
-          下一题
+        <el-button
+          class="nav-arrow nav-arrow-right"
+          circle
+          size="large"
+          type="primary"
+          @click="nextQuestion"
+          :disabled="currentIndex === questions.length - 1"
+        >
+          <el-icon><ArrowRight /></el-icon>
         </el-button>
       </div>
     </div>
@@ -383,9 +396,31 @@ onMounted(() => {
   margin-top: 10px;
 }
 
-.nav-buttons {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 20px;
+.nav-arrows {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.nav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: auto;
+  width: 48px;
+  height: 48px;
+  font-size: 20px;
+}
+
+.nav-arrow-left {
+  left: 20px;
+}
+
+.nav-arrow-right {
+  right: 20px;
 }
 </style>
