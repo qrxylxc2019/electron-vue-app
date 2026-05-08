@@ -177,7 +177,7 @@ const questionTypeTag = computed(() => {
 
 // 选择题选项列表
 const optionsList = computed<OptionWithState[]>(() => {
-  if (!currentQuestion.value || currentQuestion.value.question_type !== 'single' && question_type !== 'multiple') return [];
+  if (!currentQuestion.value || (currentQuestion.value.question_type !== 'single' && currentQuestion.value.question_type !== 'multiple')) return [];
   const q = currentQuestion.value;
   return [
     { key: 'A', text: q.option_a, deleted: deletedOptions.value.has('A') },
