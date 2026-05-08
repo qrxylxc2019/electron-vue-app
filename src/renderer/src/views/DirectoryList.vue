@@ -253,9 +253,10 @@ h1 {
   color: #1a1a1a;
   border: 1.5px solid #e8e4df;
   border-radius: 12px;
-  padding: 18px 28px;
+  padding: 22px 32px;
   font-size: 18px;
   transition: all 0.2s ease;
+  min-height: 56px;
 }
 
 .fullscreen-btn:hover {
@@ -268,9 +269,10 @@ h1 {
   color: #fff;
   border: none;
   border-radius: 12px;
-  padding: 18px 32px;
+  padding: 22px 36px;
   font-size: 18px;
   transition: all 0.2s ease;
+  min-height: 56px;
 }
 
 .add-btn:hover {
@@ -323,9 +325,10 @@ h1 {
   color: #1a1a1a;
   border: 1.5px solid #e8e4df;
   border-radius: 12px;
-  padding: 18px 28px;
+  padding: 22px 32px;
   font-size: 18px;
   transition: all 0.2s ease;
+  min-height: 56px;
 }
 
 .header-actions .settings-btn:hover {

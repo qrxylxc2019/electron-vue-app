@@ -37,15 +37,12 @@
                   'wrong': showAnswer && isWrongOption(option.key)
                 }"
               >
-                <el-button
-                  type="danger"
-                  circle
-                  size="small"
+                <div
                   class="delete-btn"
                   @click.stop="toggleDelete(option.key)"
                 >
                   <el-icon><Delete /></el-icon>
-                </el-button>
+                </div>
                 <div
                   class="option-item"
                   @click="selectOption(option.key)"
@@ -77,15 +74,12 @@
                 class="option-row"
                 :class="{ 'selected': selectedAnswer === option.key, 'deleted': option.deleted }"
               >
-                <el-button
-                  type="danger"
-                  circle
-                  size="small"
+                <div
                   class="delete-btn"
                   @click.stop="toggleDelete(option.key)"
                 >
                   <el-icon><Delete /></el-icon>
-                </el-button>
+                </div>
                 <div
                   class="option-item"
                   @click="selectOption(option.key)"
@@ -531,6 +525,20 @@ onMounted(() => {
 .option-row .delete-btn {
   flex-shrink: 0;
   align-self: center;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #F56C6C;
+  font-size: 22px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.option-row .delete-btn:hover {
+  background-color: #fef0f0;
 }
 
 .option-item {
