@@ -28,94 +28,92 @@
             </div>
           </template>
 
-            <div class="question-title">{{ currentQuestion.title }}</div>
+          <div class="question-title">{{ currentQuestion.title }}</div>
 
-            <!-- 选择题选项 -->
-            <div v-if="currentQuestion.question_type === 'single' || currentQuestion.question_type === 'multiple'" class="options-list">
-              <div
-                v-for="option in optionsList"
-                :key="option.key"
-                class="option-item"
-                :class="{ 
-                  'selected': currentQuestion.question_type === 'multiple' ? selectedAnswers.has(option.key) : selectedAnswer === option.key, 
-                  'deleted': option.deleted,
-                  'correct': showAnswer && isCorrectOption(option.key),
-                  'wrong': showAnswer && isWrongOption(option.key)
-                }"
-                @click="selectOption(option.key)"
-              >
-                <el-button
-                  type="danger"
-                  circle
-                  size="small"
-                  class="delete-btn"
-                  @click.stop="toggleDelete(option.key)"
-                >
-                  <el-icon><Delete /></el-icon>
-                </el-button>
-                <span class="option-key">{{ option.key }}.</span>
-                <span class="option-text" :class="{ 'strikethrough': option.deleted }">
-                  {{ option.text || '无内容' }}
-                </span>
-                <!-- 答案对错的图标显示 -->
-                <el-icon v-if="showAnswer && isCorrectOption(option.key)" class="result-icon correct-icon"><CircleCheck /></el-icon>
-                <el-icon v-if="showAnswer && isWrongOption(option.key)" class="result-icon wrong-icon"><CircleClose /></el-icon>
-              </div>
-              <!-- 多选题确认按钮 -->
+          <!-- 选择题选项 -->
+          <div v-if="currentQuestion.question_type === 'single' || currentQuestion.question_type === 'multiple'" class="options-list">
+            <div
+              v-for="option in optionsList"
+              :key="option.key"
+              class="option-item"
+              :class="{ 
+                'selected': currentQuestion.question_type === 'multiple' ? selectedAnswers.has(option.key) : selectedAnswer === option.key, 
+                'deleted': option.deleted,
+                'correct': showAnswer && isCorrectOption(option.key),
+                'wrong': showAnswer && isWrongOption(option.key)
+              }"
+              @click="selectOption(option.key)"
+            >
               <el-button
-                v-if="currentQuestion.question_type === 'multiple' && !showAnswer"
-                class="confirm-btn"
-                @click="confirmMultipleAnswer"
+                type="danger"
+                circle
+                size="small"
+                class="delete-btn"
+                @click.stop="toggleDelete(option.key)"
               >
-                确认答案
+                <el-icon><Delete /></el-icon>
               </el-button>
+              <span class="option-key">{{ option.key }}.</span>
+              <span class="option-text" :class="{ 'strikethrough': option.deleted }">
+                {{ option.text || '无内容' }}
+              </span>
+              <!-- 答案对错的图标显示 -->
+              <el-icon v-if="showAnswer && isCorrectOption(option.key)" class="result-icon correct-icon"><CircleCheck /></el-icon>
+              <el-icon v-if="showAnswer && isWrongOption(option.key)" class="result-icon wrong-icon"><CircleClose /></el-icon>
             </div>
+            <!-- 多选题确认按钮 -->
+            <el-button
+              v-if="currentQuestion.question_type === 'multiple' && !showAnswer"
+              class="confirm-btn"
+              @click="confirmMultipleAnswer"
+            >
+              确认答案
+            </el-button>
+          </div>
 
-            <!-- 判断题选项 -->
-            <div v-else class="options-list judge-options">
-              <div
-                v-for="option in judgeOptions"
-                :key="option.key"
-                class="option-item"
-                :class="{ 'selected': selectedAnswer === option.key, 'deleted': option.deleted }"
-                @click="selectOption(option.key)"
+          <!-- 判断题选项 -->
+          <div v-else class="options-list judge-options">
+            <div
+              v-for="option in judgeOptions"
+              :key="option.key"
+              class="option-item"
+              :class="{ 'selected': selectedAnswer === option.key, 'deleted': option.deleted }"
+              @click="selectOption(option.key)"
+            >
+              <el-button
+                type="danger"
+                circle
+                size="small"
+                class="delete-btn"
+                @click.stop="toggleDelete(option.key)"
               >
-                <el-button
-                  type="danger"
-                  circle
-                  size="small"
-                  class="delete-btn"
-                  @click.stop="toggleDelete(option.key)"
-                >
-                  <el-icon><Delete /></el-icon>
-                </el-button>
-                <span class="option-text" :class="{ 'strikethrough': option.deleted }">
-                  {{ option.text }}
-                </span>
+                <el-icon><Delete /></el-icon>
+              </el-button>
+              <span class="option-text" :class="{ 'strikethrough': option.deleted }">
+                {{ option.text }}
+              </span>
+            </div>
+          </div>
+
+          <!-- 答案显示 -->
+          <div v-if="showAnswer" class="answer-result">
+            <el-divider />
+            <div class="result-content">
+              <el-result
+                :icon="isCorrect ? 'success' : 'error'"
+                :title="isCorrect ? '答对了！' : '答错了！'"
+                :sub-title="`正确答案：${currentQuestion.correct_answer}`"
+              />
+              <div v-if="currentQuestion.explanation" class="explanation">
+                <el-alert type="info" :closable="false">
+                  <template #title>
+                    <strong>解析：</strong>{{ currentQuestion.explanation }}
+                  </template>
+                </el-alert>
               </div>
             </div>
-
-            <!-- 答案显示 -->
-            <div v-if="showAnswer" class="answer-result">
-              <el-divider />
-              <div class="result-content">
-                <el-result
-                  :icon="isCorrect ? 'success' : 'error'"
-                  :title="isCorrect ? '答对了！' : '答错了！'"
-                  :sub-title="`正确答案：${currentQuestion.correct_answer}`"
-                />
-                <div v-if="currentQuestion.explanation" class="explanation">
-                  <el-alert type="info" :closable="false">
-                    <template #title>
-                      <strong>解析：</strong>{{ currentQuestion.explanation }}
-                    </template>
-                  </el-alert>
-                </div>
-              </div>
-            </div>
-          </el-card>
-        </div>
-
+          </div>
+        </el-card>
       </div>
     </div>
 
