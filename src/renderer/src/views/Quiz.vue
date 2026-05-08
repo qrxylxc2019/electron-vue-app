@@ -2,7 +2,7 @@
   <div class="quiz-container">
     <el-page-header @back="goBack" :content="directoryName" />
 
-    <div class="quiz-content" v-if="questions.length > 0 && currentQuestion">
+    <div class="quiz-content" v-if="(questions.length > 0 || articles.length > 0) && currentQuestion">
       <!-- 题目进度 -->
       <div class="progress-bar">
         <span class="progress-text">题目 {{ currentIndex + 1 }} / {{ questions.length }}</span>
@@ -139,7 +139,7 @@
           <el-button
             class="next-question-btn"
             @click="nextQuestion"
-            :disabled="currentIndex === questions.length - 1"
+            :disabled="currentIndex === (isArticleMode ? articles.length : questions.length) - 1"
           >
             下一题 <el-icon><ArrowRight /></el-icon>
           </el-button>
@@ -147,7 +147,7 @@
       </div>
     </div>
 
-    <el-empty v-else description="暂无题目" />
+    <el-empty v-else :description="isArticleMode ? '暂无文章' : '暂无题目'" />
   </div>
 </template>
 
@@ -203,8 +203,9 @@ const currentQuestion = computed(() => {
 
 // 进度百分比
 const progressPercent = computed(() => {
-  if (questions.value.length === 0) return 0;
-  return ((currentIndex.value + 1) / questions.value.length) * 100;
+  const total = isArticleMode.value ? articles.value.length : questions.value.length;
+  if (total === 0) return 0;
+  return ((currentIndex.value + 1) / total) * 100;
 });
 
 // 是否答对
@@ -452,7 +453,8 @@ const prevQuestion = () => {
 
 // 下一题
 const nextQuestion = () => {
-  if (currentIndex.value < questions.value.length - 1) {
+  const total = isArticleMode.value ? articles.value.length : questions.value.length;
+  if (currentIndex.value < total - 1) {
     currentIndex.value++;
     resetQuestionState();
   }
