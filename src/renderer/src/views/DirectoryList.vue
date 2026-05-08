@@ -2,9 +2,15 @@
   <div class="directory-list">
     <div class="header">
       <h1>选择科目</h1>
-      <el-button class="add-btn" @click="showAddDialog = true">
-        <el-icon><Plus /></el-icon>新增科目
-      </el-button>
+      <div class="header-actions">
+        <el-button class="fullscreen-btn" @click="toggleFullscreen">
+          <el-icon><FullScreen /></el-icon>
+          {{ isFullscreen ? '取消全屏' : '全屏' }}
+        </el-button>
+        <el-button class="add-btn" @click="showAddDialog = true">
+          <el-icon><Plus /></el-icon>新增科目
+        </el-button>
+      </div>
     </div>
     <div class="directory-grid">
       <div
@@ -53,6 +59,26 @@ const directories = ref<Directory[]>([]);
 const questionCounts = ref<Record<number, number>>({});
 const showAddDialog = ref(false);
 const newDirectory = ref({ name: '' });
+const isFullscreen = ref(false);
+
+// 切换全屏
+const toggleFullscreen = async () => {
+  try {
+    const result = await window.electronAPI.toggleFullscreen();
+    isFullscreen.value = result;
+  } catch (error) {
+    console.error('切换全屏失败:', error);
+  }
+};
+
+// 检查全屏状态
+const checkFullscreen = async () => {
+  try {
+    isFullscreen.value = await window.electronAPI.isFullScreen();
+  } catch (error) {
+    console.error('获取全屏状态失败:', error);
+  }
+};
 
 const loadDirectories = async () => {
   try {
@@ -105,6 +131,7 @@ const addDirectory = async () => {
 
 onMounted(() => {
   loadDirectories();
+  checkFullscreen();
 });
 </script>
 
@@ -129,6 +156,27 @@ h1 {
   font-size: 36px;
   font-weight: 500;
   letter-spacing: -0.5px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.fullscreen-btn {
+  background-color: transparent;
+  color: #1a1a1a;
+  border: 1.5px solid #e8e4df;
+  border-radius: 10px;
+  padding: 14px 24px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.fullscreen-btn:hover {
+  border-color: #c4a882;
+  background-color: #fdfbf8;
 }
 
 .add-btn {

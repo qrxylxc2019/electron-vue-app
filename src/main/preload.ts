@@ -9,6 +9,10 @@ const electronAPI = {
   getQuestions: (directoryId: number) => ipcRenderer.invoke('db:getQuestions', directoryId),
   getQuestion: (id: number) => ipcRenderer.invoke('db:getQuestion', id),
   addQuestion: (question: any) => ipcRenderer.invoke('db:addQuestion', question),
+
+  // 窗口相关
+  toggleFullscreen: () => ipcRenderer.invoke('window:toggleFullscreen'),
+  isFullScreen: () => ipcRenderer.invoke('window:isFullScreen'),
 };
 
 // 暴露给渲染进程的 API
