@@ -1,4 +1,4 @@
-// 类型声明
+﻿// 类型声明
 export interface Directory {
   id: number;
   name: string;
@@ -7,7 +7,7 @@ export interface Directory {
   created_at: string;
 }
 
-export type QuestionType = 'choice' | 'judge';
+export type QuestionType = 'single' | 'multiple' | 'judge';|export type QuestionType = 'single' | 'multiple' | 'judge';
 
 export interface Question {
   id: number;

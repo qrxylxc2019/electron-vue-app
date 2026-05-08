@@ -1,18 +1,18 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+﻿import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import Database from 'better-sqlite3';
 
 let mainWindow: BrowserWindow | null = null;
 let db: Database.Database | null = null;
 
-// 获取数据库路径
+// 获取数据库路�?
 function getDbPath(): string {
   const isDev = !app.isPackaged;
   if (isDev) {
     // 使用 __dirname 的上两级目录（dist/main -> 项目根目录）
     return path.join(__dirname, '..', '..', 'out', 'data', 'qingrui.db');
   }
-  // 打包后使用 extraResources 中的数据
+  // 打包后使�?extraResources 中的数据
   return path.join(process.resourcesPath, 'data', 'qingrui.db');
 }
 
@@ -24,7 +24,7 @@ function initDatabase() {
   try {
     db = new Database(dbPath);
 
-    // 创建目录表
+    // 创建目录�?
     db.exec(`
       CREATE TABLE IF NOT EXISTS directories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,12 +36,12 @@ function initDatabase() {
       )
     `);
 
-    // 创建题目表
+    // 创建题目�?
     db.exec(`
       CREATE TABLE IF NOT EXISTS questions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         directory_id INTEGER NOT NULL,
-        question_type TEXT NOT NULL CHECK(question_type IN ('choice', 'judge')),
+        question_type TEXT NOT NULL CHECK(question_type IN ('single', 'multiple', 'judge')),
         title TEXT NOT NULL,
         option_a TEXT,
         option_b TEXT,
@@ -76,7 +76,7 @@ function setupIpc() {
     }
   });
 
-  // 获取某目录下的题目列表
+  // 获取某目录下的题目列�?
   ipcMain.handle('db:getQuestions', (_event, directoryId: number) => {
     if (!db) return [];
     try {
@@ -145,6 +145,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    icon: path.join(__dirname, '..', '..', 'favicon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

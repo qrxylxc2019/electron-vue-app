@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="directory-list">
     <div class="header">
       <h1>选择科目</h1>
@@ -110,8 +110,8 @@ onMounted(() => {
 
 <style scoped>
 .directory-list {
-  padding: 20px;
-  max-width: 1200px;
+  padding: 20px 4vw;
+  width: 100%;
   margin: 0 auto;
 }
 

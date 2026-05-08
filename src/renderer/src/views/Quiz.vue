@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="quiz-container">
     <el-page-header @back="goBack" :content="directoryName" />
 
@@ -13,8 +13,8 @@
       <el-card class="question-card">
         <template #header>
           <div class="question-header">
-            <el-tag :type="currentQuestion.question_type === 'choice' ? 'primary' : 'success'">
-              {{ currentQuestion.question_type === 'choice' ? '选择题' : '判断题' }}
+            <el-tag :type="questionTypeTag.type">
+              {{ questionTypeTag.text }}
             </el-tag>
           </div>
         </template>
@@ -22,7 +22,7 @@
         <div class="question-title">{{ currentQuestion.title }}</div>
 
         <!-- 选择题选项 -->
-        <div v-if="currentQuestion.question_type === 'choice'" class="options-list">
+        <div v-if="currentQuestion.question_type === 'single' || currentQuestion.question_type === 'multiple'" class="options-list">
           <div
             v-for="option in optionsList"
             :key="option.key"
@@ -70,12 +70,7 @@
           </div>
         </div>
 
-        <!-- 答案提交 -->
-        <div class="answer-section" v-if="!showAnswer">
-          <el-button type="primary" size="large" :disabled="!selectedAnswer" @click="submitAnswer">
-            提交答案
-          </el-button>
-        </div>
+
 
         <!-- 答案显示 -->
         <div v-if="showAnswer" class="answer-result">
@@ -147,9 +142,20 @@ const isCorrect = computed(() => {
   return selectedAnswer.value === currentQuestion.value.correct_answer;
 });
 
+// 题目类型标签
+const questionTypeTag = computed(() => {
+  if (!currentQuestion.value) return { text: '', type: 'info' };
+  switch (currentQuestion.value.question_type) {
+    case 'single': return { text: '单选题', type: 'primary' };
+    case 'multiple': return { text: '多选题', type: 'warning' };
+    case 'judge': return { text: '判断题', type: 'success' };
+    default: return { text: '选择题', type: 'primary' };
+  }
+});
+
 // 选择题选项列表
 const optionsList = computed<OptionWithState[]>(() => {
-  if (!currentQuestion.value || currentQuestion.value.question_type !== 'choice') return [];
+  if (!currentQuestion.value || currentQuestion.value.question_type !== 'single' && question_type !== 'multiple') return [];
   const q = currentQuestion.value;
   return [
     { key: 'A', text: q.option_a, deleted: deletedOptions.value.has('A') },
@@ -205,6 +211,8 @@ const selectOption = (key: string) => {
   // 如果已删除，不能选择
   if (deletedOptions.value.has(key)) return;
   selectedAnswer.value = key;
+  // 即选即判断
+  showAnswer.value = true;
 };
 
 // 切换删除状态
@@ -224,14 +232,7 @@ const toggleDelete = (key: string) => {
   }
 };
 
-// 提交答案
-const submitAnswer = () => {
-  if (!selectedAnswer.value) {
-    ElMessage.warning('请选择答案');
-    return;
-  }
-  showAnswer.value = true;
-};
+
 
 // 上一题
 const prevQuestion = () => {
@@ -269,8 +270,8 @@ onMounted(() => {
 
 <style scoped>
 .quiz-container {
-  padding: 20px;
-  max-width: 900px;
+  padding: 20px 4vw;
+  width: 100%;
   margin: 0 auto;
 }
 
