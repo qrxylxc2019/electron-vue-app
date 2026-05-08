@@ -7,6 +7,7 @@ const electronAPI = {
 
   // 题目相关
   getQuestions: (directoryId: number) => ipcRenderer.invoke('db:getQuestions', directoryId),
+  getArticles: (directoryId: number) => ipcRenderer.invoke('db:getArticles', directoryId),
   getQuestion: (id: number) => ipcRenderer.invoke('db:getQuestion', id),
   addQuestion: (question: any) => ipcRenderer.invoke('db:addQuestion', question),
 

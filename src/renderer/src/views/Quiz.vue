@@ -1,4 +1,4 @@
-﻿﻿﻿﻿<template>
+﻿﻿<template>
   <div class="quiz-container">
     <el-page-header @back="goBack" :content="directoryName" />
 
@@ -19,6 +19,17 @@
                 <el-tag :type="questionTypeTag.type">
                   {{ questionTypeTag.text }}
                 </el-tag>
+                <!-- 答对/答错结果 -->
+                <div v-if="showAnswer" class="answer-status">
+                  <el-icon :class="isCorrect ? 'correct-icon' : 'wrong-icon'">
+                    <CircleCheck v-if="isCorrect" />
+                    <CircleClose v-else />
+                  </el-icon>
+                  <span :class="isCorrect ? 'correct-text' : 'wrong-text'">
+                    {{ isCorrect ? '答对了！' : '答错了！' }}
+                  </span>
+                  <span class="correct-answer">正确答案：{{ currentQuestion.correct_answer }}</span>
+                </div>
               </div>
             </template>
 
@@ -66,6 +77,28 @@
               </el-button>
             </div>
 
+            <!-- 文章题：按段落显示，带隐藏/显示按钮 -->
+            <div v-else-if="currentQuestion.question_type === 'write'" class="write-content">
+              <div
+                v-for="(paragraph, index) in writeParagraphs"
+                :key="index"
+                class="paragraph-row"
+              >
+                <div
+                  class="paragraph-item"
+                  :class="{ 'hidden': hiddenParagraphs.has(index) }"
+                >
+                  <p class="paragraph-text">{{ paragraph }}</p>
+                </div>
+                <el-button
+                  class="toggle-btn"
+                  @click="toggleParagraph(index)"
+                >
+                  {{ hiddenParagraphs.has(index) ? '显示' : '隐藏' }}
+                </el-button>
+              </div>
+            </div>
+
             <!-- 判断题选项 -->
             <div v-else class="options-list judge-options">
               <div
@@ -94,19 +127,8 @@
             <!-- 答案显示 -->
             <div v-if="showAnswer" class="answer-result">
               <el-divider />
-              <div class="result-content">
-                <el-result
-                  :icon="isCorrect ? 'success' : 'error'"
-                  :title="isCorrect ? '答对了！' : '答错了！'"
-                  :sub-title="`正确答案：${currentQuestion.correct_answer}`"
-                />
-                <div v-if="currentQuestion.explanation" class="explanation">
-                  <el-alert type="info" :closable="false">
-                    <template #title>
-                      <strong>解析：</strong>{{ currentQuestion.explanation }}
-                    </template>
-                  </el-alert>
-                </div>
+              <div v-if="currentQuestion.explanation" class="explanation-line">
+                <strong>解析：</strong>{{ currentQuestion.explanation }}
               </div>
             </div>
           </el-card>
@@ -133,7 +155,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import type { Question, QuestionType, OptionWithState } from '../types';
+import type { Question, Article, QuestionType, OptionWithState } from '../types';
 
 const props = defineProps<{
   directoryId: string;
@@ -142,15 +164,40 @@ const props = defineProps<{
 const router = useRouter();
 const route = useRoute();
 const directoryName = ref('');
+const isArticleMode = ref(false);
 const questions = ref<Question[]>([]);
+const articles = ref<Article[]>([]);
 const currentIndex = ref(0);
 const selectedAnswer = ref<string>('');
 const selectedAnswers = ref<Set<string>>(new Set()); // 多选题选中的答案
 const showAnswer = ref(false);
 const deletedOptions = ref<Set<string>>(new Set());
 
-// 当前题目
+// 文章题段落隐藏状态
+const hiddenParagraphs = ref<Set<number>>(new Set());
+
+// 当前题目/文章
 const currentQuestion = computed(() => {
+  if (isArticleMode.value) {
+    // 文章模式：将 Article 转换为 Question 格式
+    const article = articles.value[currentIndex.value];
+    if (!article) return null;
+    return {
+      id: article.id,
+      directory_id: article.directory_id,
+      question_type: 'write' as QuestionType,
+      title: article.title,
+      option_a: article.content,
+      option_b: null,
+      option_c: null,
+      option_d: null,
+      option_e: null,
+      correct_answer: article.correct_answer,
+      explanation: article.explanation,
+      sort_order: article.sort_order,
+      created_at: article.created_at,
+    } as Question;
+  }
   return questions.value[currentIndex.value] || null;
 });
 
@@ -179,6 +226,7 @@ const questionTypeTag = computed(() => {
     case 'single': return { text: '单选题', type: 'primary' };
     case 'multiple': return { text: '多选题', type: 'warning' };
     case 'judge': return { text: '判断题', type: 'success' };
+    case 'write': return { text: '文章题', type: 'info' };
     default: return { text: '选择题', type: 'primary' };
   }
 });
@@ -204,6 +252,14 @@ const judgeOptions = computed<OptionWithState[]>(() => {
   ];
 });
 
+// 文章题段落列表（按换行符分段）
+const writeParagraphs = computed<string[]>(() => {
+  if (!currentQuestion.value || currentQuestion.value.question_type !== 'write') return [];
+  // 按 option_a 存储文章内容，按换行分段
+  const content = currentQuestion.value.option_a || currentQuestion.value.title || '';
+  return content.split(/\n+/).filter(p => p.trim());
+});
+
 // 加载数据
 const loadData = async () => {
   try {
@@ -214,33 +270,71 @@ const loadData = async () => {
       directoryName.value = dir.name;
     }
 
-    let qs = await window.electronAPI.getQuestions(dirId);
-    
-    // 处理出题设置参数
-    const mode = route.query.mode as string;
-    const count = parseInt(route.query.count as string) || qs.length;
-    const repeat = parseInt(route.query.repeat as string) || 1;
-    
-    // 先随机打乱
-    qs = shuffleArray([...qs]);
-    
-    if (mode === 'random' && count < qs.length) {
-      // 随机抽取指定数量的题目
-      qs = qs.slice(0, count);
-    }
-    
-    if (repeat > 1) {
-      // 重复出题：将抽出的题目重复指定次数
-      const baseQuestions = [...qs];
-      const repeated: Question[] = [];
-      for (let i = 0; i < repeat; i++) {
-        // 每次重复都重新打乱顺序
-        repeated.push(...shuffleArray([...baseQuestions]));
+    // 判断是否是文章模式（高项论文）
+    isArticleMode.value = route.query.isArticle === '1' || dir?.name === '高项论文';
+
+    if (isArticleMode.value) {
+      // 文章模式：从 article 表加载
+      let arts = await window.electronAPI.getArticles(dirId);
+      if (arts.length === 0) {
+        ElMessage.warning('该科目暂无文章');
+        return;
       }
-      qs = repeated;
+      // 处理出题设置参数
+      const mode = route.query.mode as string;
+      const count = parseInt(route.query.count as string) || arts.length;
+      const repeat = parseInt(route.query.repeat as string) || 1;
+      
+      // 先随机打乱
+      arts = shuffleArray([...arts]);
+      
+      if (mode === 'random' && count < arts.length) {
+        arts = arts.slice(0, count);
+      }
+      
+      if (repeat > 1) {
+        const baseArticles = [...arts];
+        const repeated: Article[] = [];
+        for (let i = 0; i < repeat; i++) {
+          repeated.push(...shuffleArray([...baseArticles]));
+        }
+        arts = repeated;
+      }
+      
+      articles.value = arts;
+      questions.value = []; // 清空题目
+    } else {
+      // 普通模式：从 questions 表加载
+      let qs = await window.electronAPI.getQuestions(dirId);
+      
+      // 处理出题设置参数
+      const mode = route.query.mode as string;
+      const count = parseInt(route.query.count as string) || qs.length;
+      const repeat = parseInt(route.query.repeat as string) || 1;
+      
+      // 先随机打乱
+      qs = shuffleArray([...qs]);
+      
+      if (mode === 'random' && count < qs.length) {
+        // 随机抽取指定数量的题目
+        qs = qs.slice(0, count);
+      }
+      
+      if (repeat > 1) {
+        // 重复出题：将抽出的题目重复指定次数
+        const baseQuestions = [...qs];
+        const repeated: Question[] = [];
+        for (let i = 0; i < repeat; i++) {
+          // 每次重复都重新打乱顺序
+          repeated.push(...shuffleArray([...baseQuestions]));
+        }
+        qs = repeated;
+      }
+      
+      questions.value = qs;
+      articles.value = []; // 清空文章
     }
     
-    questions.value = qs;
     resetState();
   } catch (error) {
     ElMessage.error('加载题目失败');
@@ -337,6 +431,15 @@ const toggleDelete = (key: string) => {
   }
 };
 
+// 切换文章段落隐藏/显示
+const toggleParagraph = (index: number) => {
+  if (hiddenParagraphs.value.has(index)) {
+    hiddenParagraphs.value.delete(index);
+  } else {
+    hiddenParagraphs.value.add(index);
+  }
+};
+
 
 
 // 上一题
@@ -365,6 +468,7 @@ const resetQuestionState = () => {
 // 监听题目变化，清空删除状态
 watch(currentQuestion, () => {
   deletedOptions.value.clear();
+  hiddenParagraphs.value.clear();
   selectedAnswer.value = '';
   selectedAnswers.value.clear();
   showAnswer.value = false;
@@ -476,6 +580,33 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.answer-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.answer-status .el-icon {
+  font-size: 24px;
+}
+
+.correct-text {
+  color: #67C23A;
+}
+
+.wrong-text {
+  color: #F56C6C;
+}
+
+.correct-answer {
+  color: #6b6560;
+  font-size: 16px;
+  font-weight: normal;
+  margin-left: 8px;
 }
 
 .next-question-btn {
@@ -627,12 +758,11 @@ onMounted(() => {
   margin-top: 14px;
 }
 
-.result-content {
-  padding: 14px 0;
-}
-
-.explanation {
-  margin-top: 14px;
+.explanation-line {
+  font-size: 20px;
+  color: #1a1a1a;
+  line-height: 1.8;
+  padding: 10px 0;
 }
 
 
@@ -652,5 +782,56 @@ onMounted(() => {
 .confirm-btn:hover {
   background: #333;
   transform: translateY(-1px);
+}
+
+/* 文章题样式 */
+.write-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.paragraph-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.paragraph-item {
+  flex: 1;
+  padding: 20px 24px;
+  border: 1.5px solid #e8e4df;
+  border-radius: 14px;
+  background: #fff;
+  transition: all 0.25s ease;
+  min-height: 64px;
+}
+
+.paragraph-item.hidden {
+  background-color: #f5f3f0;
+  border-color: #e8e4df;
+}
+
+.paragraph-item.hidden .paragraph-text {
+  opacity: 0;
+  filter: blur(8px);
+  user-select: none;
+}
+
+.paragraph-text {
+  margin: 0;
+  font-size: 18px;
+  color: #1a1a1a;
+  line-height: 1.8;
+  transition: all 0.25s ease;
+}
+
+.toggle-btn {
+  flex-shrink: 0;
+  align-self: center;
+  min-height: 56px;
+  padding: 16px 20px;
+  font-size: 16px;
+  border-radius: 12px;
 }
 </style>

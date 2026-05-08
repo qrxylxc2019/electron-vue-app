@@ -25,7 +25,7 @@
         <div class="card-content">
           <el-icon size="56" color="#c4a882"><Folder /></el-icon>
           <span class="directory-name">{{ dir.name }}</span>
-          <span class="directory-count">{{ getQuestionCount(dir.id) }} 题</span>
+          <span class="directory-count">{{ dir.name === '高项论文' ? getArticleCount(dir.id) : getQuestionCount(dir.id) }} 题</span>
         </div>
       </div>
     </div>
@@ -82,11 +82,12 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import type { Directory } from '../types';
+import type { Directory, Article } from '../types';
 
 const router = useRouter();
 const directories = ref<Directory[]>([]);
 const questionCounts = ref<Record<number, number>>({});
+const articleCounts = ref<Record<number, number>>({});
 const showAddDialog = ref(false);
 const newDirectory = ref({ name: '' });
 const isFullscreen = ref(false);
@@ -150,8 +151,13 @@ const loadDirectories = async () => {
 
     // 获取每个目录的题目数量
     for (const dir of dirs) {
-      const questions = await window.electronAPI.getQuestions(dir.id);
-      questionCounts.value[dir.id] = questions.length;
+      if (dir.name === '高项论文') {
+        const articles = await window.electronAPI.getArticles(dir.id);
+        articleCounts.value[dir.id] = articles.length;
+      } else {
+        const questions = await window.electronAPI.getQuestions(dir.id);
+        questionCounts.value[dir.id] = questions.length;
+      }
     }
   } catch (error) {
     ElMessage.error('加载目录失败');
@@ -163,8 +169,16 @@ const getQuestionCount = (dirId: number) => {
   return questionCounts.value[dirId] || 0;
 };
 
+const getArticleCount = (dirId: number) => {
+  return articleCounts.value[dirId] || 0;
+};
+
 const enterQuiz = (directoryId: number) => {
-  if (getQuestionCount(directoryId) === 0) {
+  const dir = directories.value.find(d => d.id === directoryId);
+  const isArticleDir = dir?.name === '高项论文';
+  const count = isArticleDir ? getArticleCount(directoryId) : getQuestionCount(directoryId);
+
+  if (count === 0) {
     ElMessage.warning('该科目暂无题目');
     return;
   }
@@ -174,7 +188,8 @@ const enterQuiz = (directoryId: number) => {
     query: {
       mode: quizSettings.value.mode,
       count: quizSettings.value.count.toString(),
-      repeat: quizSettings.value.repeat.toString()
+      repeat: quizSettings.value.repeat.toString(),
+      isArticle: isArticleDir ? '1' : '0'
     }
   });
 };

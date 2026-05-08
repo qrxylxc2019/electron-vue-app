@@ -1,4 +1,4 @@
-﻿// 类型声明
+﻿﻿// 类型声明
 export interface Directory {
   id: number;
   name: string;
@@ -7,7 +7,7 @@ export interface Directory {
   created_at: string;
 }
 
-export type QuestionType = 'single' | 'multiple' | 'judge';|export type QuestionType = 'single' | 'multiple' | 'judge';
+export type QuestionType = 'single' | 'multiple' | 'judge' | 'write';
 
 export interface Question {
   id: number;
@@ -19,6 +19,18 @@ export interface Question {
   option_c: string | null;
   option_d: string | null;
   option_e: string | null;
+  correct_answer: string;
+  explanation: string | null;
+  sort_order: number;
+  created_at: string;
+}
+
+// 文章题类型
+export interface Article {
+  id: number;
+  directory_id: number;
+  title: string;
+  content: string;
   correct_answer: string;
   explanation: string | null;
   sort_order: number;
@@ -39,6 +51,7 @@ declare global {
       getDirectories: () => Promise<Directory[]>;
       addDirectory: (name: string, parentId?: number | null) => Promise<Directory | null>;
       getQuestions: (directoryId: number) => Promise<Question[]>;
+      getArticles: (directoryId: number) => Promise<Article[]>;
       getQuestion: (id: number) => Promise<Question | null>;
       addQuestion: (question: Partial<Question>) => Promise<Question | null>;
     };
