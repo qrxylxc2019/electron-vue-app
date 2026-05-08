@@ -17,12 +17,19 @@
         v-for="dir in directories"
         :key="dir.id"
         class="directory-card"
-        @click="enterQuiz(dir.id)"
       >
         <div class="card-content">
           <el-icon size="56" color="#c4a882"><Folder /></el-icon>
           <span class="directory-name">{{ dir.name }}</span>
           <span class="directory-count">{{ getQuestionCount(dir.id) }} 题</span>
+        </div>
+        <div class="card-actions">
+          <el-button class="quiz-btn" @click.stop="enterQuiz(dir.id)">
+            直接做题
+          </el-button>
+          <el-button class="settings-btn" @click.stop="openQuizSettings(dir.id)">
+            出题设置
+          </el-button>
         </div>
       </div>
     </div>
@@ -45,6 +52,33 @@
         <el-button class="add-btn" @click="addDirectory">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 出题设置对话框 -->
+    <el-dialog
+      v-model="showSettingsDialog"
+      title="出题设置"
+      width="500px"
+      class="warm-dialog"
+    >
+      <el-form :model="quizSettings" label-width="120px">
+        <el-form-item label="出题模式">
+          <el-radio-group v-model="quizSettings.mode">
+            <el-radio label="all">全部题目</el-radio>
+            <el-radio label="random">随机出题</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="出题数量" v-if="quizSettings.mode === 'random'">
+          <el-input-number v-model="quizSettings.count" :min="1" :max="200" :step="1" />
+        </el-form-item>
+        <el-form-item label="重复次数">
+          <el-input-number v-model="quizSettings.repeat" :min="1" :max="10" :step="1" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showSettingsDialog = false">取消</el-button>
+        <el-button class="add-btn" @click="startQuizWithSettings">开始做题</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -60,6 +94,13 @@ const questionCounts = ref<Record<number, number>>({});
 const showAddDialog = ref(false);
 const newDirectory = ref({ name: '' });
 const isFullscreen = ref(false);
+const showSettingsDialog = ref(false);
+const selectedDirId = ref<number>(0);
+const quizSettings = ref({
+  mode: 'all',
+  count: 20,
+  repeat: 1
+});
 
 // 切换全屏
 const toggleFullscreen = async () => {
@@ -106,6 +147,30 @@ const enterQuiz = (directoryId: number) => {
     return;
   }
   router.push({ name: 'Quiz', params: { directoryId: directoryId.toString() } });
+};
+
+// 打开出题设置
+const openQuizSettings = (directoryId: number) => {
+  if (getQuestionCount(directoryId) === 0) {
+    ElMessage.warning('该科目暂无题目');
+    return;
+  }
+  selectedDirId.value = directoryId;
+  showSettingsDialog.value = true;
+};
+
+// 使用设置开始做题
+const startQuizWithSettings = () => {
+  showSettingsDialog.value = false;
+  router.push({
+    name: 'Quiz',
+    params: { directoryId: selectedDirId.value.toString() },
+    query: {
+      mode: quizSettings.value.mode,
+      count: quizSettings.value.count.toString(),
+      repeat: quizSettings.value.repeat.toString()
+    }
+  });
 };
 
 const addDirectory = async () => {
@@ -201,12 +266,14 @@ h1 {
 }
 
 .directory-card {
-  cursor: pointer;
   transition: all 0.3s ease;
   background: #fff;
   border: 1px solid #e8e4df;
   border-radius: 20px;
   padding: 40px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .directory-card:hover {
@@ -220,6 +287,44 @@ h1 {
   flex-direction: column;
   align-items: center;
   gap: 16px;
+  flex: 1;
+}
+
+.card-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  width: 100%;
+  justify-content: center;
+}
+
+.quiz-btn {
+  background-color: #1a1a1a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.quiz-btn:hover {
+  background-color: #333;
+}
+
+.settings-btn {
+  background-color: transparent;
+  color: #1a1a1a;
+  border: 1.5px solid #e8e4df;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.settings-btn:hover {
+  border-color: #c4a882;
+  background-color: #fdfbf8;
 }
 
 .directory-name {

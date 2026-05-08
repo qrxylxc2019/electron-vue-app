@@ -42,7 +42,10 @@
                 v-for="option in optionsList"
                 :key="option.key"
                 class="option-item"
-                :class="{ 'selected': selectedAnswer === option.key, 'deleted': option.deleted }"
+                :class="{ 
+                  'selected': currentQuestion.question_type === 'multiple' ? selectedAnswers.has(option.key) : selectedAnswer === option.key, 
+                  'deleted': option.deleted 
+                }"
                 @click="selectOption(option.key)"
               >
                 <el-button
@@ -59,6 +62,14 @@
                   {{ option.text || '无内容' }}
                 </span>
               </div>
+              <!-- 多选题确认按钮 -->
+              <el-button
+                v-if="currentQuestion.question_type === 'multiple' && !showAnswer"
+                class="confirm-btn"
+                @click="confirmMultipleAnswer"
+              >
+                确认答案
+              </el-button>
             </div>
 
             <!-- 判断题选项 -->
@@ -125,7 +136,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import type { Question, QuestionType, OptionWithState } from '../types';
 
@@ -134,10 +145,12 @@ const props = defineProps<{
 }>();
 
 const router = useRouter();
+const route = useRoute();
 const directoryName = ref('');
 const questions = ref<Question[]>([]);
 const currentIndex = ref(0);
 const selectedAnswer = ref<string>('');
+const selectedAnswers = ref<Set<string>>(new Set()); // 多选题选中的答案
 const showAnswer = ref(false);
 const deletedOptions = ref<Set<string>>(new Set());
 
@@ -155,6 +168,12 @@ const progressPercent = computed(() => {
 // 是否答对
 const isCorrect = computed(() => {
   if (!currentQuestion.value) return false;
+  if (currentQuestion.value.question_type === 'multiple') {
+    // 多选题：比较选中的答案和正确答案（排序后比较）
+    const correct = currentQuestion.value.correct_answer.split(',').sort().join(',');
+    const selected = Array.from(selectedAnswers.value).sort().join(',');
+    return correct === selected;
+  }
   return selectedAnswer.value === currentQuestion.value.correct_answer;
 });
 
@@ -200,7 +219,27 @@ const loadData = async () => {
       directoryName.value = dir.name;
     }
 
-    const qs = await window.electronAPI.getQuestions(dirId);
+    let qs = await window.electronAPI.getQuestions(dirId);
+    
+    // 处理出题设置参数
+    const mode = route.query.mode as string;
+    const count = parseInt(route.query.count as string) || qs.length;
+    const repeat = parseInt(route.query.repeat as string) || 1;
+    
+    if (mode === 'random' && count < qs.length) {
+      // 随机抽取指定数量的题目
+      qs = shuffleArray([...qs]).slice(0, count);
+    }
+    
+    if (repeat > 1) {
+      // 重复出题
+      const repeated: Question[] = [];
+      for (let i = 0; i < repeat; i++) {
+        repeated.push(...qs);
+      }
+      qs = repeated;
+    }
+    
     questions.value = qs;
     resetState();
   } catch (error) {
@@ -208,6 +247,15 @@ const loadData = async () => {
     console.error(error);
   }
 };
+
+// 数组随机打乱
+function shuffleArray<T>(array: T[]): T[] {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
 
 // 重置状态
 const resetState = () => {
@@ -226,8 +274,28 @@ const goBack = () => {
 const selectOption = (key: string) => {
   // 如果已删除，不能选择
   if (deletedOptions.value.has(key)) return;
-  selectedAnswer.value = key;
-  // 即选即判断
+  
+  if (currentQuestion.value?.question_type === 'multiple') {
+    // 多选题：切换选中状态
+    if (selectedAnswers.value.has(key)) {
+      selectedAnswers.value.delete(key);
+    } else {
+      selectedAnswers.value.add(key);
+    }
+    // 多选题不立即判断，需要点击确认按钮
+  } else {
+    // 单选题/判断题：即选即判断
+    selectedAnswer.value = key;
+    showAnswer.value = true;
+  }
+};
+
+// 确认多选题答案
+const confirmMultipleAnswer = () => {
+  if (selectedAnswers.value.size === 0) {
+    ElMessage.warning('请至少选择一个答案');
+    return;
+  }
   showAnswer.value = true;
 };
 
@@ -269,6 +337,7 @@ const nextQuestion = () => {
 // 重置题目状态（换题时保留删除的选项）
 const resetQuestionState = () => {
   selectedAnswer.value = '';
+  selectedAnswers.value.clear();
   showAnswer.value = false;
 };
 
@@ -276,6 +345,7 @@ const resetQuestionState = () => {
 watch(currentQuestion, () => {
   deletedOptions.value.clear();
   selectedAnswer.value = '';
+  selectedAnswers.value.clear();
   showAnswer.value = false;
 });
 
@@ -489,5 +559,22 @@ onMounted(() => {
   background: #333;
   border-color: #333;
   color: #fff;
+}
+
+.confirm-btn {
+  margin-top: 20px;
+  width: 100%;
+  padding: 16px 24px;
+  font-size: 18px;
+  background: #1a1a1a;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.confirm-btn:hover {
+  background: #333;
+  transform: translateY(-1px);
 }
 </style>
