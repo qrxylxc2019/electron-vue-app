@@ -2,24 +2,23 @@
   <div class="directory-list">
     <div class="header">
       <h1>选择科目</h1>
-      <el-button type="primary" @click="showAddDialog = true">
+      <el-button class="add-btn" @click="showAddDialog = true">
         <el-icon><Plus /></el-icon>新增科目
       </el-button>
     </div>
     <div class="directory-grid">
-      <el-card
+      <div
         v-for="dir in directories"
         :key="dir.id"
         class="directory-card"
-        shadow="hover"
         @click="enterQuiz(dir.id)"
       >
         <div class="card-content">
-          <el-icon size="48" color="#409EFF"><Folder /></el-icon>
+          <el-icon size="48" color="#c4a882"><Folder /></el-icon>
           <span class="directory-name">{{ dir.name }}</span>
           <span class="directory-count">{{ getQuestionCount(dir.id) }} 题</span>
         </div>
-      </el-card>
+      </div>
     </div>
     <el-empty v-if="directories.length === 0" description="暂无科目，请添加数据" />
 
@@ -28,6 +27,7 @@
       v-model="showAddDialog"
       title="新增科目"
       width="400px"
+      class="warm-dialog"
     >
       <el-form :model="newDirectory" label-width="80px">
         <el-form-item label="科目名称">
@@ -36,7 +36,7 @@
       </el-form>
       <template #footer>
         <el-button @click="showAddDialog = false">取消</el-button>
-        <el-button type="primary" @click="addDirectory">确定</el-button>
+        <el-button class="add-btn" @click="addDirectory">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -110,54 +110,78 @@ onMounted(() => {
 
 <style scoped>
 .directory-list {
-  padding: 20px 4vw;
+  padding: 40px 4vw;
   width: 100%;
   margin: 0 auto;
+  max-width: 1200px;
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
+  margin-bottom: 40px;
 }
 
 h1 {
-  color: #303133;
+  color: #1a1a1a;
   margin: 0;
+  font-size: 32px;
+  font-weight: 500;
+  letter-spacing: -0.5px;
+}
+
+.add-btn {
+  background-color: #1a1a1a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.add-btn:hover {
+  background-color: #333;
+  transform: translateY(-1px);
 }
 
 .directory-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 24px;
 }
 
 .directory-card {
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: all 0.3s ease;
+  background: #fff;
+  border: 1px solid #e8e4df;
+  border-radius: 16px;
+  padding: 32px 24px;
 }
 
 .directory-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-4px);
+  border-color: #c4a882;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
 }
 
 .card-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 20px;
+  gap: 14px;
 }
 
 .directory-name {
-  font-size: 16px;
-  font-weight: bold;
-  color: #303133;
+  font-size: 17px;
+  font-weight: 500;
+  color: #1a1a1a;
 }
 
 .directory-count {
-  font-size: 12px;
-  color: #909399;
+  font-size: 13px;
+  color: #9a9590;
 }
 </style>

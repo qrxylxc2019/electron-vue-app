@@ -108,10 +108,9 @@
 
         <!-- 右箭头 -->
         <el-button
-          class="nav-arrow nav-arrow-right"
+          class="nav-arrow nav-arrow-right next-btn"
           circle
           size="large"
-          type="primary"
           @click="nextQuestion"
           :disabled="currentIndex === questions.length - 1"
         >
@@ -296,8 +295,14 @@ onMounted(() => {
   overflow: hidden;
 }
 
+:deep(.el-page-header__content) {
+  font-size: 20px;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+
 .quiz-content {
-  margin-top: 20px;
+  margin-top: 24px;
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -306,7 +311,7 @@ onMounted(() => {
 .quiz-main {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
   height: 100%;
 }
 
@@ -324,18 +329,38 @@ onMounted(() => {
 }
 
 .progress-bar {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .progress-text {
   display: block;
-  margin-bottom: 8px;
-  color: #606266;
+  margin-bottom: 10px;
+  color: #6b6560;
   font-size: 14px;
+  font-weight: 500;
+}
+
+:deep(.el-progress-bar__outer) {
+  background-color: #e8e4df;
+  border-radius: 4px;
+}
+
+:deep(.el-progress-bar__inner) {
+  background-color: #c4a882;
+  border-radius: 4px;
 }
 
 .question-card {
   margin-bottom: 20px;
+  border-radius: 16px;
+  border: 1px solid #e8e4df;
+  background: #fff;
+  box-shadow: none;
+}
+
+:deep(.el-card__header) {
+  border-bottom: 1px solid #f0ece7;
+  padding: 16px 20px;
 }
 
 .question-header {
@@ -345,10 +370,10 @@ onMounted(() => {
 }
 
 .question-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #303133;
-  margin-bottom: 20px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 24px;
   line-height: 1.6;
 }
 
@@ -361,28 +386,29 @@ onMounted(() => {
 .option-item {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
-  border: 2px solid #dcdfe6;
-  border-radius: 8px;
+  padding: 16px 20px;
+  border: 1.5px solid #e8e4df;
+  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.2s;
-  gap: 10px;
+  transition: all 0.25s ease;
+  gap: 12px;
+  background: #fff;
 }
 
 .option-item:hover:not(.deleted) {
-  border-color: #409EFF;
-  background-color: #ecf5ff;
+  border-color: #c4a882;
+  background-color: #fdfbf8;
 }
 
 .option-item.selected {
-  border-color: #67C23A;
-  background-color: #f0f9eb;
+  border-color: #8b9a6d;
+  background-color: #f5f7f0;
 }
 
 .option-item.deleted {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
-  background-color: #f5f7fa;
+  background-color: #f5f3f0;
 }
 
 .delete-btn {
@@ -390,19 +416,21 @@ onMounted(() => {
 }
 
 .option-key {
-  font-weight: bold;
-  color: #303133;
+  font-weight: 600;
+  color: #1a1a1a;
   flex-shrink: 0;
+  font-size: 15px;
 }
 
 .option-text {
   flex: 1;
-  color: #606266;
+  color: #4a4540;
+  font-size: 15px;
 }
 
 .strikethrough {
   text-decoration: line-through;
-  color: #909399;
+  color: #9a9590;
 }
 
 .judge-options .option-text {
@@ -432,5 +460,27 @@ onMounted(() => {
   width: 48px;
   height: 48px;
   font-size: 20px;
+  border: 1.5px solid #e8e4df;
+  background: #fff;
+  color: #6b6560;
+  transition: all 0.2s ease;
+}
+
+.nav-arrow:hover:not(:disabled) {
+  border-color: #c4a882;
+  background: #fdfbf8;
+  color: #1a1a1a;
+}
+
+.next-btn {
+  background: #1a1a1a;
+  border-color: #1a1a1a;
+  color: #fff;
+}
+
+.next-btn:hover:not(:disabled) {
+  background: #333;
+  border-color: #333;
+  color: #fff;
 }
 </style>
