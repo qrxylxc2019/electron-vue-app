@@ -314,6 +314,32 @@ function setupIpc() {
     }
   });
 
+  // ɾ����Ŀ
+  ipcMain.handle('db:deleteQuestion', (_event, id: number) => {
+    if (!db) return false;
+    try {
+      const stmt = db.prepare('DELETE FROM questions WHERE id = ?');
+      const result = stmt.run(id);
+      return result.changes > 0;
+    } catch (err) {
+      console.error('deleteQuestion error:', err);
+      return false;
+    }
+  });
+
+  // ɾ������
+  ipcMain.handle('db:deleteArticle', (_event, id: number) => {
+    if (!db) return false;
+    try {
+      const stmt = db.prepare('DELETE FROM articles WHERE id = ?');
+      const result = stmt.run(id);
+      return result.changes > 0;
+    } catch (err) {
+      console.error('deleteArticle error:', err);
+      return false;
+    }
+  });
+
   // ����Ŀ¼��������ԣ�
   ipcMain.handle('db:addDirectory', (_event, name: string, parentId: number | null = null) => {
     if (!db) return null;
@@ -372,7 +398,7 @@ function createWindow() {
   const isDev = !app.isPackaged;
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
-    // mainWindow.webContents.openDevTools();
+    mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }

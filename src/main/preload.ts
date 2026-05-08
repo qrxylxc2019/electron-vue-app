@@ -10,6 +10,8 @@ const electronAPI = {
   getArticles: (directoryId: number) => ipcRenderer.invoke('db:getArticles', directoryId),
   getQuestion: (id: number) => ipcRenderer.invoke('db:getQuestion', id),
   addQuestion: (question: any) => ipcRenderer.invoke('db:addQuestion', question),
+  deleteQuestion: (id: number) => ipcRenderer.invoke('db:deleteQuestion', id),
+  deleteArticle: (id: number) => ipcRenderer.invoke('db:deleteArticle', id),
 
   // 窗口相关
   toggleFullscreen: () => ipcRenderer.invoke('window:toggleFullscreen'),

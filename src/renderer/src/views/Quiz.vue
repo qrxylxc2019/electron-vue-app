@@ -134,15 +134,23 @@
           </el-card>
         </div>
 
-        <!-- 右侧：下一题按钮 -->
+        <!-- 右侧：操作按钮 -->
         <div class="quiz-right">
-          <el-button
-            class="next-question-btn"
-            @click="nextQuestion"
-            :disabled="currentIndex === (isArticleMode ? articles.length : questions.length) - 1"
-          >
-            下一题 <el-icon><ArrowRight /></el-icon>
-          </el-button>
+          <div class="right-actions">
+            <el-button
+              class="delete-question-btn"
+              @click="deleteCurrentQuestion"
+            >
+              <el-icon><Delete /></el-icon> 删除题目
+            </el-button>
+            <el-button
+              class="next-question-btn"
+              @click="nextQuestion"
+              :disabled="currentIndex === (isArticleMode ? articles.length : questions.length) - 1"
+            >
+              下一题 <el-icon><ArrowRight /></el-icon>
+            </el-button>
+          </div>
         </div>
       </div>
     </div>
@@ -394,6 +402,58 @@ const confirmMultipleAnswer = () => {
   showAnswer.value = true;
 };
 
+// 删除当前题目
+const deleteCurrentQuestion = async () => {
+  if (!currentQuestion.value) return;
+
+  const isArticle = isArticleMode.value;
+  const itemName = isArticle ? '文章' : '题目';
+
+  try {
+    const confirmed = confirm(`确定要删除本道${itemName}吗？此操作不可恢复！`);
+    if (!confirmed) return;
+
+    const id = currentQuestion.value.id;
+    let success: boolean;
+
+    if (isArticle) {
+      success = await window.electronAPI.deleteArticle(id);
+    } else {
+      success = await window.electronAPI.deleteQuestion(id);
+    }
+
+    if (success) {
+      ElMessage.success(`${itemName}已删除`);
+
+      // 从本地数组中移除
+      if (isArticle) {
+        articles.value.splice(currentIndex.value, 1);
+      } else {
+        questions.value.splice(currentIndex.value, 1);
+      }
+
+      // 如果删除后没有题目了，返回上一页
+      const remaining = isArticle ? articles.value.length : questions.value.length;
+      if (remaining === 0) {
+        ElMessage.info('该科目下已无任何题目');
+        router.push({ name: 'Home' });
+        return;
+      }
+
+      // 调整当前索引
+      if (currentIndex.value >= remaining) {
+        currentIndex.value = remaining - 1;
+      }
+      resetQuestionState();
+    } else {
+      ElMessage.error('删除失败');
+    }
+  } catch (error) {
+    ElMessage.error('删除失败');
+    console.error(error);
+  }
+};
+
 // 判断选项是否是正确答案
 const isCorrectOption = (key: string) => {
   if (!currentQuestion.value || !showAnswer.value) return false;
@@ -540,6 +600,13 @@ onMounted(() => {
   justify-content: center;
 }
 
+.right-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
 .progress-text {
   display: block;
   margin-bottom: 12px;
@@ -622,6 +689,7 @@ onMounted(() => {
   height: auto;
   min-height: 56px;
   width: 100%;
+  margin-left:0;
 }
 
 .next-question-btn:hover:not(:disabled) {
@@ -632,6 +700,24 @@ onMounted(() => {
 .next-question-btn:disabled {
   background-color: #c0c4cc;
   cursor: not-allowed;
+}
+
+.delete-question-btn {
+  background-color: #F56C6C;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 18px 20px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 56px;
+  width: 100%;
+}
+
+.delete-question-btn:hover {
+  background-color: #f78989;
+  transform: translateY(-1px);
 }
 
 .question-title {
@@ -771,14 +857,15 @@ onMounted(() => {
 .confirm-btn {
   margin-top: 20px;
   width: 100%;
-  padding: 18px 24px;
-  font-size: 18px;
+  padding: 18px 20px;
+  font-size: 16px;
   background: #1a1a1a;
   color: #fff;
   border: none;
   border-radius: 12px;
   transition: all 0.2s ease;
   min-height: 56px;
+  height: auto;
 }
 
 .confirm-btn:hover {

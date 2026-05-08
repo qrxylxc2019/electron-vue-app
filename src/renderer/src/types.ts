@@ -54,6 +54,8 @@ declare global {
       getArticles: (directoryId: number) => Promise<Article[]>;
       getQuestion: (id: number) => Promise<Question | null>;
       addQuestion: (question: Partial<Question>) => Promise<Question | null>;
+      deleteQuestion: (id: number) => Promise<boolean>;
+      deleteArticle: (id: number) => Promise<boolean>;
     };
   }
 }
