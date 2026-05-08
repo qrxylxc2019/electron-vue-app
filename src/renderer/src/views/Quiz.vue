@@ -1,101 +1,13 @@
-﻿﻿<template>
+﻿<template>
   <div class="quiz-container">
     <el-page-header @back="goBack" :content="directoryName" />
 
     <div class="quiz-content" v-if="questions.length > 0 && currentQuestion">
-      <!-- 题目进度 -->
-      <div class="progress-bar">
-        <span class="progress-text">题目 {{ currentIndex + 1 }} / {{ questions.length }}</span>
-        <el-progress :percentage="progressPercent" :show-text="false" />
-      </div>
-
-      <!-- 题目内容 -->
-      <el-card class="question-card">
-        <template #header>
-          <div class="question-header">
-            <el-tag :type="questionTypeTag.type">
-              {{ questionTypeTag.text }}
-            </el-tag>
-          </div>
-        </template>
-
-        <div class="question-title">{{ currentQuestion.title }}</div>
-
-        <!-- 选择题选项 -->
-        <div v-if="currentQuestion.question_type === 'single' || currentQuestion.question_type === 'multiple'" class="options-list">
-          <div
-            v-for="option in optionsList"
-            :key="option.key"
-            class="option-item"
-            :class="{ 'selected': selectedAnswer === option.key, 'deleted': option.deleted }"
-            @click="selectOption(option.key)"
-          >
-            <el-button
-              type="danger"
-              circle
-              size="small"
-              class="delete-btn"
-              @click.stop="toggleDelete(option.key)"
-            >
-              <el-icon><Delete /></el-icon>
-            </el-button>
-            <span class="option-key">{{ option.key }}.</span>
-            <span class="option-text" :class="{ 'strikethrough': option.deleted }">
-              {{ option.text || '无内容' }}
-            </span>
-          </div>
-        </div>
-
-        <!-- 判断题选项 -->
-        <div v-else class="options-list judge-options">
-          <div
-            v-for="option in judgeOptions"
-            :key="option.key"
-            class="option-item"
-            :class="{ 'selected': selectedAnswer === option.key, 'deleted': option.deleted }"
-            @click="selectOption(option.key)"
-          >
-            <el-button
-              type="danger"
-              circle
-              size="small"
-              class="delete-btn"
-              @click.stop="toggleDelete(option.key)"
-            >
-              <el-icon><Delete /></el-icon>
-            </el-button>
-            <span class="option-text" :class="{ 'strikethrough': option.deleted }">
-              {{ option.text }}
-            </span>
-          </div>
-        </div>
-
-
-
-        <!-- 答案显示 -->
-        <div v-if="showAnswer" class="answer-result">
-          <el-divider />
-          <div class="result-content">
-            <el-result
-              :icon="isCorrect ? 'success' : 'error'"
-              :title="isCorrect ? '答对了！' : '答错了！'"
-              :sub-title="`正确答案：${currentQuestion.correct_answer}`"
-            />
-            <div v-if="currentQuestion.explanation" class="explanation">
-              <el-alert type="info" :closable="false">
-                <template #title>
-                  <strong>解析：</strong>{{ currentQuestion.explanation }}
-                </template>
-              </el-alert>
-            </div>
-          </div>
-        </div>
-      </el-card>
-
-      <!-- 左右导航箭头 -->
-      <div class="nav-arrows">
+      <!-- 左右导航箭头 + 中间内容 -->
+      <div class="quiz-main">
+        <!-- 左箭头 -->
         <el-button
-          class="nav-arrow nav-arrow-left"
+          class="nav-arrow"
           circle
           size="large"
           @click="prevQuestion"
@@ -103,6 +15,98 @@
         >
           <el-icon><ArrowLeft /></el-icon>
         </el-button>
+
+        <!-- 中间内容 -->
+        <div class="quiz-center">
+          <!-- 题目进度 -->
+          <div class="progress-bar">
+            <span class="progress-text">题目 {{ currentIndex + 1 }} / {{ questions.length }}</span>
+            <el-progress :percentage="progressPercent" :show-text="false" />
+          </div>
+
+          <!-- 题目内容 -->
+          <el-card class="question-card">
+            <template #header>
+              <div class="question-header">
+                <el-tag :type="questionTypeTag.type">
+                  {{ questionTypeTag.text }}
+                </el-tag>
+              </div>
+            </template>
+
+            <div class="question-title">{{ currentQuestion.title }}</div>
+
+            <!-- 选择题选项 -->
+            <div v-if="currentQuestion.question_type === 'single' || currentQuestion.question_type === 'multiple'" class="options-list">
+              <div
+                v-for="option in optionsList"
+                :key="option.key"
+                class="option-item"
+                :class="{ 'selected': selectedAnswer === option.key, 'deleted': option.deleted }"
+                @click="selectOption(option.key)"
+              >
+                <el-button
+                  type="danger"
+                  circle
+                  size="small"
+                  class="delete-btn"
+                  @click.stop="toggleDelete(option.key)"
+                >
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+                <span class="option-key">{{ option.key }}.</span>
+                <span class="option-text" :class="{ 'strikethrough': option.deleted }">
+                  {{ option.text || '无内容' }}
+                </span>
+              </div>
+            </div>
+
+            <!-- 判断题选项 -->
+            <div v-else class="options-list judge-options">
+              <div
+                v-for="option in judgeOptions"
+                :key="option.key"
+                class="option-item"
+                :class="{ 'selected': selectedAnswer === option.key, 'deleted': option.deleted }"
+                @click="selectOption(option.key)"
+              >
+                <el-button
+                  type="danger"
+                  circle
+                  size="small"
+                  class="delete-btn"
+                  @click.stop="toggleDelete(option.key)"
+                >
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+                <span class="option-text" :class="{ 'strikethrough': option.deleted }">
+                  {{ option.text }}
+                </span>
+              </div>
+            </div>
+
+            <!-- 答案显示 -->
+            <div v-if="showAnswer" class="answer-result">
+              <el-divider />
+              <div class="result-content">
+                <el-result
+                  :icon="isCorrect ? 'success' : 'error'"
+                  :title="isCorrect ? '答对了！' : '答错了！'"
+                  :sub-title="`正确答案：${currentQuestion.correct_answer}`"
+                />
+                <div v-if="currentQuestion.explanation" class="explanation">
+                  <el-alert type="info" :closable="false">
+                    <template #title>
+                      <strong>解析：</strong>{{ currentQuestion.explanation }}
+                    </template>
+                  </el-alert>
+                </div>
+              </div>
+            </div>
+          </el-card>
+        </div>
+
+        <!-- 右箭头 -->
         <el-button
           class="nav-arrow nav-arrow-right"
           circle
@@ -292,6 +296,17 @@ onMounted(() => {
   margin-top: 20px;
 }
 
+.quiz-main {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.quiz-center {
+  flex: 1;
+  min-width: 0;
+}
+
 .progress-bar {
   margin-bottom: 20px;
 }
@@ -396,31 +411,10 @@ onMounted(() => {
   margin-top: 10px;
 }
 
-.nav-arrows {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-  z-index: 100;
-}
-
 .nav-arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: auto;
+  flex-shrink: 0;
   width: 48px;
   height: 48px;
   font-size: 20px;
-}
-
-.nav-arrow-left {
-  left: 20px;
-}
-
-.nav-arrow-right {
-  right: 20px;
 }
 </style>
