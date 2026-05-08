@@ -290,21 +290,37 @@ onMounted(() => {
   padding: 20px 4vw;
   width: 100%;
   margin: 0 auto;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .quiz-content {
   margin-top: 20px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .quiz-main {
   display: flex;
   align-items: center;
   gap: 16px;
+  height: 100%;
 }
 
 .quiz-center {
   flex: 1;
   min-width: 0;
+  height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.quiz-center::-webkit-scrollbar {
+  display: none;
 }
 
 .progress-bar {
