@@ -44,7 +44,9 @@
                 class="option-item"
                 :class="{ 
                   'selected': currentQuestion.question_type === 'multiple' ? selectedAnswers.has(option.key) : selectedAnswer === option.key, 
-                  'deleted': option.deleted 
+                  'deleted': option.deleted,
+                  'correct': showAnswer && isCorrectOption(option.key),
+                  'wrong': showAnswer && isWrongOption(option.key)
                 }"
                 @click="selectOption(option.key)"
               >
@@ -61,6 +63,9 @@
                 <span class="option-text" :class="{ 'strikethrough': option.deleted }">
                   {{ option.text || '无内容' }}
                 </span>
+                <!-- 答案对错的图标显示 -->
+                <el-icon v-if="showAnswer && isCorrectOption(option.key)" class="result-icon correct-icon"><CircleCheck /></el-icon>
+                <el-icon v-if="showAnswer && isWrongOption(option.key)" class="result-icon wrong-icon"><CircleClose /></el-icon>
               </div>
               <!-- 多选题确认按钮 -->
               <el-button
@@ -299,6 +304,27 @@ const confirmMultipleAnswer = () => {
   showAnswer.value = true;
 };
 
+// 判断选项是否是正确答案
+const isCorrectOption = (key: string) => {
+  if (!currentQuestion.value || !showAnswer.value) return false;
+  const correctAnswers = currentQuestion.value.correct_answer.split(',');
+  return correctAnswers.includes(key);
+};
+
+// 判断选项是否是用户选错的答案
+const isWrongOption = (key: string) => {
+  if (!currentQuestion.value || !showAnswer.value) return false;
+  const correctAnswers = currentQuestion.value.correct_answer.split(',');
+  
+  if (currentQuestion.value.question_type === 'multiple') {
+    // 多选题：用户选了但不是正确答案，或正确答案用户没选（不标记未选的正确答案为错）
+    return selectedAnswers.value.has(key) && !correctAnswers.includes(key);
+  } else {
+    // 单选题：用户选的答案且不是正确答案
+    return selectedAnswer.value === key && !correctAnswers.includes(key);
+  }
+};
+
 // 切换删除状态
 const toggleDelete = (key: string) => {
   if (deletedOptions.value.has(key)) {
@@ -482,10 +508,34 @@ onMounted(() => {
   background-color: #f5f7f0;
 }
 
+.option-item.correct {
+  border-color: #67C23A;
+  background-color: #f0f9eb;
+}
+
+.option-item.wrong {
+  border-color: #F56C6C;
+  background-color: #fef0f0;
+}
+
 .option-item.deleted {
   opacity: 0.5;
   cursor: not-allowed;
   background-color: #f5f3f0;
+}
+
+.result-icon {
+  font-size: 24px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.correct-icon {
+  color: #67C23A;
+}
+
+.wrong-icon {
+  color: #F56C6C;
 }
 
 .delete-btn {
