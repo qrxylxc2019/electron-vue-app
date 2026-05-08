@@ -1,38 +1,32 @@
-﻿<template>
+﻿﻿<template>
   <div class="quiz-container">
     <el-page-header @back="goBack" :content="directoryName" />
 
     <div class="quiz-content" v-if="questions.length > 0 && currentQuestion">
-      <!-- 左右导航箭头 + 中间内容 -->
-      <div class="quiz-main">
-        <!-- 左箭头 -->
-        <el-button
-          class="nav-arrow"
-          circle
-          size="large"
-          @click="prevQuestion"
-          :disabled="currentIndex === 0"
-        >
-          <el-icon><ArrowLeft /></el-icon>
-        </el-button>
+      <!-- 中间内容 -->
+      <div class="quiz-center">
+        <!-- 题目进度 -->
+        <div class="progress-bar">
+          <span class="progress-text">题目 {{ currentIndex + 1 }} / {{ questions.length }}</span>
+          <el-progress :percentage="progressPercent" :show-text="false" />
+        </div>
 
-        <!-- 中间内容 -->
-        <div class="quiz-center">
-          <!-- 题目进度 -->
-          <div class="progress-bar">
-            <span class="progress-text">题目 {{ currentIndex + 1 }} / {{ questions.length }}</span>
-            <el-progress :percentage="progressPercent" :show-text="false" />
-          </div>
-
-          <!-- 题目内容 -->
-          <el-card class="question-card">
-            <template #header>
-              <div class="question-header">
-                <el-tag :type="questionTypeTag.type">
-                  {{ questionTypeTag.text }}
-                </el-tag>
-              </div>
-            </template>
+        <!-- 题目内容 -->
+        <el-card class="question-card">
+          <template #header>
+            <div class="question-header">
+              <el-tag :type="questionTypeTag.type">
+                {{ questionTypeTag.text }}
+              </el-tag>
+              <el-button
+                class="next-question-btn"
+                @click="nextQuestion"
+                :disabled="currentIndex === questions.length - 1"
+              >
+                下一题 <el-icon><ArrowRight /></el-icon>
+              </el-button>
+            </div>
+          </template>
 
             <div class="question-title">{{ currentQuestion.title }}</div>
 
@@ -122,16 +116,6 @@
           </el-card>
         </div>
 
-        <!-- 右箭头 -->
-        <el-button
-          class="nav-arrow nav-arrow-right next-btn"
-          circle
-          size="large"
-          @click="nextQuestion"
-          :disabled="currentIndex === questions.length - 1"
-        >
-          <el-icon><ArrowRight /></el-icon>
-        </el-button>
       </div>
     </div>
 
@@ -231,16 +215,21 @@ const loadData = async () => {
     const count = parseInt(route.query.count as string) || qs.length;
     const repeat = parseInt(route.query.repeat as string) || 1;
     
+    // 先随机打乱
+    qs = shuffleArray([...qs]);
+    
     if (mode === 'random' && count < qs.length) {
       // 随机抽取指定数量的题目
-      qs = shuffleArray([...qs]).slice(0, count);
+      qs = qs.slice(0, count);
     }
     
     if (repeat > 1) {
-      // 重复出题
+      // 重复出题：将抽出的题目重复指定次数
+      const baseQuestions = [...qs];
       const repeated: Question[] = [];
       for (let i = 0; i < repeat; i++) {
-        repeated.push(...qs);
+        // 每次重复都重新打乱顺序
+        repeated.push(...shuffleArray([...baseQuestions]));
       }
       qs = repeated;
     }
@@ -404,13 +393,6 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.quiz-main {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  height: 100%;
-}
-
 .quiz-center {
   flex: 1;
   min-width: 0;
@@ -418,6 +400,9 @@ onMounted(() => {
   overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .quiz-center::-webkit-scrollbar {
@@ -470,6 +455,26 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.next-question-btn {
+  background-color: #1a1a1a;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 24px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.next-question-btn:hover:not(:disabled) {
+  background-color: #333;
+  transform: translateY(-1px);
+}
+
+.next-question-btn:disabled {
+  background-color: #c0c4cc;
+  cursor: not-allowed;
 }
 
 .question-title {
@@ -582,34 +587,6 @@ onMounted(() => {
   margin-top: 14px;
 }
 
-.nav-arrow {
-  flex-shrink: 0;
-  width: 56px;
-  height: 56px;
-  font-size: 24px;
-  border: 1.5px solid #e8e4df;
-  background: #fff;
-  color: #6b6560;
-  transition: all 0.2s ease;
-}
-
-.nav-arrow:hover:not(:disabled) {
-  border-color: #c4a882;
-  background: #fdfbf8;
-  color: #1a1a1a;
-}
-
-.next-btn {
-  background: #1a1a1a;
-  border-color: #1a1a1a;
-  color: #fff;
-}
-
-.next-btn:hover:not(:disabled) {
-  background: #333;
-  border-color: #333;
-  color: #fff;
-}
 
 .confirm-btn {
   margin-top: 20px;

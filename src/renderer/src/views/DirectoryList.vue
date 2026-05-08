@@ -1,4 +1,4 @@
-﻿<template>
+﻿﻿<template>
   <div class="directory-list">
     <div class="header">
       <h1>选择科目</h1>
@@ -233,9 +233,9 @@ h1 {
   background-color: transparent;
   color: #1a1a1a;
   border: 1.5px solid #e8e4df;
-  border-radius: 10px;
-  padding: 14px 24px;
-  font-size: 16px;
+  border-radius: 12px;
+  padding: 18px 28px;
+  font-size: 18px;
   transition: all 0.2s ease;
 }
 
@@ -248,9 +248,9 @@ h1 {
   background-color: #1a1a1a;
   color: #fff;
   border: none;
-  border-radius: 10px;
-  padding: 14px 28px;
-  font-size: 16px;
+  border-radius: 12px;
+  padding: 18px 32px;
+  font-size: 18px;
   transition: all 0.2s ease;
 }
 
@@ -261,16 +261,16 @@ h1 {
 
 .directory-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 28px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 32px;
 }
 
 .directory-card {
   transition: all 0.3s ease;
   background: #fff;
   border: 1px solid #e8e4df;
-  border-radius: 20px;
-  padding: 40px 28px;
+  border-radius: 24px;
+  padding: 48px 32px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -286,14 +286,14 @@ h1 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
   flex: 1;
 }
 
 .card-actions {
   display: flex;
-  gap: 10px;
-  margin-top: 20px;
+  gap: 14px;
+  margin-top: 28px;
   width: 100%;
   justify-content: center;
 }
@@ -302,9 +302,9 @@ h1 {
   background-color: #1a1a1a;
   color: #fff;
   border: none;
-  border-radius: 8px;
-  padding: 10px 20px;
-  font-size: 14px;
+  border-radius: 10px;
+  padding: 14px 28px;
+  font-size: 16px;
   transition: all 0.2s ease;
 }
 
@@ -316,9 +316,9 @@ h1 {
   background-color: transparent;
   color: #1a1a1a;
   border: 1.5px solid #e8e4df;
-  border-radius: 8px;
-  padding: 10px 20px;
-  font-size: 14px;
+  border-radius: 10px;
+  padding: 14px 28px;
+  font-size: 16px;
   transition: all 0.2s ease;
 }
 
