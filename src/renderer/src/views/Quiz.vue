@@ -1,4 +1,4 @@
-﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿<template>
   <div class="quiz-container">
     <el-page-header @back="goBack" :content="directoryName" />
 
@@ -146,7 +146,6 @@
             <el-button
               class="next-question-btn"
               @click="nextQuestion"
-              :disabled="currentIndex === (isArticleMode ? articles.length : questions.length) - 1"
             >
               下一题 <el-icon><ArrowRight /></el-icon>
             </el-button>
@@ -514,6 +513,10 @@ const nextQuestion = () => {
   if (currentIndex.value < total - 1) {
     currentIndex.value++;
     resetQuestionState();
+  } else {
+    // 已经是最后一题，重新加载题目（按照配置重新随机获取）
+    ElMessage.success('本轮题目已完成，即将重新开始');
+    loadData();
   }
 };
 
@@ -550,9 +553,21 @@ onMounted(() => {
 }
 
 :deep(.el-page-header__content) {
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 500;
   color: #1a1a1a;
+}
+
+:deep(.el-page-header__left) {
+  font-size: 18px;
+}
+
+:deep(.el-page-header__back) {
+  font-size: 18px;
+}
+
+:deep(.el-page-header__title) {
+  font-size: 18px;
 }
 
 .quiz-content {

@@ -277,9 +277,21 @@ onMounted(() => {
 }
 
 :deep(.el-page-header__content) {
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 500;
   color: #1a1a1a;
+}
+
+:deep(.el-page-header__left) {
+  font-size: 18px;
+}
+
+:deep(.el-page-header__back) {
+  font-size: 18px;
+}
+
+:deep(.el-page-header__title) {
+  font-size: 18px;
 }
 
 .case-content {
