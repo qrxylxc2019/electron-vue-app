@@ -1,4 +1,4 @@
-﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿<template>
   <div class="directory-list">
     <div class="header">
       <h1>选择科目</h1>
@@ -176,12 +176,23 @@ const getArticleCount = (dirId: number) => {
 const enterQuiz = (directoryId: number) => {
   const dir = directories.value.find(d => d.id === directoryId);
   const isArticleDir = dir?.name === '高项论文';
+  const isCaseDir = dir?.name === '高项案例';
   const count = isArticleDir ? getArticleCount(directoryId) : getQuestionCount(directoryId);
 
-  if (count === 0) {
+  if (count === 0 && !isCaseDir) {
     ElMessage.warning('该科目暂无题目');
     return;
   }
+
+  // 高项案例进入案例题页面
+  if (isCaseDir) {
+    router.push({
+      name: 'CaseQuiz',
+      params: { directoryId: directoryId.toString() }
+    });
+    return;
+  }
+
   router.push({
     name: 'Quiz',
     params: { directoryId: directoryId.toString() },

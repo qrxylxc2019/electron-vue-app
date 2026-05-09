@@ -71,6 +71,33 @@ function initDatabase() {
       )
     `);
 
+    // 案例材料表
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS case_materials (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        directory_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (directory_id) REFERENCES directories(id)
+      )
+    `);
+
+    // 案例小题表
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS case_questions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        material_id INTEGER NOT NULL,
+        question_number INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        answer TEXT,
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (material_id) REFERENCES case_materials(id) ON DELETE CASCADE
+      )
+    `);
+
     console.log('Database initialized successfully');
 
     // 初始化默认数据：高项论文章节和论文题目
@@ -377,6 +404,86 @@ function setupIpc() {
     } catch (err) {
       console.error('addQuestion error:', err);
       return null;
+    }
+  });
+
+  // ��ȡĳĿ¼�µ���������
+  ipcMain.handle('db:getCaseMaterials', (_event, directoryId: number) => {
+    if (!db) return [];
+    try {
+      const stmt = db.prepare('SELECT * FROM case_materials WHERE directory_id = ? ORDER BY sort_order, id');
+      return stmt.all(directoryId);
+    } catch (err) {
+      console.error('getCaseMaterials error:', err);
+      return [];
+    }
+  });
+
+  // ��ȡĳ��������µ�С��
+  ipcMain.handle('db:getCaseQuestions', (_event, materialId: number) => {
+    if (!db) return [];
+    try {
+      const stmt = db.prepare('SELECT * FROM case_questions WHERE material_id = ? ORDER BY question_number, id');
+      return stmt.all(materialId);
+    } catch (err) {
+      console.error('getCaseQuestions error:', err);
+      return [];
+    }
+  });
+
+  // �����������
+  ipcMain.handle('db:addCaseMaterial', (_event, material: any) => {
+    if (!db) return null;
+    try {
+      const stmt = db.prepare(`
+        INSERT INTO case_materials (directory_id, title, content, sort_order)
+        VALUES (?, ?, ?, ?)
+      `);
+      const result = stmt.run(
+        material.directory_id,
+        material.title,
+        material.content,
+        material.sort_order || 0
+      );
+      return { id: result.lastInsertRowid, ...material };
+    } catch (err) {
+      console.error('addCaseMaterial error:', err);
+      return null;
+    }
+  });
+
+  // ��������С��
+  ipcMain.handle('db:addCaseQuestion', (_event, question: any) => {
+    if (!db) return null;
+    try {
+      const stmt = db.prepare(`
+        INSERT INTO case_questions (material_id, question_number, title, answer, sort_order)
+        VALUES (?, ?, ?, ?, ?)
+      `);
+      const result = stmt.run(
+        question.material_id,
+        question.question_number,
+        question.title,
+        question.answer || null,
+        question.sort_order || 0
+      );
+      return { id: result.lastInsertRowid, ...question };
+    } catch (err) {
+      console.error('addCaseQuestion error:', err);
+      return null;
+    }
+  });
+
+  // ɾ����������
+  ipcMain.handle('db:deleteCaseMaterial', (_event, id: number) => {
+    if (!db) return false;
+    try {
+      const stmt = db.prepare('DELETE FROM case_materials WHERE id = ?');
+      const result = stmt.run(id);
+      return result.changes > 0;
+    } catch (err) {
+      console.error('deleteCaseMaterial error:', err);
+      return false;
     }
   });
 }

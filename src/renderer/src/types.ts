@@ -1,4 +1,4 @@
-﻿﻿// 类型声明
+﻿﻿﻿﻿// 类型声明
 export interface Directory {
   id: number;
   name: string;
@@ -37,6 +37,27 @@ export interface Article {
   created_at: string;
 }
 
+// 案例材料类型
+export interface CaseMaterial {
+  id: number;
+  directory_id: number;
+  title: string;
+  content: string;
+  sort_order: number;
+  created_at: string;
+}
+
+// 案例小题类型
+export interface CaseQuestion {
+  id: number;
+  material_id: number;
+  question_number: number;
+  title: string;
+  answer: string | null;
+  sort_order: number;
+  created_at: string;
+}
+
 // 带条目线状态的选项
 export interface OptionWithState {
   key: string;
@@ -56,6 +77,12 @@ declare global {
       addQuestion: (question: Partial<Question>) => Promise<Question | null>;
       deleteQuestion: (id: number) => Promise<boolean>;
       deleteArticle: (id: number) => Promise<boolean>;
+      // 案例相关
+      getCaseMaterials: (directoryId: number) => Promise<CaseMaterial[]>;
+      getCaseQuestions: (materialId: number) => Promise<CaseQuestion[]>;
+      addCaseMaterial: (material: Partial<CaseMaterial>) => Promise<CaseMaterial | null>;
+      addCaseQuestion: (question: Partial<CaseQuestion>) => Promise<CaseQuestion | null>;
+      deleteCaseMaterial: (id: number) => Promise<boolean>;
     };
   }
 }

@@ -13,6 +13,13 @@ const electronAPI = {
   deleteQuestion: (id: number) => ipcRenderer.invoke('db:deleteQuestion', id),
   deleteArticle: (id: number) => ipcRenderer.invoke('db:deleteArticle', id),
 
+  // 案例相关
+  getCaseMaterials: (directoryId: number) => ipcRenderer.invoke('db:getCaseMaterials', directoryId),
+  getCaseQuestions: (materialId: number) => ipcRenderer.invoke('db:getCaseQuestions', materialId),
+  addCaseMaterial: (material: any) => ipcRenderer.invoke('db:addCaseMaterial', material),
+  addCaseQuestion: (question: any) => ipcRenderer.invoke('db:addCaseQuestion', question),
+  deleteCaseMaterial: (id: number) => ipcRenderer.invoke('db:deleteCaseMaterial', id),
+
   // 窗口相关
   toggleFullscreen: () => ipcRenderer.invoke('window:toggleFullscreen'),
   isFullScreen: () => ipcRenderer.invoke('window:isFullScreen'),
