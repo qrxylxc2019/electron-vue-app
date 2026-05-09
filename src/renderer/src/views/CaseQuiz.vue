@@ -418,13 +418,13 @@ onMounted(() => {
 }
 
 .material-title {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 600;
   color: #1a1a1a;
 }
 
 .material-content {
-  font-size: 16px;
+  font-size: 22px;
   color: #4a4540;
   line-height: 1.8;
   white-space: pre-wrap;
@@ -454,7 +454,7 @@ onMounted(() => {
 }
 
 .question-title {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 500;
   color: #1a1a1a;
   margin-bottom: 20px;
@@ -484,14 +484,14 @@ onMounted(() => {
 }
 
 .answer-label {
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 600;
   color: #1a1a1a;
   margin-bottom: 8px;
 }
 
 .answer-text {
-  font-size: 16px;
+  font-size: 20px;
   color: #4a4540;
   line-height: 1.8;
   white-space: pre-wrap;

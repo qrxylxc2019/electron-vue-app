@@ -1,4 +1,4 @@
-﻿﻿<template>
+﻿﻿﻿﻿<template>
   <div class="quiz-container">
     <el-page-header @back="goBack" :content="directoryName" />
 
@@ -718,7 +718,7 @@ onMounted(() => {
 }
 
 .question-title {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 600;
   color: #1a1a1a;
   margin-bottom: 28px;
@@ -815,13 +815,13 @@ onMounted(() => {
   font-weight: 600;
   color: #1a1a1a;
   flex-shrink: 0;
-  font-size: 17px;
+  font-size: 20px;
 }
 
 .option-text {
   flex: 1;
   color: #4a4540;
-  font-size: 17px;
+  font-size: 20px;
 }
 
 .strikethrough {
@@ -830,7 +830,7 @@ onMounted(() => {
 }
 
 .judge-options .option-text {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 500;
 }
 
@@ -844,7 +844,7 @@ onMounted(() => {
 }
 
 .explanation-line {
-  font-size: 20px;
+  font-size: 22px;
   color: #1a1a1a;
   line-height: 1.8;
   padding: 10px 0;
@@ -906,7 +906,7 @@ onMounted(() => {
 
 .paragraph-text {
   margin: 0;
-  font-size: 18px;
+  font-size: 22px;
   color: #1a1a1a;
   line-height: 1.8;
   transition: all 0.25s ease;
