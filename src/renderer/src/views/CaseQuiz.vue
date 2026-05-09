@@ -9,73 +9,95 @@
         <el-progress :percentage="materialProgressPercent" :show-text="false" />
       </div>
 
-      <!-- 上下布局主体 -->
-      <div class="case-main">
-        <!-- 上面：材料内容 -->
-        <div class="material-section">
-          <el-card class="material-card">
-            <template #header>
-              <div class="material-header">
-                <el-tag type="info">案例材料</el-tag>
-                <span class="material-title">{{ currentMaterial.title }}</span>
+      <!-- 左右布局主体 -->
+      <div class="case-main-wrapper">
+        <!-- 左侧：上下布局的内容区 -->
+        <div class="case-main">
+          <!-- 上面：材料内容 -->
+          <div class="material-section">
+            <el-card class="material-card">
+              <template #header>
+                <div class="material-header">
+                  <el-tag type="info">案例材料</el-tag>
+                  <span class="material-title">{{ currentMaterial.title }}</span>
+                </div>
+              </template>
+              <div class="material-content">{{ currentMaterial.content }}</div>
+            </el-card>
+          </div>
+
+          <!-- 下面：小题内容 -->
+          <div class="question-section" v-if="currentCaseQuestion">
+            <el-card class="question-card">
+              <template #header>
+                <div class="question-header">
+                  <el-tag type="warning">第 {{ currentCaseQuestion.question_number }} 小题</el-tag>
+                  <span class="question-count">{{ currentQuestionIndex + 1 }} / {{ caseQuestions.length }}</span>
+                </div>
+              </template>
+
+              <div class="question-title">{{ currentCaseQuestion.title }}</div>
+
+              <!-- 答案区域 -->
+              <div class="answer-section">
+                <el-button
+                  class="toggle-answer-btn"
+                  @click="showAnswer = !showAnswer"
+                >
+                  <el-icon><View v-if="!showAnswer" /><Hide v-else /></el-icon>
+                  {{ showAnswer ? '隐藏答案' : '显示答案' }}
+                </el-button>
+
+                <div v-if="showAnswer && currentCaseQuestion.answer" class="answer-content">
+                  <el-divider />
+                  <div class="answer-label">参考答案：</div>
+                  <div class="answer-text">{{ currentCaseQuestion.answer }}</div>
+                </div>
               </div>
-            </template>
-            <div class="material-content">{{ currentMaterial.content }}</div>
-          </el-card>
+            </el-card>
+          </div>
+
+          <!-- 无小题提示 -->
+          <el-empty v-else description="该案例暂无小题" />
+
+          <!-- 底部小题导航 -->
+          <div class="bottom-nav">
+            <el-button
+              class="nav-btn prev-btn"
+              @click="prevQuestion"
+              :disabled="currentQuestionIndex === 0 && currentMaterialIndex === 0"
+            >
+              <el-icon><ArrowLeft /></el-icon> 上一题
+            </el-button>
+
+            <el-button
+              class="nav-btn next-btn"
+              @click="nextQuestion"
+              :disabled="isLastQuestion"
+            >
+              下一题 <el-icon><ArrowRight /></el-icon>
+            </el-button>
+          </div>
         </div>
 
-        <!-- 下面：小题内容 -->
-        <div class="question-section" v-if="currentCaseQuestion">
-          <el-card class="question-card">
-            <template #header>
-              <div class="question-header">
-                <el-tag type="warning">第 {{ currentCaseQuestion.question_number }} 小题</el-tag>
-                <span class="question-count">{{ currentQuestionIndex + 1 }} / {{ caseQuestions.length }}</span>
-              </div>
-            </template>
-
-            <div class="question-title">{{ currentCaseQuestion.title }}</div>
-
-            <!-- 答案区域 -->
-            <div class="answer-section">
-              <el-button
-                class="toggle-answer-btn"
-                @click="showAnswer = !showAnswer"
-              >
-                <el-icon><View v-if="!showAnswer" /><Hide v-else /></el-icon>
-                {{ showAnswer ? '隐藏答案' : '显示答案' }}
-              </el-button>
-
-              <div v-if="showAnswer && currentCaseQuestion.answer" class="answer-content">
-                <el-divider />
-                <div class="answer-label">参考答案：</div>
-                <div class="answer-text">{{ currentCaseQuestion.answer }}</div>
-              </div>
-            </div>
-          </el-card>
+        <!-- 右侧：大题操作按钮 -->
+        <div class="case-right">
+          <div class="right-actions">
+            <el-button
+              class="delete-material-btn"
+              @click="deleteCurrentMaterial"
+            >
+              <el-icon><Delete /></el-icon> 删除案例
+            </el-button>
+            <el-button
+              class="next-material-btn"
+              @click="nextMaterial"
+              :disabled="currentMaterialIndex === materials.length - 1"
+            >
+              下一大题 <el-icon><ArrowRight /></el-icon>
+            </el-button>
+          </div>
         </div>
-
-        <!-- 无小题提示 -->
-        <el-empty v-else description="该案例暂无小题" />
-      </div>
-
-      <!-- 底部导航按钮 -->
-      <div class="bottom-nav">
-        <el-button
-          class="nav-btn prev-btn"
-          @click="prevQuestion"
-          :disabled="currentQuestionIndex === 0 && currentMaterialIndex === 0"
-        >
-          <el-icon><ArrowLeft /></el-icon> 上一题
-        </el-button>
-
-        <el-button
-          class="nav-btn next-btn"
-          @click="nextQuestion"
-          :disabled="isLastQuestion"
-        >
-          下一题 <el-icon><ArrowRight /></el-icon>
-        </el-button>
       </div>
     </div>
 
@@ -204,6 +226,53 @@ const nextQuestion = () => {
   }
 };
 
+// 下一大题
+const nextMaterial = () => {
+  if (currentMaterialIndex.value < materials.value.length - 1) {
+    currentMaterialIndex.value++;
+    currentQuestionIndex.value = 0;
+    showAnswer.value = false;
+  }
+};
+
+// 删除当前案例
+const deleteCurrentMaterial = async () => {
+  if (!currentMaterial.value) return;
+
+  try {
+    const id = currentMaterial.value.id;
+    const success = await window.electronAPI.deleteCaseMaterial(id);
+
+    if (success) {
+      ElMessage.success('案例已删除');
+
+      // 从本地数组中移除
+      materials.value = materials.value.filter(m => m.id !== id);
+      // 删除对应的小题缓存
+      delete caseQuestionsMap.value[id];
+
+      // 如果删除后没有案例了，返回上一页
+      if (materials.value.length === 0) {
+        ElMessage.info('该科目下已无任何案例');
+        router.push({ name: 'Home' });
+        return;
+      }
+
+      // 调整当前索引
+      if (currentMaterialIndex.value >= materials.value.length) {
+        currentMaterialIndex.value = materials.value.length - 1;
+      }
+      currentQuestionIndex.value = 0;
+      showAnswer.value = false;
+    } else {
+      ElMessage.error('删除失败');
+    }
+  } catch (error) {
+    ElMessage.error('删除失败');
+    console.error(error);
+  }
+};
+
 onMounted(() => {
   loadData();
 });
@@ -259,8 +328,16 @@ onMounted(() => {
   border-radius: 4px;
 }
 
+.case-main-wrapper {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 20px;
+}
+
 .case-main {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -272,6 +349,63 @@ onMounted(() => {
 
 .case-main::-webkit-scrollbar {
   display: none;
+}
+
+.case-right {
+  width: 120px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.right-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.delete-material-btn {
+  background-color: #F56C6C;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 18px 20px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 56px;
+  width: 100%;
+}
+
+.delete-material-btn:hover {
+  background-color: #f78989;
+  transform: translateY(-1px);
+}
+
+.next-material-btn {
+  background-color: #1a1a1a;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 18px 20px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 56px;
+  width: 100%;
+  margin-left: 0;
+}
+
+.next-material-btn:hover:not(:disabled) {
+  background-color: #333;
+  transform: translateY(-1px);
+}
+
+.next-material-btn:disabled {
+  background-color: #c0c4cc;
+  cursor: not-allowed;
 }
 
 .material-section {
