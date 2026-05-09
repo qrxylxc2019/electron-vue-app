@@ -469,10 +469,12 @@ onMounted(() => {
   background-color: #1a1a1a;
   color: #fff;
   border: none;
-  border-radius: 10px;
-  padding: 12px 20px;
-  font-size: 14px;
+  border-radius: 12px;
+  padding: 18px 24px;
+  font-size: 18px;
   transition: all 0.2s ease;
+  height: auto;
+  min-height: 56px;
 }
 
 .toggle-answer-btn:hover {
@@ -510,10 +512,11 @@ onMounted(() => {
 
 .nav-btn {
   border-radius: 12px;
-  padding: 14px 32px;
-  font-size: 16px;
+  padding: 18px 36px;
+  font-size: 18px;
   transition: all 0.2s ease;
-  min-height: 48px;
+  height: auto;
+  min-height: 56px;
 }
 
 .prev-btn {
