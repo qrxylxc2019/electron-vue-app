@@ -65,7 +65,7 @@
             <el-button
               class="nav-btn prev-btn"
               @click="prevQuestion"
-              :disabled="currentQuestionIndex === 0 && currentMaterialIndex === 0"
+              :disabled="currentQuestionIndex === 0"
             >
               <el-icon><ArrowLeft /></el-icon> 上一题
             </el-button>
@@ -150,12 +150,10 @@ const materialProgressPercent = computed(() => {
   return ((currentMaterialIndex.value + 1) / materials.value.length) * 100;
 });
 
-// 是否是最后一题（最后一个小题）
+// 是否是当前案例的最后一个小题
 const isLastQuestion = computed(() => {
-  if (materials.value.length === 0) return true;
-  const isLastMaterial = currentMaterialIndex.value === materials.value.length - 1;
-  const isLastQuestionInMaterial = currentQuestionIndex.value === caseQuestions.value.length - 1;
-  return isLastMaterial && isLastQuestionInMaterial;
+  if (caseQuestions.value.length === 0) return true;
+  return currentQuestionIndex.value === caseQuestions.value.length - 1;
 });
 
 // 加载数据
@@ -197,31 +195,20 @@ const goBack = () => {
   router.push({ name: 'Home' });
 };
 
-// 上一题
+// 上一题（仅在同案例的小题间切换，不跨案例）
 const prevQuestion = () => {
   if (currentQuestionIndex.value > 0) {
     // 同一案例的上一小题
     currentQuestionIndex.value--;
     showAnswer.value = false;
-  } else if (currentMaterialIndex.value > 0) {
-    // 上一个案例的最后一个小题
-    currentMaterialIndex.value--;
-    const prevQuestions = caseQuestionsMap.value[materials.value[currentMaterialIndex.value].id] || [];
-    currentQuestionIndex.value = Math.max(0, prevQuestions.length - 1);
-    showAnswer.value = false;
   }
 };
 
-// 下一题
+// 下一题（仅在同案例的小题间切换，不跨案例）
 const nextQuestion = () => {
   if (currentQuestionIndex.value < caseQuestions.value.length - 1) {
     // 同一案例的下一小题
     currentQuestionIndex.value++;
-    showAnswer.value = false;
-  } else if (currentMaterialIndex.value < materials.value.length - 1) {
-    // 下一个案例的第一小题
-    currentMaterialIndex.value++;
-    currentQuestionIndex.value = 0;
     showAnswer.value = false;
   }
 };
