@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿﻿﻿<template>
   <div class="directory-list">
     <div class="header">
       <h1>选择科目</h1>
@@ -25,7 +25,9 @@
         <div class="card-content">
           <el-icon size="56" color="#c4a882"><Folder /></el-icon>
           <span class="directory-name">{{ dir.name }}</span>
-          <span class="directory-count">{{ dir.name === '高项论文' ? getArticleCount(dir.id) : getQuestionCount(dir.id) }} 题</span>
+          <span class="directory-count">
+            {{ dir.name === '高项论文' ? getArticleCount(dir.id) : dir.name === '高项案例' ? getCaseCount(dir.id) : getQuestionCount(dir.id) }} 题
+          </span>
         </div>
       </div>
     </div>
@@ -88,6 +90,7 @@ const router = useRouter();
 const directories = ref<Directory[]>([]);
 const questionCounts = ref<Record<number, number>>({});
 const articleCounts = ref<Record<number, number>>({});
+const caseCounts = ref<Record<number, number>>({});
 const showAddDialog = ref(false);
 const newDirectory = ref({ name: '' });
 const isFullscreen = ref(false);
@@ -154,6 +157,9 @@ const loadDirectories = async () => {
       if (dir.name === '高项论文') {
         const articles = await window.electronAPI.getArticles(dir.id);
         articleCounts.value[dir.id] = articles.length;
+      } else if (dir.name === '高项案例') {
+        const materials = await window.electronAPI.getCaseMaterials(dir.id);
+        caseCounts.value[dir.id] = materials.length;
       } else {
         const questions = await window.electronAPI.getQuestions(dir.id);
         questionCounts.value[dir.id] = questions.length;
@@ -171,6 +177,10 @@ const getQuestionCount = (dirId: number) => {
 
 const getArticleCount = (dirId: number) => {
   return articleCounts.value[dirId] || 0;
+};
+
+const getCaseCount = (dirId: number) => {
+  return caseCounts.value[dirId] || 0;
 };
 
 const enterQuiz = (directoryId: number) => {
