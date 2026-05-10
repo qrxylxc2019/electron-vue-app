@@ -328,7 +328,7 @@ function setupIpc() {
   ipcMain.handle('db:getArticles', (_event, directoryId: number) => {
     if (!db) return [];
     try {
-      const stmt = db.prepare('SELECT * FROM articles WHERE directory_id = ? ORDER BY sort_order, id');
+      const stmt = db.prepare('SELECT * FROM articles WHERE directory_id = ? ORDER BY id');
       return stmt.all(directoryId);
     } catch (err) {
       console.error('getArticles error:', err);
