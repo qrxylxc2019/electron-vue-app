@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿﻿﻿<template>
   <div class="quiz-container">
     <el-page-header @back="goBack" :content="directoryName" />
 
@@ -755,15 +755,15 @@ onMounted(() => {
 .option-row .delete-btn {
   flex-shrink: 0;
   align-self: center;
-  width: 44px;
-  height: 44px;
+  width: 64px;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   color: #F56C6C;
-  font-size: 22px;
-  border-radius: 50%;
+  font-size: 32px;
+  border-radius: 12px;
   transition: all 0.2s ease;
 }
 

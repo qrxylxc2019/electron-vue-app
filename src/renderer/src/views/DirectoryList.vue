@@ -10,7 +10,7 @@
           <el-icon><FullScreen /></el-icon>
           {{ isFullscreen ? '取消全屏' : '全屏' }}
         </el-button>
-        <el-button  class="add-btn" @click="showAddDialog = true">
+        <el-button style="display:none" class="add-btn" @click="showAddDialog = true">
           <el-icon><Plus /></el-icon>新增科目
         </el-button>
       </div>
