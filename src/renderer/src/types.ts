@@ -1,4 +1,4 @@
-﻿﻿﻿﻿// 类型声明
+﻿﻿﻿﻿﻿﻿// 类型声明
 export interface Directory {
   id: number;
   name: string;
@@ -21,6 +21,7 @@ export interface Question {
   option_e: string | null;
   correct_answer: string;
   explanation: string | null;
+  ai_explanation: string | null;
   sort_order: number;
   created_at: string;
 }
@@ -54,6 +55,7 @@ export interface CaseQuestion {
   question_number: number;
   title: string;
   answer: string | null;
+  ai_explanation: string | null;
   sort_order: number;
   created_at: string;
 }
@@ -63,6 +65,14 @@ export interface OptionWithState {
   key: string;
   text: string | null;
   deleted: boolean;
+}
+
+// AI 讲解数据
+export interface AIQuestionData {
+  title: string;
+  options?: string;
+  correctAnswer: string;
+  explanation?: string;
 }
 
 // 扩展 Window 接口
@@ -83,6 +93,12 @@ declare global {
       addCaseMaterial: (material: Partial<CaseMaterial>) => Promise<CaseMaterial | null>;
       addCaseQuestion: (question: Partial<CaseQuestion>) => Promise<CaseQuestion | null>;
       deleteCaseMaterial: (id: number) => Promise<boolean>;
+      // AI 讲解
+      explainQuestion: (questionData: AIQuestionData) => Promise<{ success: boolean; error?: string }>;
+      onAIStreamChunk: (callback: (content: string) => void) => () => void;
+      onAIStreamDone: (callback: () => void) => () => void;
+      onAIStreamError: (callback: (error: string) => void) => () => void;
+      updateAIExplanation: (id: number, aiExplanation: string) => Promise<boolean>;
     };
   }
 }

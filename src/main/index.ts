@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import Database from 'better-sqlite3';
+import { OpenAI } from 'openai';
 
 let mainWindow: BrowserWindow | null = null;
 let db: Database.Database | null = null;
@@ -50,6 +51,7 @@ function initDatabase() {
         option_e TEXT,
         correct_answer TEXT,
         explanation TEXT,
+        ai_explanation TEXT,
         sort_order INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (directory_id) REFERENCES directories(id)
@@ -92,6 +94,7 @@ function initDatabase() {
         question_number INTEGER NOT NULL,
         title TEXT NOT NULL,
         answer TEXT,
+        ai_explanation TEXT,
         sort_order INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (material_id) REFERENCES case_materials(id) ON DELETE CASCADE
@@ -385,8 +388,8 @@ function setupIpc() {
     if (!db) return null;
     try {
       const stmt = db.prepare(`
-        INSERT INTO questions (directory_id, question_type, title, option_a, option_b, option_c, option_d, option_e, correct_answer, explanation)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO questions (directory_id, question_type, title, option_a, option_b, option_c, option_d, option_e, correct_answer, explanation, ai_explanation)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       const result = stmt.run(
         question.directory_id,
@@ -398,12 +401,26 @@ function setupIpc() {
         question.option_d || null,
         question.option_e || null,
         question.correct_answer,
-        question.explanation || null
+        question.explanation || null,
+        question.ai_explanation || null
       );
       return { id: result.lastInsertRowid, ...question };
     } catch (err) {
       console.error('addQuestion error:', err);
       return null;
+    }
+  });
+
+  // 更新题目 AI 解析
+  ipcMain.handle('db:updateAIExplanation', (_event, id: number, aiExplanation: string) => {
+    if (!db) return false;
+    try {
+      const stmt = db.prepare('UPDATE questions SET ai_explanation = ? WHERE id = ?');
+      const result = stmt.run(aiExplanation, id);
+      return result.changes > 0;
+    } catch (err) {
+      console.error('updateAIExplanation error:', err);
+      return false;
     }
   });
 
@@ -457,14 +474,15 @@ function setupIpc() {
     if (!db) return null;
     try {
       const stmt = db.prepare(`
-        INSERT INTO case_questions (material_id, question_number, title, answer, sort_order)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO case_questions (material_id, question_number, title, answer, ai_explanation, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?)
       `);
       const result = stmt.run(
         question.material_id,
         question.question_number,
         question.title,
         question.answer || null,
+        question.ai_explanation || null,
         question.sort_order || 0
       );
       return { id: result.lastInsertRowid, ...question };
@@ -540,6 +558,67 @@ ipcMain.handle('window:toggleFullscreen', () => {
 // 获取全屏状态
 ipcMain.handle('window:isFullScreen', () => {
   return mainWindow ? mainWindow.isFullScreen() : false;
+});
+
+// AI 讲解：流式调用 ModelScope API
+ipcMain.handle('ai:explainQuestion', async (_event, questionData: any) => {
+  try {
+    const client = new OpenAI({
+      apiKey: 'ms-9dadd6e0-9d06-4e91-b639-5a7af28da529',
+      baseURL: 'https://api-inference.modelscope.cn/v1',
+    });
+
+    const systemPrompt = `你是一位资深软考培训讲师，擅长用通俗易懂的方式讲解IT知识。你的讲解风格：
+1. 用生活中的比喻和类比来解释抽象概念
+2. 先讲核心原理，再展开细节
+3. 结合题目选项逐一分析，说明为什么对、为什么错
+4. 语言生动有趣，像讲故事一样
+5. 适当使用例子帮助理解
+6. 最后总结记忆口诀或要点`;
+
+    const userPrompt = `请详细讲解以下这道软考题目：
+
+【题干】${questionData.title}
+
+【选项】
+${questionData.options || '（判断题/简答题，无选项）'}
+
+【正确答案】${questionData.correctAnswer}
+
+【解析】${questionData.explanation || '暂无解析'}
+
+请用生动的比喻和例子，详细讲解这道题涉及的知识点，并分析每个选项为什么对或错。`;
+
+    const stream = await client.chat.completions.create({
+      model: 'deepseek-ai/DeepSeek-R1-0528',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      stream: true,
+      temperature: 0.7,
+      max_tokens: 2048,
+    });
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content || '';
+      if (content && mainWindow) {
+        mainWindow.webContents.send('ai:streamChunk', content);
+      }
+    }
+
+    if (mainWindow) {
+      mainWindow.webContents.send('ai:streamDone');
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('AI explain error:', err);
+    if (mainWindow) {
+      mainWindow.webContents.send('ai:streamError', err.message || 'AI调用失败');
+    }
+    return { success: false, error: err.message };
+  }
 });
 
 app.on('window-all-closed', () => {

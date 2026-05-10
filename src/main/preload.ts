@@ -23,6 +23,25 @@ const electronAPI = {
   // 窗口相关
   toggleFullscreen: () => ipcRenderer.invoke('window:toggleFullscreen'),
   isFullScreen: () => ipcRenderer.invoke('window:isFullScreen'),
+
+  // AI 讲解
+  explainQuestion: (questionData: any) => ipcRenderer.invoke('ai:explainQuestion', questionData),
+  onAIStreamChunk: (callback: (content: string) => void) => {
+    const handler = (_event: any, content: string) => callback(content);
+    ipcRenderer.on('ai:streamChunk', handler);
+    return () => ipcRenderer.removeListener('ai:streamChunk', handler);
+  },
+  onAIStreamDone: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('ai:streamDone', handler);
+    return () => ipcRenderer.removeListener('ai:streamDone', handler);
+  },
+  onAIStreamError: (callback: (error: string) => void) => {
+    const handler = (_event: any, error: string) => callback(error);
+    ipcRenderer.on('ai:streamError', handler);
+    return () => ipcRenderer.removeListener('ai:streamError', handler);
+  },
+  updateAIExplanation: (id: number, aiExplanation: string) => ipcRenderer.invoke('db:updateAIExplanation', id, aiExplanation),
 };
 
 // 暴露给渲染进程的 API

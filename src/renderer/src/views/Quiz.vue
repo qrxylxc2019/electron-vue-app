@@ -124,6 +124,31 @@
               </div>
             </div>
 
+            <!-- AI 讲解按钮 -->
+            <div class="ai-explain-section">
+              <el-button
+                class="ai-explain-btn"
+                :loading="aiLoading"
+                @click="toggleAIExplain"
+              >
+                <el-icon><Cpu /></el-icon>
+                {{ aiLoading ? 'AI 思考中...' : (aiExpanded ? '收起讲解' : 'AI 详细讲解') }}
+              </el-button>
+            </div>
+
+            <!-- AI 讲解内容（内嵌显示） -->
+            <div v-if="aiExpanded" class="ai-explain-panel">
+              <div v-if="aiLoading && !aiContent" class="ai-loading-inline">
+                <el-icon class="is-loading"><Loading /></el-icon>
+                <span>AI 正在思考中，请稍候...</span>
+              </div>
+              <div v-if="aiError" class="ai-error-inline">
+                <el-icon><Warning /></el-icon>
+                <span>{{ aiError }}</span>
+              </div>
+              <div v-if="aiContent" class="ai-markdown" v-html="renderedAIContent"></div>
+            </div>
+
             <!-- 答案显示 -->
             <div v-if="showAnswer" class="answer-result">
               <el-divider />
@@ -159,9 +184,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import { marked } from 'marked';
 import type { Question, Article, QuestionType, OptionWithState } from '../types';
 
 const props = defineProps<{
@@ -182,6 +208,18 @@ const deletedOptions = ref<Set<string>>(new Set());
 
 // 文章题段落隐藏状态
 const hiddenParagraphs = ref<Set<number>>(new Set());
+
+// AI 讲解相关状态
+const aiExpanded = ref(false);
+const aiLoading = ref(false);
+const aiContent = ref('');
+const aiError = ref('');
+let aiUnsubscribers: (() => void)[] = [];
+
+// Markdown 渲染后的 AI 内容
+const renderedAIContent = computed(() => {
+  return marked.parse(aiContent.value || '', { async: false }) as string;
+});
 
 // 当前题目/文章
 const currentQuestion = computed(() => {
@@ -527,13 +565,100 @@ const resetQuestionState = () => {
   showAnswer.value = false;
 };
 
-// 监听题目变化，清空删除状态
+// 监听题目变化，清空删除状态和 AI 状态
 watch(currentQuestion, () => {
   deletedOptions.value.clear();
   hiddenParagraphs.value.clear();
   selectedAnswer.value = '';
   selectedAnswers.value.clear();
   showAnswer.value = false;
+  // 重置 AI 状态
+  aiExpanded.value = false;
+  aiLoading.value = false;
+  aiContent.value = '';
+  aiError.value = '';
+  aiUnsubscribers.forEach(fn => fn());
+  aiUnsubscribers = [];
+});
+
+// AI 讲解：切换展开/收起
+const toggleAIExplain = async () => {
+  if (!currentQuestion.value) return;
+
+  // 如果已经展开，则收起
+  if (aiExpanded.value) {
+    aiExpanded.value = false;
+    return;
+  }
+
+  aiExpanded.value = true;
+
+  // 如果数据库中有缓存的 AI 解析，直接显示
+  if (currentQuestion.value.ai_explanation) {
+    aiContent.value = currentQuestion.value.ai_explanation;
+    return;
+  }
+
+  aiLoading.value = true;
+  aiContent.value = '';
+  aiError.value = '';
+
+  // 清理之前的监听器
+  aiUnsubscribers.forEach(fn => fn());
+  aiUnsubscribers = [];
+
+  // 设置流式监听
+  const unsubChunk = window.electronAPI.onAIStreamChunk((content: string) => {
+    aiContent.value += content;
+  });
+  aiUnsubscribers.push(unsubChunk);
+
+  const unsubDone = window.electronAPI.onAIStreamDone(async () => {
+    aiLoading.value = false;
+    // AI 解析完成后，保存到数据库
+    if (currentQuestion.value && aiContent.value) {
+      try {
+        await window.electronAPI.updateAIExplanation(currentQuestion.value.id, aiContent.value);
+        // 更新本地数据
+        const q = questions.value.find(q => q.id === currentQuestion.value!.id);
+        if (q) q.ai_explanation = aiContent.value;
+      } catch (e) {
+        console.error('保存 AI 解析失败:', e);
+      }
+    }
+  });
+  aiUnsubscribers.push(unsubDone);
+
+  const unsubError = window.electronAPI.onAIStreamError((error: string) => {
+    aiLoading.value = false;
+    aiError.value = error;
+  });
+  aiUnsubscribers.push(unsubError);
+
+  // 构建选项文本
+  let optionsText = '';
+  if (currentQuestion.value.question_type === 'single' || currentQuestion.value.question_type === 'multiple') {
+    optionsText = optionsList.value.map(o => `${o.key}. ${o.text}`).join('\n');
+  } else if (currentQuestion.value.question_type === 'judge') {
+    optionsText = '正确\n错误';
+  }
+
+  try {
+    await window.electronAPI.explainQuestion({
+      title: currentQuestion.value.title,
+      options: optionsText,
+      correctAnswer: currentQuestion.value.correct_answer,
+      explanation: currentQuestion.value.explanation || '',
+    });
+  } catch (err: any) {
+    aiLoading.value = false;
+    aiError.value = err.message || '调用失败';
+  }
+};
+
+// 组件卸载时清理监听器
+onUnmounted(() => {
+  aiUnsubscribers.forEach(fn => fn());
 });
 
 onMounted(() => {
@@ -934,5 +1059,147 @@ onMounted(() => {
   padding: 16px 20px;
   font-size: 16px;
   border-radius: 12px;
+}
+
+/* AI 讲解按钮 */
+.ai-explain-section {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.ai-explain-btn {
+  background-color: #1a1a1a;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 16px 32px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  min-height: 52px;
+  height: auto;
+}
+
+.ai-explain-btn:hover {
+  background-color: #333;
+  transform: translateY(-1px);
+}
+
+/* AI 讲解面板（内嵌） */
+.ai-explain-panel {
+  margin-top: 16px;
+  padding: 24px;
+  background: #fdfbf8;
+  border: 1.5px solid #e8e4df;
+  border-radius: 16px;
+  min-height: 120px;
+}
+
+.ai-loading-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #6b6560;
+  font-size: 16px;
+  padding: 30px 0;
+}
+
+.ai-error-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #F56C6C;
+  font-size: 16px;
+  padding: 16px 0;
+}
+
+/* Markdown 渲染样式 */
+.ai-markdown {
+  font-size: 16px;
+  line-height: 1.8;
+  color: #1a1a1a;
+}
+
+.ai-markdown :deep(h1),
+.ai-markdown :deep(h2),
+.ai-markdown :deep(h3),
+.ai-markdown :deep(h4) {
+  margin-top: 20px;
+  margin-bottom: 12px;
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.ai-markdown :deep(p) {
+  margin-bottom: 12px;
+}
+
+.ai-markdown :deep(strong) {
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.ai-markdown :deep(code) {
+  background: #f0ece7;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+}
+
+.ai-markdown :deep(pre) {
+  background: #f5f3f0;
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin-bottom: 12px;
+}
+
+.ai-markdown :deep(pre code) {
+  background: transparent;
+  padding: 0;
+}
+
+.ai-markdown :deep(ul),
+.ai-markdown :deep(ol) {
+  margin-bottom: 12px;
+  padding-left: 24px;
+}
+
+.ai-markdown :deep(li) {
+  margin-bottom: 6px;
+}
+
+.ai-markdown :deep(blockquote) {
+  border-left: 4px solid #c4a882;
+  padding-left: 16px;
+  margin-left: 0;
+  color: #6b6560;
+  font-style: italic;
+}
+
+.ai-markdown :deep(hr) {
+  border: none;
+  border-top: 1px solid #e8e4df;
+  margin: 20px 0;
+}
+
+.ai-markdown :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+}
+
+.ai-markdown :deep(th),
+.ai-markdown :deep(td) {
+  border: 1px solid #e8e4df;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.ai-markdown :deep(th) {
+  background: #f5f3f0;
+  font-weight: 600;
 }
 </style>
