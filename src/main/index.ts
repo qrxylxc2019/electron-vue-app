@@ -42,6 +42,7 @@ function initDatabase() {
       CREATE TABLE IF NOT EXISTS questions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         directory_id INTEGER NOT NULL,
+        pid INTEGER DEFAULT NULL,
         question_type TEXT NOT NULL CHECK(question_type IN ('single', 'multiple', 'judge', 'write')),
         title TEXT NOT NULL,
         option_a TEXT,
@@ -54,7 +55,8 @@ function initDatabase() {
         ai_explanation TEXT,
         sort_order INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (directory_id) REFERENCES directories(id)
+        FOREIGN KEY (directory_id) REFERENCES directories(id),
+        FOREIGN KEY (pid) REFERENCES questions(id)
       )
     `);
 
@@ -91,13 +93,15 @@ function initDatabase() {
       CREATE TABLE IF NOT EXISTS case_questions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         material_id INTEGER NOT NULL,
+        pid INTEGER DEFAULT NULL,
         question_number INTEGER NOT NULL,
         title TEXT NOT NULL,
         answer TEXT,
         ai_explanation TEXT,
         sort_order INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (material_id) REFERENCES case_materials(id) ON DELETE CASCADE
+        FOREIGN KEY (material_id) REFERENCES case_materials(id) ON DELETE CASCADE,
+        FOREIGN KEY (pid) REFERENCES case_questions(id)
       )
     `);
 
@@ -388,11 +392,12 @@ function setupIpc() {
     if (!db) return null;
     try {
       const stmt = db.prepare(`
-        INSERT INTO questions (directory_id, question_type, title, option_a, option_b, option_c, option_d, option_e, correct_answer, explanation, ai_explanation)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO questions (directory_id, pid, question_type, title, option_a, option_b, option_c, option_d, option_e, correct_answer, explanation, ai_explanation)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       const result = stmt.run(
         question.directory_id,
+        question.pid || null,
         question.question_type,
         question.title,
         question.option_a || null,
@@ -408,6 +413,50 @@ function setupIpc() {
     } catch (err) {
       console.error('addQuestion error:', err);
       return null;
+    }
+  });
+
+  // 获取某题目的同类题
+  ipcMain.handle('db:getSimilarQuestions', (_event, pid: number) => {
+    if (!db) return [];
+    try {
+      const stmt = db.prepare('SELECT * FROM questions WHERE pid = ? ORDER BY sort_order, id');
+      return stmt.all(pid);
+    } catch (err) {
+      console.error('getSimilarQuestions error:', err);
+      return [];
+    }
+  });
+
+  // 批量添加同类题
+  ipcMain.handle('db:addSimilarQuestions', (_event, questions: any[]) => {
+    if (!db) return [];
+    try {
+      const insert = db.prepare(`
+        INSERT INTO questions (directory_id, pid, question_type, title, option_a, option_b, option_c, option_d, option_e, correct_answer, explanation)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      const results: any[] = [];
+      for (const q of questions) {
+        const result = insert.run(
+          q.directory_id,
+          q.pid,
+          q.question_type,
+          q.title,
+          q.option_a || null,
+          q.option_b || null,
+          q.option_c || null,
+          q.option_d || null,
+          q.option_e || null,
+          q.correct_answer,
+          q.explanation || null
+        );
+        results.push({ id: result.lastInsertRowid, ...q });
+      }
+      return results;
+    } catch (err) {
+      console.error('addSimilarQuestions error:', err);
+      return [];
     }
   });
 
@@ -474,11 +523,12 @@ function setupIpc() {
     if (!db) return null;
     try {
       const stmt = db.prepare(`
-        INSERT INTO case_questions (material_id, question_number, title, answer, ai_explanation, sort_order)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO case_questions (material_id, pid, question_number, title, answer, ai_explanation, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `);
       const result = stmt.run(
         question.material_id,
+        question.pid || null,
         question.question_number,
         question.title,
         question.answer || null,
@@ -617,6 +667,72 @@ ${questionData.options || '（判断题/简答题，无选项）'}
     if (mainWindow) {
       mainWindow.webContents.send('ai:streamError', err.message || 'AI调用失败');
     }
+    return { success: false, error: err.message };
+  }
+});
+
+// AI 生成同类题
+ipcMain.handle('ai:generateSimilarQuestions', async (_event, questionData: any) => {
+  try {
+    const client = new OpenAI({
+      apiKey: 'ms-9dadd6e0-9d06-4e91-b639-5a7af28da529',
+      baseURL: 'https://api-inference.modelscope.cn/v1',
+    });
+
+    const systemPrompt = `你是一位资深软考命题专家，擅长根据已有题目生成高质量的同类练习题。生成要求：
+1. 保持与原题相同的知识点和考查方向
+2. 题干表述要有所变化，不能照搬原题
+3. 选项内容要重新设计，但考查点一致
+4. 难度与原题相当
+5. 必须输出标准JSON格式，包含5道题目
+6. 每道题包含：title(题干)、option_a/b/c/d(选项)、correct_answer(正确答案A/B/C/D)、explanation(解析)
+7. 题目类型与原题一致`;
+
+    const userPrompt = `请根据以下原题，生成5道同类练习题（考查相同知识点，但题干和选项重新设计）：
+
+【原题】${questionData.title}
+
+【选项】
+${questionData.options || '（判断题/简答题，无选项）'}
+
+【正确答案】${questionData.correctAnswer}
+
+【解析】${questionData.explanation || '暂无解析'}
+
+请直接返回JSON数组格式，不要包含任何其他文字说明。格式如下：
+[
+  {
+    "title": "题干内容",
+    "option_a": "选项A",
+    "option_b": "选项B",
+    "option_c": "选项C",
+    "option_d": "选项D",
+    "correct_answer": "A",
+    "explanation": "解析内容"
+  }
+]`;
+
+    const response = await client.chat.completions.create({
+      model: 'deepseek-ai/DeepSeek-R1-0528',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      stream: false,
+      temperature: 0.8,
+      max_tokens: 4096,
+    });
+
+    const content = response.choices[0]?.message?.content || '';
+    // 提取JSON部分
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      throw new Error('AI返回格式不正确');
+    }
+    const questions = JSON.parse(jsonMatch[0]);
+    return { success: true, questions };
+  } catch (err: any) {
+    console.error('AI generate similar questions error:', err);
     return { success: false, error: err.message };
   }
 });

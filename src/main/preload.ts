@@ -42,6 +42,11 @@ const electronAPI = {
     return () => ipcRenderer.removeListener('ai:streamError', handler);
   },
   updateAIExplanation: (id: number, aiExplanation: string) => ipcRenderer.invoke('db:updateAIExplanation', id, aiExplanation),
+
+  // 同类题
+  getSimilarQuestions: (pid: number) => ipcRenderer.invoke('db:getSimilarQuestions', pid),
+  addSimilarQuestions: (questions: any[]) => ipcRenderer.invoke('db:addSimilarQuestions', questions),
+  generateSimilarQuestions: (questionData: any) => ipcRenderer.invoke('ai:generateSimilarQuestions', questionData),
 };
 
 // 暴露给渲染进程的 API

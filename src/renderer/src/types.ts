@@ -12,6 +12,7 @@ export type QuestionType = 'single' | 'multiple' | 'judge' | 'write';
 export interface Question {
   id: number;
   directory_id: number;
+  pid: number | null;
   question_type: QuestionType;
   title: string;
   option_a: string | null;
@@ -52,6 +53,7 @@ export interface CaseMaterial {
 export interface CaseQuestion {
   id: number;
   material_id: number;
+  pid: number | null;
   question_number: number;
   title: string;
   answer: string | null;
@@ -99,6 +101,10 @@ declare global {
       onAIStreamDone: (callback: () => void) => () => void;
       onAIStreamError: (callback: (error: string) => void) => () => void;
       updateAIExplanation: (id: number, aiExplanation: string) => Promise<boolean>;
+      // 同类题
+      getSimilarQuestions: (pid: number) => Promise<Question[]>;
+      addSimilarQuestions: (questions: any[]) => Promise<Question[]>;
+      generateSimilarQuestions: (questionData: AIQuestionData) => Promise<{ success: boolean; questions?: any[]; error?: string }>;
     };
   }
 }

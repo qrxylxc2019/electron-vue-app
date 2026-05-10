@@ -124,7 +124,7 @@
               </div>
             </div>
 
-            <!-- AI 讲解按钮 -->
+            <!-- AI 讲解按钮和同类题按钮 -->
             <div class="ai-explain-section">
               <el-button
                 class="ai-explain-btn"
@@ -133,6 +133,15 @@
               >
                 <el-icon><Cpu /></el-icon>
                 {{ aiLoading ? 'AI 思考中...' : (aiExpanded ? '收起讲解' : 'AI 详细讲解') }}
+              </el-button>
+              <el-button
+                class="similar-btn"
+                :loading="similarLoading"
+                @click="openSimilarDrawer"
+              >
+                <el-icon><Collection /></el-icon>
+                同类题
+                <el-tag v-if="similarCount > 0" type="danger" size="small" class="similar-count">{{ similarCount }}</el-tag>
               </el-button>
             </div>
 
@@ -180,6 +189,88 @@
     </div>
 
     <el-empty v-else :description="isArticleMode ? '暂无文章' : '暂无题目'" />
+
+    <!-- 同类题抽屉 -->
+    <div
+      class="similar-drawer-overlay"
+      :class="{ 'show': drawerVisible }"
+      @click="closeDrawer"
+    >
+      <div
+        class="similar-drawer"
+        :class="{ 'show': drawerVisible }"
+        @click.stop
+      >
+        <div class="drawer-header">
+          <h2>同类题练习</h2>
+          <el-icon class="drawer-close" @click="closeDrawer"><Close /></el-icon>
+        </div>
+        <div class="drawer-content">
+          <div v-if="similarQuestions.length > 0 && currentSimilarQuestion" class="similar-quiz">
+            <!-- 进度 -->
+            <div class="similar-progress">
+              <span>题目 {{ currentSimilarIndex + 1 }} / {{ similarQuestions.length }}</span>
+              <el-progress :percentage="similarProgressPercent" :show-text="false" />
+            </div>
+            <!-- 题目内容 -->
+            <el-card class="similar-question-card">
+              <template #header>
+                <div class="question-header">
+                  <el-tag :type="similarQuestionTypeTag.type">{{ similarQuestionTypeTag.text }}</el-tag>
+                </div>
+              </template>
+              <div class="question-title">{{ currentSimilarQuestion.title }}</div>
+              <!-- 选项 -->
+              <div class="options-list">
+                <div
+                  v-for="option in similarOptionsList"
+                  :key="option.key"
+                  class="option-row"
+                  :class="{
+                    'selected': selectedSimilarAnswer === option.key,
+                    'correct': showSimilarAnswer && isSimilarCorrectOption(option.key),
+                    'wrong': showSimilarAnswer && isSimilarWrongOption(option.key)
+                  }"
+                >
+                  <div class="option-item" @click="selectSimilarOption(option.key)">
+                    <span class="option-key">{{ option.key }}.</span>
+                    <span class="option-text">{{ option.text || '无内容' }}</span>
+                    <el-icon v-if="showSimilarAnswer && isSimilarCorrectOption(option.key)" class="result-icon correct-icon"><CircleCheck /></el-icon>
+                    <el-icon v-if="showSimilarAnswer && isSimilarWrongOption(option.key)" class="result-icon wrong-icon"><CircleClose /></el-icon>
+                  </div>
+                </div>
+              </div>
+              <!-- 答案显示 -->
+              <div v-if="showSimilarAnswer" class="answer-result">
+                <el-divider />
+                <div class="explanation-line">
+                  <strong>正确答案：</strong>{{ currentSimilarQuestion.correct_answer }}
+                </div>
+                <div v-if="currentSimilarQuestion.explanation" class="explanation-line">
+                  <strong>解析：</strong>{{ currentSimilarQuestion.explanation }}
+                </div>
+              </div>
+            </el-card>
+            <!-- 操作按钮 -->
+            <div class="similar-actions">
+              <el-button class="delete-question-btn" @click="deleteSimilarQuestion">
+                <el-icon><Delete /></el-icon> 删除题目
+              </el-button>
+              <el-button class="next-question-btn" @click="nextSimilarQuestion">
+                下一题 <el-icon><ArrowRight /></el-icon>
+              </el-button>
+            </div>
+          </div>
+          <div v-else-if="similarLoading" class="similar-loading">
+            <el-icon class="is-loading"><Loading /></el-icon>
+            <span>AI 正在生成同类题...</span>
+          </div>
+          <div v-else class="similar-empty">
+            <el-empty description="暂无同类题" />
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -189,6 +280,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { marked } from 'marked';
 import type { Question, Article, QuestionType, OptionWithState } from '../types';
+import { Cpu, Collection, Delete, ArrowRight, Loading, Warning, CircleCheck, CircleClose, Close } from '@element-plus/icons-vue';
 
 const props = defineProps<{
   directoryId: string;
@@ -655,6 +747,185 @@ const toggleAIExplain = async () => {
     aiError.value = err.message || '调用失败';
   }
 };
+
+// 同类题相关状态
+const drawerVisible = ref(false);
+const similarLoading = ref(false);
+const similarQuestions = ref<Question[]>([]);
+const currentSimilarIndex = ref(0);
+const selectedSimilarAnswer = ref('');
+const showSimilarAnswer = ref(false);
+const similarCount = ref(0);
+
+// 当前同类题
+const currentSimilarQuestion = computed(() => {
+  return similarQuestions.value[currentSimilarIndex.value] || null;
+});
+
+// 同类题进度
+const similarProgressPercent = computed(() => {
+  if (similarQuestions.value.length === 0) return 0;
+  return ((currentSimilarIndex.value + 1) / similarQuestions.value.length) * 100;
+});
+
+// 同类题类型标签
+const similarQuestionTypeTag = computed(() => {
+  if (!currentSimilarQuestion.value) return { text: '', type: 'info' };
+  switch (currentSimilarQuestion.value.question_type) {
+    case 'single': return { text: '单选题', type: 'primary' };
+    case 'multiple': return { text: '多选题', type: 'warning' };
+    case 'judge': return { text: '判断题', type: 'success' };
+    default: return { text: '选择题', type: 'primary' };
+  }
+});
+
+// 同类题选项列表
+const similarOptionsList = computed<OptionWithState[]>(() => {
+  if (!currentSimilarQuestion.value) return [];
+  const q = currentSimilarQuestion.value;
+  return [
+    { key: 'A', text: q.option_a, deleted: false },
+    { key: 'B', text: q.option_b, deleted: false },
+    { key: 'C', text: q.option_c, deleted: false },
+    { key: 'D', text: q.option_d, deleted: false },
+    { key: 'E', text: q.option_e, deleted: false },
+  ].filter(o => o.text !== null && o.text !== undefined);
+});
+
+// 加载同类题数量
+const loadSimilarCount = async () => {
+  if (!currentQuestion.value) return;
+  try {
+    const similar = await window.electronAPI.getSimilarQuestions(currentQuestion.value.id);
+    similarCount.value = similar.length;
+  } catch (e) {
+    console.error('加载同类题数量失败:', e);
+  }
+};
+
+// 打开同类题抽屉
+const openSimilarDrawer = async () => {
+  if (!currentQuestion.value) return;
+  drawerVisible.value = true;
+
+  // 先查询是否已有同类题
+  try {
+    const existing = await window.electronAPI.getSimilarQuestions(currentQuestion.value.id);
+    if (existing.length > 0) {
+      similarQuestions.value = existing;
+      currentSimilarIndex.value = 0;
+      selectedSimilarAnswer.value = '';
+      showSimilarAnswer.value = false;
+      return;
+    }
+  } catch (e) {
+    console.error('查询同类题失败:', e);
+  }
+
+  // 没有同类题，调用 AI 生成
+  similarLoading.value = true;
+  try {
+    const optionsText = optionsList.value.map(o => `${o.key}. ${o.text}`).join('\n');
+    const result = await window.electronAPI.generateSimilarQuestions({
+      title: currentQuestion.value.title,
+      options: optionsText,
+      correctAnswer: currentQuestion.value.correct_answer,
+      explanation: currentQuestion.value.explanation || '',
+    });
+
+    if (result.success && result.questions) {
+      // 添加 pid 和 directory_id
+      const questionsToAdd = result.questions.map((q: any) => ({
+        ...q,
+        pid: currentQuestion.value!.id,
+        directory_id: currentQuestion.value!.directory_id,
+        question_type: currentQuestion.value!.question_type,
+      }));
+
+      const saved = await window.electronAPI.addSimilarQuestions(questionsToAdd);
+      similarQuestions.value = saved;
+      currentSimilarIndex.value = 0;
+      selectedSimilarAnswer.value = '';
+      showSimilarAnswer.value = false;
+      similarCount.value = saved.length;
+      ElMessage.success(`已生成 ${saved.length} 道同类题`);
+    } else {
+      ElMessage.error(result.error || '生成同类题失败');
+    }
+  } catch (err: any) {
+    ElMessage.error(err.message || '生成同类题失败');
+  } finally {
+    similarLoading.value = false;
+  }
+};
+
+// 关闭抽屉
+const closeDrawer = () => {
+  drawerVisible.value = false;
+};
+
+// 选择同类题选项
+const selectSimilarOption = (key: string) => {
+  if (showSimilarAnswer.value) return;
+  selectedSimilarAnswer.value = key;
+  showSimilarAnswer.value = true;
+};
+
+// 判断同类题选项是否正确
+const isSimilarCorrectOption = (key: string) => {
+  if (!currentSimilarQuestion.value || !showSimilarAnswer.value) return false;
+  return currentSimilarQuestion.value.correct_answer === key;
+};
+
+// 判断同类题选项是否错误
+const isSimilarWrongOption = (key: string) => {
+  if (!currentSimilarQuestion.value || !showSimilarAnswer.value) return false;
+  return selectedSimilarAnswer.value === key && currentSimilarQuestion.value.correct_answer !== key;
+};
+
+// 下一道同类题
+const nextSimilarQuestion = () => {
+  if (currentSimilarIndex.value < similarQuestions.value.length - 1) {
+    currentSimilarIndex.value++;
+    selectedSimilarAnswer.value = '';
+    showSimilarAnswer.value = false;
+  } else {
+    ElMessage.success('同类题已完成');
+    currentSimilarIndex.value = 0;
+    selectedSimilarAnswer.value = '';
+    showSimilarAnswer.value = false;
+  }
+};
+
+// 删除同类题
+const deleteSimilarQuestion = async () => {
+  if (!currentSimilarQuestion.value) return;
+  try {
+    const success = await window.electronAPI.deleteQuestion(currentSimilarQuestion.value.id);
+    if (success) {
+      ElMessage.success('题目已删除');
+      similarQuestions.value = similarQuestions.value.filter(q => q.id !== currentSimilarQuestion.value!.id);
+      if (similarQuestions.value.length === 0) {
+        similarCount.value = 0;
+        closeDrawer();
+      } else if (currentSimilarIndex.value >= similarQuestions.value.length) {
+        currentSimilarIndex.value = similarQuestions.value.length - 1;
+      }
+      selectedSimilarAnswer.value = '';
+      showSimilarAnswer.value = false;
+    } else {
+      ElMessage.error('删除失败');
+    }
+  } catch (error) {
+    ElMessage.error('删除失败');
+    console.error(error);
+  }
+};
+
+// 监听当前题目变化，加载同类题数量
+watch(currentQuestion, () => {
+  loadSimilarCount();
+});
 
 // 组件卸载时清理监听器
 onUnmounted(() => {
@@ -1201,5 +1472,146 @@ onMounted(() => {
 .ai-markdown :deep(th) {
   background: #f5f3f0;
   font-weight: 600;
+}
+
+/* 同类题按钮 */
+.similar-btn {
+  background-color: #1a1a1a;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 16px 32px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  min-height: 52px;
+  height: auto;
+  position: relative;
+}
+
+.similar-btn:hover {
+  background-color: #333;
+  transform: translateY(-1px);
+}
+
+.similar-count {
+  margin-left: 8px;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+/* 同类题抽屉 */
+.similar-drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0);
+  z-index: 1000;
+  pointer-events: none;
+  transition: background 0.3s ease;
+}
+
+.similar-drawer-overlay.show {
+  background: rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
+}
+
+.similar-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 90%;
+  height: 100%;
+  background: #fff;
+  z-index: 1001;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.similar-drawer.show {
+  transform: translateX(0);
+}
+
+.drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e8e4df;
+  flex-shrink: 0;
+}
+
+.drawer-header h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.drawer-close {
+  font-size: 24px;
+  cursor: pointer;
+  color: #6b6560;
+  transition: color 0.2s;
+}
+
+.drawer-close:hover {
+  color: #1a1a1a;
+}
+
+.drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.similar-quiz {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.similar-progress {
+  margin-bottom: 20px;
+}
+
+.similar-progress span {
+  display: block;
+  margin-bottom: 12px;
+  color: #6b6560;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.similar-question-card {
+  margin-bottom: 24px;
+  border-radius: 20px;
+  border: 1px solid #e8e4df;
+  background: #fff;
+}
+
+.similar-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.similar-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #6b6560;
+  font-size: 16px;
+  padding: 60px 0;
+}
+
+.similar-empty {
+  padding: 60px 0;
 }
 </style>
