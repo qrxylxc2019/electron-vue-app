@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
   <div class="quiz-container">
     <el-page-header @back="goBack" :content="directoryName" />
 
@@ -808,14 +808,17 @@ const openSimilarDrawer = async () => {
   if (!currentQuestion.value) return;
   drawerVisible.value = true;
 
+  // 先清空重置抽屉显示
+  similarQuestions.value = [];
+  currentSimilarIndex.value = 0;
+  selectedSimilarAnswer.value = '';
+  showSimilarAnswer.value = false;
+
   // 先查询是否已有同类题
   try {
     const existing = await window.electronAPI.getSimilarQuestions(currentQuestion.value.id);
     if (existing.length > 0) {
       similarQuestions.value = existing;
-      currentSimilarIndex.value = 0;
-      selectedSimilarAnswer.value = '';
-      showSimilarAnswer.value = false;
       return;
     }
   } catch (e) {
@@ -1387,7 +1390,7 @@ onMounted(() => {
 
 /* Markdown 渲染样式 */
 .ai-markdown {
-  font-size: 16px;
+  font-size: 20px;
   line-height: 1.8;
   color: #1a1a1a;
 }

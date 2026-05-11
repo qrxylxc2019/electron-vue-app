@@ -1,4 +1,4 @@
-﻿﻿<template>
+﻿﻿﻿﻿<template>
   <div class="directory-list">
     <div class="header">
       <h1>选择科目</h1>
@@ -27,9 +27,6 @@
           <span class="directory-name">{{ dir.name }}</span>
           <span class="directory-count">
             {{ dir.name === '高项论文' ? getArticleCount(dir.id) : dir.name === '高项案例' ? getCaseCount(dir.id) : getQuestionCount(dir.id) }} 题
-          </span>
-          <span v-if="getSimilarCount(dir.id) > 0 && dir.name !== '高项论文' && dir.name !== '高项案例'" class="similar-badge">
-            {{ getSimilarCount(dir.id) }} 同类题
           </span>
         </div>
       </div>
@@ -94,7 +91,6 @@ const directories = ref<Directory[]>([]);
 const questionCounts = ref<Record<number, number>>({});
 const articleCounts = ref<Record<number, number>>({});
 const caseCounts = ref<Record<number, number>>({});
-const similarCounts = ref<Record<number, number>>({});
 const showAddDialog = ref(false);
 const newDirectory = ref({ name: '' });
 const isFullscreen = ref(false);
@@ -167,13 +163,6 @@ const loadDirectories = async () => {
       } else {
         const questions = await window.electronAPI.getQuestions(dir.id);
         questionCounts.value[dir.id] = questions.length;
-        // 统计该目录下所有题目的同类题总数
-        let totalSimilar = 0;
-        for (const q of questions) {
-          const similar = await window.electronAPI.getSimilarQuestions(q.id);
-          totalSimilar += similar.length;
-        }
-        similarCounts.value[dir.id] = totalSimilar;
       }
     }
   } catch (error) {
@@ -194,9 +183,6 @@ const getCaseCount = (dirId: number) => {
   return caseCounts.value[dirId] || 0;
 };
 
-const getSimilarCount = (dirId: number) => {
-  return similarCounts.value[dirId] || 0;
-};
 
 const enterQuiz = (directoryId: number) => {
   const dir = directories.value.find(d => d.id === directoryId);
