@@ -267,7 +267,7 @@ onMounted(() => {
 
 <style scoped>
 .case-quiz-container {
-  padding: 20px 4vw;
+  padding: 20px 2vw;
   width: 100%;
   margin: 0 auto;
   height: 100vh;

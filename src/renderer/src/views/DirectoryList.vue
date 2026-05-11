@@ -258,7 +258,7 @@ onMounted(() => {
 
 <style scoped>
 .directory-list {
-  padding: 40px 4vw;
+  padding: 40px 2vw;
   width: 100%;
   margin: 0 auto;
   max-width: 1200px;

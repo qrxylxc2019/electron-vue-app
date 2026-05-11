@@ -82,20 +82,32 @@
               <div
                 v-for="(paragraph, index) in writeParagraphs"
                 :key="index"
-                class="paragraph-row"
+                class="paragraph-block"
               >
-                <div
-                  class="paragraph-item"
-                  :class="{ 'hidden': hiddenParagraphs.has(index) }"
-                >
-                  <p class="paragraph-text">{{ paragraph }}</p>
+                <div class="paragraph-row">
+                  <div
+                    class="paragraph-item"
+                    :class="{ 'hidden': hiddenParagraphs.has(index) }"
+                  >
+                    <p class="paragraph-text">{{ paragraph }}</p>
+                  </div>
+                  <el-button
+                    class="toggle-btn"
+                    @click="toggleParagraph(index)"
+                  >
+                    {{ hiddenParagraphs.has(index) ? '显示' : '隐藏' }}
+                  </el-button>
                 </div>
-                <el-button
-                  class="toggle-btn"
-                  @click="toggleParagraph(index)"
-                >
-                  {{ hiddenParagraphs.has(index) ? '显示' : '隐藏' }}
-                </el-button>
+                <!-- 高项论文手写输入区 -->
+                <div v-if="showHandwrite && directoryName === '高项论文'" class="handwrite-area">
+                  <el-input
+                    v-model="handwriteInputs[index]"
+                    type="textarea"
+                    :rows="6"
+                    :placeholder="`第 ${index + 1} 段手写内容...`"
+                    class="handwrite-input"
+                  />
+                </div>
               </div>
             </div>
 
@@ -122,6 +134,17 @@
                   </span>
                 </div>
               </div>
+            </div>
+
+            <!-- 高项案例手写输入区 -->
+            <div v-if="showHandwrite && directoryName === '高项案例'" class="handwrite-area case-handwrite">
+              <el-input
+                v-model="handwriteInputs[0]"
+                type="textarea"
+                :rows="8"
+                placeholder="请在此处手写答题..."
+                class="handwrite-input"
+              />
             </div>
 
             <!-- AI 讲解按钮和同类题按钮 -->
@@ -158,11 +181,20 @@
         <!-- 右侧：操作按钮 -->
         <div class="quiz-right">
           <div class="right-actions">
+            
             <el-button
               class="delete-question-btn"
               @click="deleteCurrentQuestion"
             >
               <el-icon><Delete /></el-icon> 删除题目
+            </el-button>
+            <el-button
+              class="handwrite-btn"
+              :class="{ 'active': showHandwrite }"
+              @click="toggleHandwrite"
+            >
+              <el-icon><EditPen /></el-icon>
+              {{ showHandwrite ? '隐藏手写' : '显示手写' }}
             </el-button>
             <el-button
               class="next-question-btn"
@@ -343,7 +375,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { marked } from 'marked';
 import type { Question, Article, QuestionType, OptionWithState } from '../types';
-import { Cpu, Collection, Delete, ArrowRight, Loading, Warning, CircleCheck, CircleClose, Close, Promotion } from '@element-plus/icons-vue';
+import { Cpu, Collection, Delete, ArrowRight, Loading, Warning, CircleCheck, CircleClose, Close, Promotion, EditPen } from '@element-plus/icons-vue';
 
 const props = defineProps<{
   directoryId: string;
@@ -373,6 +405,10 @@ const aiUserInput = ref('');
 const aiChatContentRef = ref<HTMLDivElement | null>(null);
 const aiChatMessagesRef = ref<HTMLDivElement | null>(null);
 let aiUnsubscribers: (() => void)[] = [];
+
+// 手写输入相关状态
+const showHandwrite = ref(false);
+const handwriteInputs = ref<Record<number, string>>({});
 
 // 滚动到对话底部
 const scrollToBottom = async () => {
@@ -699,6 +735,21 @@ const toggleParagraph = (index: number) => {
   } else {
     hiddenParagraphs.value.add(index);
   }
+};
+
+// 切换手写输入显示/隐藏
+const toggleHandwrite = () => {
+  showHandwrite.value = !showHandwrite.value;
+};
+
+// 获取手写输入内容
+const getHandwriteInput = (index: number) => {
+  return handwriteInputs.value[index] || '';
+};
+
+// 更新手写输入内容
+const updateHandwriteInput = (index: number, value: string) => {
+  handwriteInputs.value[index] = value;
 };
 
 
@@ -1063,7 +1114,7 @@ onMounted(() => {
 
 <style scoped>
 .quiz-container {
-  padding: 20px 4vw;
+  padding: 20px 2vw;
   width: 100%;
   margin: 0 auto;
   height: 100vh;
@@ -1252,6 +1303,49 @@ onMounted(() => {
   transform: translateY(-1px);
 }
 
+.handwrite-btn {
+  background-color: #8b9a6d;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 18px 20px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 56px;
+  width: 100%;
+  margin-left: 0;
+}
+
+.handwrite-btn:hover {
+  background-color: #7a8a5d;
+  transform: translateY(-1px);
+}
+
+.handwrite-btn.active {
+  background-color: #c4a882;
+}
+
+/* 手写输入区域 */
+.handwrite-area {
+  margin-top: 12px;
+  width: 100%;
+}
+
+.handwrite-input :deep(.el-textarea__inner) {
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 18px;
+  line-height: 1.8;
+  background: #fdfbf8;
+  border: 1.5px solid #e8e4df;
+  resize: vertical;
+}
+
+.case-handwrite {
+  margin: 20px 0;
+}
+
 .question-title {
   font-size: 28px;
   font-weight: 600;
@@ -1412,6 +1506,12 @@ onMounted(() => {
   gap: 16px;
 }
 
+.paragraph-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .paragraph-row {
   display: flex;
   align-items: stretch;
@@ -1460,7 +1560,8 @@ onMounted(() => {
 .ai-explain-section {
   margin-top: 20px;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
+  gap: 12px;
 }
 
 .ai-explain-btn {
