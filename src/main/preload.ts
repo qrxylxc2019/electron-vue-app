@@ -24,7 +24,7 @@ const electronAPI = {
   toggleFullscreen: () => ipcRenderer.invoke('window:toggleFullscreen'),
   isFullScreen: () => ipcRenderer.invoke('window:isFullScreen'),
 
-  // AI 讲解
+  // AI 讲解（支持多轮对话）
   explainQuestion: (questionData: any) => ipcRenderer.invoke('ai:explainQuestion', questionData),
   onAIStreamChunk: (callback: (content: string) => void) => {
     const handler = (_event: any, content: string) => callback(content);

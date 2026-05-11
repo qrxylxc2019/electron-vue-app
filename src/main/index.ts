@@ -610,13 +610,20 @@ ipcMain.handle('window:isFullScreen', () => {
   return mainWindow ? mainWindow.isFullScreen() : false;
 });
 
-// AI 讲解：流式调用 ModelScope API
+// AI 对话上下文存储（按题目ID存储对话历史）
+const aiChatContexts = new Map<number, Array<{role: string; content: string}>>();
+
+// AI 讲解：流式调用 ModelScope API，支持多轮对话
 ipcMain.handle('ai:explainQuestion', async (_event, questionData: any) => {
   try {
     const client = new OpenAI({
       apiKey: 'ms-9dadd6e0-9d06-4e91-b639-5a7af28da529',
       baseURL: 'https://api-inference.modelscope.cn/v1',
     });
+
+    const questionId = questionData.questionId as number;
+    const isFollowUp = questionData.isFollowUp as boolean;
+    const userMessage = questionData.userMessage as string || '';
 
     const systemPrompt = `你是一位资深软考培训讲师，擅长用通俗易懂的方式讲解IT知识。你的讲解风格：
 1. 用生活中的比喻和类比来解释抽象概念
@@ -626,7 +633,15 @@ ipcMain.handle('ai:explainQuestion', async (_event, questionData: any) => {
 5. 适当使用例子帮助理解
 6. 最后总结记忆口诀或要点`;
 
-    const userPrompt = `请详细讲解以下这道软考题目：
+    // 获取或初始化对话上下文
+    let messages: Array<{role: string; content: string}> = [];
+    if (isFollowUp && aiChatContexts.has(questionId)) {
+      messages = [...aiChatContexts.get(questionId)!];
+    }
+
+    // 如果是首次讲解，构建初始题目信息
+    if (!isFollowUp) {
+      const userPrompt = `请详细讲解以下这道软考题目：
 
 【题干】${questionData.title}
 
@@ -638,24 +653,36 @@ ${questionData.options || '（判断题/简答题，无选项）'}
 【解析】${questionData.explanation || '暂无解析'}
 
 请用生动的比喻和例子，详细讲解这道题涉及的知识点，并分析每个选项为什么对或错。`;
+      messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ];
+    } else {
+      // 追问模式：添加用户新问题
+      messages.push({ role: 'user', content: userMessage });
+    }
 
     const stream = await client.chat.completions.create({
       model: 'deepseek-ai/DeepSeek-R1-0528',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
+      messages: messages as any,
       stream: true,
       temperature: 0.7,
       max_tokens: 2048,
     });
 
+    let assistantContent = '';
+
     for await (const chunk of stream) {
       const content = chunk.choices[0]?.delta?.content || '';
       if (content && mainWindow) {
+        assistantContent += content;
         mainWindow.webContents.send('ai:streamChunk', content);
       }
     }
+
+    // 保存对话上下文
+    messages.push({ role: 'assistant', content: assistantContent });
+    aiChatContexts.set(questionId, messages);
 
     if (mainWindow) {
       mainWindow.webContents.send('ai:streamDone');

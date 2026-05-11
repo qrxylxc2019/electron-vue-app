@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿// 类型声明
+﻿﻿﻿﻿﻿﻿﻿﻿// 类型声明
 export interface Directory {
   id: number;
   name: string;
@@ -75,6 +75,15 @@ export interface AIQuestionData {
   options?: string;
   correctAnswer: string;
   explanation?: string;
+  questionId?: number;
+  isFollowUp?: boolean;
+  userMessage?: string;
+}
+
+// AI 对话消息
+export interface AIChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
 }
 
 // 扩展 Window 接口

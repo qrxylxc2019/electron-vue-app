@@ -129,10 +129,10 @@
               <el-button
                 class="ai-explain-btn"
                 :loading="aiLoading"
-                @click="toggleAIExplain"
+                @click="openAIChatDrawer"
               >
                 <el-icon><Cpu /></el-icon>
-                {{ aiLoading ? 'AI 思考中...' : (aiExpanded ? '收起讲解' : 'AI 详细讲解') }}
+                {{ aiLoading ? 'AI 思考中...' : 'AI 详细讲解' }}
               </el-button>
               <el-button
                 class="similar-btn"
@@ -143,19 +143,6 @@
                 同类题
                 <el-tag v-if="similarCount > 0" type="danger" size="small" class="similar-count">{{ similarCount }}</el-tag>
               </el-button>
-            </div>
-
-            <!-- AI 讲解内容（内嵌显示） -->
-            <div v-if="aiExpanded" class="ai-explain-panel">
-              <div v-if="aiLoading && !aiContent" class="ai-loading-inline">
-                <el-icon class="is-loading"><Loading /></el-icon>
-                <span>AI 正在思考中，请稍候...</span>
-              </div>
-              <div v-if="aiError" class="ai-error-inline">
-                <el-icon><Warning /></el-icon>
-                <span>{{ aiError }}</span>
-              </div>
-              <div v-if="aiContent" class="ai-markdown" v-html="renderedAIContent"></div>
             </div>
 
             <!-- 答案显示 -->
@@ -189,6 +176,82 @@
     </div>
 
     <el-empty v-else :description="isArticleMode ? '暂无文章' : '暂无题目'" />
+
+    <!-- AI 讲解抽屉 -->
+    <div
+      class="ai-drawer-overlay"
+      :class="{ 'show': aiDrawerVisible }"
+      @click="closeAIChatDrawer"
+    >
+      <div
+        class="ai-drawer"
+        :class="{ 'show': aiDrawerVisible }"
+        @click.stop
+      >
+        <div class="drawer-header">
+          <h2>AI 详细讲解</h2>
+          <el-icon class="drawer-close" @click="closeAIChatDrawer"><Close /></el-icon>
+        </div>
+        <div class="drawer-content ai-chat-content" ref="aiChatContentRef">
+          <!-- 对话列表 -->
+          <div class="chat-messages" ref="aiChatMessagesRef">
+            <div
+              v-for="(msg, index) in aiChatMessages"
+              :key="index"
+              class="chat-message"
+              :class="msg.role"
+            >
+              <div class="message-avatar">
+                <el-icon v-if="msg.role === 'assistant'"><Cpu /></el-icon>
+                <span v-else>我</span>
+              </div>
+              <div class="message-bubble">
+                <div class="ai-markdown" v-html="renderMarkdown(msg.content)"></div>
+              </div>
+            </div>
+            <!-- 正在输入中 -->
+            <div v-if="aiLoading" class="chat-message assistant">
+              <div class="message-avatar">
+                <el-icon><Cpu /></el-icon>
+              </div>
+              <div class="message-bubble loading-bubble">
+                <el-icon class="is-loading"><Loading /></el-icon>
+                <span>AI 正在思考中...</span>
+              </div>
+            </div>
+            <!-- 错误提示 -->
+            <div v-if="aiError" class="chat-message assistant">
+              <div class="message-avatar">
+                <el-icon><Warning /></el-icon>
+              </div>
+              <div class="message-bubble error-bubble">
+                <span>{{ aiError }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- 底部输入框 -->
+        <div class="ai-chat-input-area">
+          <el-input
+            v-model="aiUserInput"
+            type="textarea"
+            :rows="2"
+            placeholder="对这道题还有疑问？继续向 AI 提问..."
+            class="ai-chat-input"
+            @keydown.enter.prevent="sendAIChatMessage"
+          />
+          <el-button
+            class="ai-send-btn"
+            :loading="aiLoading"
+            :disabled="!aiUserInput.trim()"
+            @click="sendAIChatMessage"
+          >
+            <el-icon><Promotion /></el-icon>
+            发送
+          </el-button>
+        </div>
+      </div>
+    </div>
 
     <!-- 同类题抽屉 -->
     <div
@@ -275,12 +338,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, onUnmounted } from 'vue';
+import { ref, computed, onMounted, watch, onUnmounted, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { marked } from 'marked';
 import type { Question, Article, QuestionType, OptionWithState } from '../types';
-import { Cpu, Collection, Delete, ArrowRight, Loading, Warning, CircleCheck, CircleClose, Close } from '@element-plus/icons-vue';
+import { Cpu, Collection, Delete, ArrowRight, Loading, Warning, CircleCheck, CircleClose, Close, Promotion } from '@element-plus/icons-vue';
 
 const props = defineProps<{
   directoryId: string;
@@ -302,16 +365,27 @@ const deletedOptions = ref<Set<string>>(new Set());
 const hiddenParagraphs = ref<Set<number>>(new Set());
 
 // AI 讲解相关状态
-const aiExpanded = ref(false);
+const aiDrawerVisible = ref(false);
 const aiLoading = ref(false);
-const aiContent = ref('');
 const aiError = ref('');
+const aiChatMessages = ref<Array<{role: 'user' | 'assistant'; content: string}>>([]);
+const aiUserInput = ref('');
+const aiChatContentRef = ref<HTMLDivElement | null>(null);
+const aiChatMessagesRef = ref<HTMLDivElement | null>(null);
 let aiUnsubscribers: (() => void)[] = [];
 
-// Markdown 渲染后的 AI 内容
-const renderedAIContent = computed(() => {
-  return marked.parse(aiContent.value || '', { async: false }) as string;
-});
+// 滚动到对话底部
+const scrollToBottom = async () => {
+  await nextTick();
+  if (aiChatContentRef.value) {
+    aiChatContentRef.value.scrollTop = aiChatContentRef.value.scrollHeight;
+  }
+};
+
+// Markdown 渲染
+const renderMarkdown = (content: string) => {
+  return marked.parse(content || '', { async: false }) as string;
+};
 
 // 当前题目/文章
 const currentQuestion = computed(() => {
@@ -664,56 +738,100 @@ watch(currentQuestion, () => {
   selectedAnswer.value = '';
   selectedAnswers.value.clear();
   showAnswer.value = false;
-  // 重置 AI 状态
-  aiExpanded.value = false;
+  // 关闭 AI 抽屉并重置状态
+  aiDrawerVisible.value = false;
   aiLoading.value = false;
-  aiContent.value = '';
   aiError.value = '';
+  aiChatMessages.value = [];
+  aiUserInput.value = '';
   aiUnsubscribers.forEach(fn => fn());
   aiUnsubscribers = [];
 });
 
-// AI 讲解：切换展开/收起
-const toggleAIExplain = async () => {
+// 打开 AI 讲解抽屉
+const openAIChatDrawer = async () => {
+  if (!currentQuestion.value) return;
+  aiDrawerVisible.value = true;
+
+  // 如果已经有对话记录，滚动到底部
+  if (aiChatMessages.value.length > 0) {
+    scrollToBottom();
+    return;
+  }
+
+  // 如果数据库中有缓存的 AI 解析，先显示缓存内容
+  if (currentQuestion.value.ai_explanation) {
+    aiChatMessages.value.push({
+      role: 'assistant',
+      content: currentQuestion.value.ai_explanation
+    });
+    scrollToBottom();
+    return;
+  }
+
+  await callAIExplain(false);
+};
+
+// 关闭 AI 讲解抽屉
+const closeAIChatDrawer = () => {
+  aiDrawerVisible.value = false;
+};
+
+// 发送 AI 对话消息（追问）
+const sendAIChatMessage = async () => {
+  if (!currentQuestion.value || !aiUserInput.value.trim() || aiLoading.value) return;
+
+  const userMessage = aiUserInput.value.trim();
+  aiUserInput.value = '';
+
+  // 添加用户消息到对话列表
+  aiChatMessages.value.push({
+    role: 'user',
+    content: userMessage
+  });
+  scrollToBottom();
+
+  await callAIExplain(true, userMessage);
+};
+
+// 调用 AI 讲解（支持首次和追问）
+const callAIExplain = async (isFollowUp = false, userMessage = '') => {
   if (!currentQuestion.value) return;
 
-  // 如果已经展开，则收起
-  if (aiExpanded.value) {
-    aiExpanded.value = false;
-    return;
-  }
-
-  aiExpanded.value = true;
-
-  // 如果数据库中有缓存的 AI 解析，直接显示
-  if (currentQuestion.value.ai_explanation) {
-    aiContent.value = currentQuestion.value.ai_explanation;
-    return;
-  }
-
   aiLoading.value = true;
-  aiContent.value = '';
   aiError.value = '';
 
   // 清理之前的监听器
   aiUnsubscribers.forEach(fn => fn());
   aiUnsubscribers = [];
 
+  let assistantContent = '';
+
   // 设置流式监听
   const unsubChunk = window.electronAPI.onAIStreamChunk((content: string) => {
-    aiContent.value += content;
+    assistantContent += content;
+    // 更新最后一条 assistant 消息，如果没有则添加
+    const lastMsg = aiChatMessages.value[aiChatMessages.value.length - 1];
+    if (lastMsg && lastMsg.role === 'assistant') {
+      lastMsg.content = assistantContent;
+    } else {
+      aiChatMessages.value.push({
+        role: 'assistant',
+        content: assistantContent
+      });
+    }
+    scrollToBottom();
   });
   aiUnsubscribers.push(unsubChunk);
 
   const unsubDone = window.electronAPI.onAIStreamDone(async () => {
     aiLoading.value = false;
-    // AI 解析完成后，保存到数据库
-    if (currentQuestion.value && aiContent.value) {
+    // AI 解析完成后，保存到数据库（只保存首次讲解）
+    if (!isFollowUp && currentQuestion.value && assistantContent) {
       try {
-        await window.electronAPI.updateAIExplanation(currentQuestion.value.id, aiContent.value);
-        // 更新本地数据
+        await window.electronAPI.updateAIExplanation(currentQuestion.value.id, assistantContent);
         const q = questions.value.find(q => q.id === currentQuestion.value!.id);
-        if (q) q.ai_explanation = aiContent.value;
+        if (q) q.ai_explanation = assistantContent;
       } catch (e) {
         console.error('保存 AI 解析失败:', e);
       }
@@ -741,6 +859,9 @@ const toggleAIExplain = async () => {
       options: optionsText,
       correctAnswer: currentQuestion.value.correct_answer,
       explanation: currentQuestion.value.explanation || '',
+      questionId: currentQuestion.value.id,
+      isFollowUp,
+      userMessage,
     });
   } catch (err: any) {
     aiLoading.value = false;
@@ -1359,38 +1480,159 @@ onMounted(() => {
   transform: translateY(-1px);
 }
 
-/* AI 讲解面板（内嵌） */
-.ai-explain-panel {
-  margin-top: 16px;
-  padding: 24px;
-  background: #fdfbf8;
-  border: 1.5px solid #e8e4df;
-  border-radius: 16px;
-  min-height: 120px;
+/* AI 讲解抽屉 */
+.ai-drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0);
+  z-index: 1000;
+  pointer-events: none;
+  transition: background 0.3s ease;
 }
 
-.ai-loading-inline {
+.ai-drawer-overlay.show {
+  background: rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
+}
+
+.ai-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 90%;
+  height: 100%;
+  background: #fff;
+  z-index: 1001;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.ai-drawer.show {
+  transform: translateX(0);
+}
+
+.ai-chat-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  background: #f8f7f5;
+}
+
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.chat-message {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.chat-message.user {
+  flex-direction: row-reverse;
+}
+
+.message-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #1a1a1a;
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  color: #6b6560;
-  font-size: 16px;
-  padding: 30px 0;
+  font-size: 14px;
+  font-weight: 500;
+  flex-shrink: 0;
 }
 
-.ai-error-inline {
+.chat-message.user .message-avatar {
+  background: #c4a882;
+}
+
+.message-bubble {
+  max-width: 80%;
+  padding: 16px 20px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #e8e4df;
+  font-size: 18px;
+  line-height: 1.8;
+  color: #1a1a1a;
+}
+
+.chat-message.user .message-bubble {
+  background: #e8f5e9;
+  border-color: #c8e6c9;
+}
+
+.loading-bubble {
   display: flex;
   align-items: center;
   gap: 8px;
+  color: #6b6560;
+}
+
+.error-bubble {
   color: #F56C6C;
+  background: #fef0f0;
+  border-color: #fde2e2;
+}
+
+.ai-chat-input-area {
+  padding: 16px 24px;
+  border-top: 1px solid #e8e4df;
+  background: #fff;
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.ai-chat-input {
+  flex: 1;
+}
+
+.ai-chat-input :deep(.el-textarea__inner) {
+  border-radius: 12px;
+  padding: 12px 16px;
   font-size: 16px;
-  padding: 16px 0;
+  resize: none;
+}
+
+.ai-send-btn {
+  background-color: #1a1a1a;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 24px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  min-height: 52px;
+  height: auto;
+}
+
+.ai-send-btn:hover:not(:disabled) {
+  background-color: #333;
+  transform: translateY(-1px);
+}
+
+.ai-send-btn:disabled {
+  background-color: #c0c4cc;
+  cursor: not-allowed;
 }
 
 /* Markdown 渲染样式 */
 .ai-markdown {
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1.8;
   color: #1a1a1a;
 }
@@ -1399,14 +1641,14 @@ onMounted(() => {
 .ai-markdown :deep(h2),
 .ai-markdown :deep(h3),
 .ai-markdown :deep(h4) {
-  margin-top: 20px;
-  margin-bottom: 12px;
+  margin-top: 16px;
+  margin-bottom: 10px;
   color: #1a1a1a;
   font-weight: 600;
 }
 
 .ai-markdown :deep(p) {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .ai-markdown :deep(strong) {
