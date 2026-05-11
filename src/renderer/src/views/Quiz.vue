@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
+﻿﻿<template>
   <div class="quiz-container">
     <el-page-header @back="goBack" :content="directoryName" />
 
@@ -98,7 +98,7 @@
                     {{ hiddenParagraphs.has(index) ? '显示' : '隐藏' }}
                   </el-button>
                 </div>
-                <!-- 高项论文手写输入区 -->
+                    <!-- 高项论文手写输入区 -->
                 <div v-if="showHandwrite && directoryName === '高项论文'" class="handwrite-area">
                   <el-input
                     v-model="handwriteInputs[index]"
@@ -134,17 +134,6 @@
                   </span>
                 </div>
               </div>
-            </div>
-
-            <!-- 高项案例手写输入区 -->
-            <div v-if="showHandwrite && directoryName === '高项案例'" class="handwrite-area case-handwrite">
-              <el-input
-                v-model="handwriteInputs[0]"
-                type="textarea"
-                :rows="8"
-                placeholder="请在此处手写答题..."
-                class="handwrite-input"
-              />
             </div>
 
             <!-- AI 讲解按钮和同类题按钮 -->
@@ -189,6 +178,7 @@
               <el-icon><Delete /></el-icon> 删除题目
             </el-button>
             <el-button
+              v-if="directoryName === '高项论文'"
               class="handwrite-btn"
               :class="{ 'active': showHandwrite }"
               @click="toggleHandwrite"
