@@ -38,6 +38,18 @@
 
               <div class="question-title">{{ currentCaseQuestion.title }}</div>
 
+              <!-- 手写输入区域 -->
+              <div v-if="showHandwrite" class="handwrite-area">
+                <el-input
+                  v-model="handwriteInput"
+                  type="textarea"
+                  :rows="6"
+                  placeholder="在此手写作答..."
+                  class="handwrite-input"
+                  resize="none"
+                />
+              </div>
+
               <!-- 答案区域 -->
               <div class="answer-section">
                 <el-button
@@ -83,11 +95,19 @@
         <!-- 右侧：大题操作按钮 -->
         <div class="case-right">
           <div class="right-actions">
+            
             <el-button
               class="delete-material-btn"
               @click="deleteCurrentMaterial"
             >
               <el-icon><Delete /></el-icon> 删除案例
+            </el-button>
+            <el-button
+              class="handwrite-btn"
+              @click="showHandwrite = !showHandwrite"
+            >
+              <el-icon><EditPen /></el-icon>
+              {{ showHandwrite ? '隐藏手写' : '显示手写' }}
             </el-button>
             <el-button
               class="next-material-btn"
@@ -110,6 +130,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import type { CaseMaterial, CaseQuestion } from '../types';
+import { EditPen } from '@element-plus/icons-vue';
 
 const props = defineProps<{
   directoryId: string;
@@ -127,6 +148,9 @@ const currentMaterialIndex = ref(0);
 const currentQuestionIndex = ref(0);
 // 是否显示答案
 const showAnswer = ref(false);
+// 手写输入相关状态
+const showHandwrite = ref(false);
+const handwriteInput = ref('');
 
 // 当前案例材料
 const currentMaterial = computed(() => {
@@ -184,6 +208,8 @@ const loadData = async () => {
     currentMaterialIndex.value = 0;
     currentQuestionIndex.value = 0;
     showAnswer.value = false;
+    showHandwrite.value = false;
+    handwriteInput.value = '';
   } catch (error) {
     ElMessage.error('加载案例失败');
     console.error(error);
@@ -201,6 +227,7 @@ const prevQuestion = () => {
     // 同一案例的上一小题
     currentQuestionIndex.value--;
     showAnswer.value = false;
+    handwriteInput.value = '';
   }
 };
 
@@ -210,6 +237,7 @@ const nextQuestion = () => {
     // 同一案例的下一小题
     currentQuestionIndex.value++;
     showAnswer.value = false;
+    handwriteInput.value = '';
   }
 };
 
@@ -219,6 +247,7 @@ const nextMaterial = () => {
     currentMaterialIndex.value++;
     currentQuestionIndex.value = 0;
     showAnswer.value = false;
+    handwriteInput.value = '';
   }
 };
 
@@ -251,6 +280,7 @@ const deleteCurrentMaterial = async () => {
       }
       currentQuestionIndex.value = 0;
       showAnswer.value = false;
+      handwriteInput.value = '';
     } else {
       ElMessage.error('删除失败');
     }
@@ -363,6 +393,25 @@ onMounted(() => {
   flex-direction: column;
   gap: 16px;
   width: 100%;
+}
+
+.handwrite-btn {
+  background-color: #8b9a6d;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 18px 20px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 56px;
+  width: 100%;
+  margin-left: 0;
+}
+
+.handwrite-btn:hover {
+  background-color: #8b9a6d;
+  transform: translateY(-1px);
 }
 
 .delete-material-btn {
@@ -512,6 +561,25 @@ onMounted(() => {
   background: #f5f7f0;
   padding: 16px;
   border-radius: 10px;
+}
+
+.handwrite-area {
+  margin: 16px 0;
+}
+
+.handwrite-input :deep(.el-textarea__inner) {
+  font-size: 20px;
+  line-height: 1.8;
+  padding: 16px;
+  border-radius: 12px;
+  border: 2px solid #c4a882;
+  background: #fdfbf8;
+  color: #1a1a1a;
+}
+
+.handwrite-input :deep(.el-textarea__inner:focus) {
+  border-color: #a08060;
+  box-shadow: 0 0 0 2px rgba(196, 168, 130, 0.2);
 }
 
 .bottom-nav {

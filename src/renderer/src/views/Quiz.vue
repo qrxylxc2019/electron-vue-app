@@ -1308,12 +1308,12 @@ onMounted(() => {
 }
 
 .handwrite-btn:hover {
-  background-color: #7a8a5d;
+  background-color: #8b9a6d;
   transform: translateY(-1px);
 }
 
 .handwrite-btn.active {
-  background-color: #c4a882;
+  background-color: #8b9a6d;
 }
 
 /* 手写输入区域 */
