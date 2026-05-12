@@ -543,6 +543,11 @@ function setupIpc() {
   ipcMain.handle('db:deleteCaseMaterial', (_event, id: number) => {
     if (!db) return false;
     try {
+      // 先删除关联的小题（包括子小题）
+      const deleteQuestions = db.prepare('DELETE FROM case_questions WHERE material_id = ?');
+      deleteQuestions.run(id);
+
+      // 再删除案例材料
       const stmt = db.prepare('DELETE FROM case_materials WHERE id = ?');
       const result = stmt.run(id);
       return result.changes > 0;
