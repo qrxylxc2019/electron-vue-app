@@ -46,11 +46,8 @@
     ],
     "extraResources": [
       {
-        "from": "out/data",
-        "to": "data",
-        "filter": [
-          "**/*"
-        ]
+        "from": "src/main/qingrui.db",
+        "to": "data/qingrui.db"
       }
     ],
     "win": {

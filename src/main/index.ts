@@ -10,10 +10,10 @@ let db: Database.Database | null = null;
 function getDbPath(): string {
   const isDev = !app.isPackaged;
   if (isDev) {
-    // ʹ�� __dirname ��������Ŀ¼��dist/main -> ��Ŀ��Ŀ¼��
-    return path.join(__dirname, '..', '..', 'out', 'data', 'qingrui.db');
+    // ����ģʽ��ʹ�� src/main ��Ŀ¼�µ���ݿ�
+    return path.join(__dirname, '..', '..', 'src', 'main', 'qingrui.db');
   }
-  // �����ʹ??extraResources �е�����
+  // ���򷢲�ģʽ��ʹ�� extraResources �е�����
   return path.join(process.resourcesPath, 'data', 'qingrui.db');
 }
 

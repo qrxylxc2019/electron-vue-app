@@ -2,7 +2,7 @@ const Database = require('better-sqlite3');
 const fs = require('fs');
 const path = require('path');
 
-const dbPath = path.join(__dirname, '..', 'out', 'data', 'qingrui.db');
+const dbPath = path.join(__dirname, '..', 'src', 'main', 'qingrui.db');
 const db = new Database(dbPath);
 
 // 读取 markdown 文件
