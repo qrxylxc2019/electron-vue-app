@@ -1,0 +1,4 @@
+需要你写个脚本 将 D:\python脚本\平板做题软件\electron-vue-app\scripts\图片的内容保存到数据库 高项案例 科目
+对比D:\python脚本\平板做题软件\electron-vue-app\scripts\图片
+然后将图片复制到 D:\python脚本\平板做题软件\electron-vue-app\src\renderer\public\case_images 
+需注意 <img src="./1.png"> 图片引用的地址要正确 
