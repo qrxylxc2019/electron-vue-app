@@ -9,24 +9,23 @@
         <el-progress :percentage="materialProgressPercent" :show-text="false" />
       </div>
 
-      <!-- 左右布局主体 -->
+      <!-- 三栏布局主体 -->
       <div class="case-main-wrapper">
-        <!-- 左侧：上下布局的内容区 -->
-        <div class="case-main">
-          <!-- 上面：材料内容 -->
-          <div class="material-section">
-            <el-card class="material-card">
-              <template #header>
-                <div class="material-header">
-                  <el-tag type="info">案例材料</el-tag>
-                  <span class="material-title">{{ currentMaterial.title }}</span>
-                </div>
-              </template>
-              <div class="material-content markdown-body" v-html="renderMarkdown(currentMaterial.content)"></div>
-            </el-card>
-          </div>
+        <!-- 左侧：材料内容 -->
+        <div class="case-left">
+          <el-card class="material-card">
+            <template #header>
+              <div class="material-header">
+                <el-tag type="info">案例材料</el-tag>
+                <span class="material-title">{{ currentMaterial.title }}</span>
+              </div>
+            </template>
+            <div class="material-content markdown-body" v-html="renderMarkdown(currentMaterial.content)"></div>
+          </el-card>
+        </div>
 
-          <!-- 下面：小题内容 -->
+        <!-- 中间：小题内容 + 导航 -->
+        <div class="case-center">
           <div class="question-section" v-if="currentCaseQuestion">
             <el-card class="question-card">
               <template #header>
@@ -72,22 +71,21 @@
           <!-- 无小题提示 -->
           <el-empty v-else description="该案例暂无小题" />
 
-          <!-- 底部小题导航 -->
+          <!-- 小题导航 -->
           <div class="bottom-nav">
             <el-button
               class="nav-btn prev-btn"
               @click="prevQuestion"
               :disabled="currentQuestionIndex === 0"
             >
-              <el-icon><ArrowLeft /></el-icon> 上一题
+              <el-icon><ArrowLeft /></el-icon> 上一小题
             </el-button>
 
             <el-button
               class="nav-btn next-btn"
               @click="nextQuestion"
-              :disabled="isLastQuestion"
             >
-              下一题 <el-icon><ArrowRight /></el-icon>
+              下一小题 <el-icon><ArrowRight /></el-icon>
             </el-button>
           </div>
         </div>
@@ -95,7 +93,6 @@
         <!-- 右侧：大题操作按钮 -->
         <div class="case-right">
           <div class="right-actions">
-            
             <el-button
               class="delete-material-btn"
               @click="deleteCurrentMaterial"
@@ -408,7 +405,25 @@ onMounted(() => {
   gap: 20px;
 }
 
-.case-main {
+.case-left {
+  width: 38%;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  -ms-overflow-style: auto;
+}
+
+.case-left::-webkit-scrollbar {
+  width: 6px;
+}
+
+.case-left::-webkit-scrollbar-thumb {
+  background-color: #c4a882;
+  border-radius: 3px;
+}
+
+.case-center {
   flex: 1;
   min-width: 0;
   min-height: 0;
@@ -420,7 +435,7 @@ onMounted(() => {
   -ms-overflow-style: none;
 }
 
-.case-main::-webkit-scrollbar {
+.case-center::-webkit-scrollbar {
   display: none;
 }
 
