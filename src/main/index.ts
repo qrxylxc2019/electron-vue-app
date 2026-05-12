@@ -2,27 +2,114 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import Database from 'better-sqlite3';
 import { OpenAI } from 'openai';
+import fs from 'fs';
 
 let mainWindow: BrowserWindow | null = null;
 let db: Database.Database | null = null;
 
-// ��ȡ���ݿ�·??
-function getDbPath(): string {
-  // ͳһʹ�� out/data/qingrui.db
-  // ����ģʺʹ�װexe��ʹ��ͬһ��·��
-  const projectRoot = path.join(__dirname, '..', '..');
-  return path.join(projectRoot, 'out', 'data', 'qingrui.db');
+// 日志文件路径
+const logFile = path.join(app.getPath('userData'), 'app.log');
+
+function log(message: string) {
+  const timestamp = new Date().toISOString();
+  const line = `[${timestamp}] ${message}\n`;
+  try {
+    fs.appendFileSync(logFile, line);
+  } catch (e) {
+    console.error('Write log failed:', e);
+  }
+  console.log(message);
 }
 
-// ��ʼ�����ݿ�
-function initDatabase() {
+// 清空日志（每次启动时）
+function clearLog() {
+  try {
+    fs.writeFileSync(logFile, '');
+  } catch (e) {
+    console.error('Clear log failed:', e);
+  }
+}
+
+// 获取数据库路径
+function getDbPath(): string {
+  const isDev = !app.isPackaged;
+  log(`getDbPath: isDev=${isDev}`);
+  log(`getDbPath: __dirname=${__dirname}`);
+  log(`getDbPath: app.getAppPath()=${app.getAppPath()}`);
+
+  if (isDev) {
+    // 开发环境：直接使用项目目录下的数据库
+    const projectRoot = path.join(__dirname, '..', '..');
+    const dbPath = path.join(projectRoot, 'out', 'data', 'qingrui.db');
+    log(`Dev projectRoot: ${projectRoot}`);
+    log(`Dev dbPath: ${dbPath}`);
+    log(`Dev projectRoot exists: ${fs.existsSync(projectRoot)}`);
+    log(`Dev out/data exists: ${fs.existsSync(path.join(projectRoot, 'out', 'data'))}`);
+    return dbPath;
+  } else {
+    // 打包环境：使用用户数据目录
+    const userDataPath = app.getPath('userData');
+    const dbDir = path.join(userDataPath, 'data');
+    if (!fs.existsSync(dbDir)) {
+      fs.mkdirSync(dbDir, { recursive: true });
+      log(`Created dbDir: ${dbDir}`);
+    }
+    const dbPath = path.join(dbDir, 'qingrui.db');
+    log(`Prod dbPath: ${dbPath}`);
+    return dbPath;
+  }
+}
+
+// 从打包资源中复制初始数据库到用户数据目录
+function copyDbFromResources() {
+  const isDev = !app.isPackaged;
+  log(`copyDbFromResources: isDev=${isDev}`);
+
+  // 开发环境不需要复制
+  if (isDev) {
+    return;
+  }
+
   const dbPath = getDbPath();
-  console.log('Database path:', dbPath);
+
+  // 如果用户数据目录已存在数据库，跳过复制
+  if (fs.existsSync(dbPath)) {
+    log('User database already exists, skipping copy');
+    return;
+  }
+
+  try {
+    // 打包后的资源路径 - 使用 extraResources 路径
+    const resourceDbPath = path.join(process.resourcesPath, 'data', 'qingrui.db');
+    log(`Resource DB path: ${resourceDbPath}`);
+    log(`Resource DB exists: ${fs.existsSync(resourceDbPath)}`);
+
+    if (fs.existsSync(resourceDbPath)) {
+      fs.copyFileSync(resourceDbPath, dbPath);
+      log('Database copied from resources to user data');
+    } else {
+      log('Resource database not found, will create new database');
+    }
+  } catch (err: any) {
+    log(`Copy database error: ${err.message}`);
+  }
+}
+
+// 初始化数据库
+function initDatabase() {
+  log('=== initDatabase start ===');
+  // 先尝试从资源目录复制数据库
+  copyDbFromResources();
+
+  const dbPath = getDbPath();
+  log(`Final Database path: ${dbPath}`);
+  log(`Database file exists: ${fs.existsSync(dbPath)}`);
 
   try {
     db = new Database(dbPath);
+    log('Database opened successfully');
 
-    // ����Ŀ¼??
+    // 创建目录表
     db.exec(`
       CREATE TABLE IF NOT EXISTS directories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -135,7 +222,11 @@ function seedDefaultData() {
     const checkArticle = db.prepare("SELECT COUNT(*) as count FROM articles WHERE directory_id = ?");
     const articleCount = (checkArticle.get(dirId) as any).count;
 
-    if (articleCount === 0) {
+    // 检查是否包含用户自定义论文（id > 24 的是用户通过脚本录入的）
+    const checkCustomArticle = db.prepare("SELECT COUNT(*) as count FROM articles WHERE directory_id = ? AND id > 24");
+    const customArticleCount = (checkCustomArticle.get(dirId) as any).count;
+
+    if (articleCount === 0 || customArticleCount === 0) {
       // 插入高项论文到 article 表
       const insertArticle = db.prepare(`
         INSERT INTO articles (directory_id, title, content, correct_answer, explanation, sort_order)
@@ -586,6 +677,10 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  clearLog();
+  log('=== App started ===');
+  log(`App path: ${app.getAppPath()}`);
+  log(`userData: ${app.getPath('userData')}`);
   initDatabase();
   setupIpc();
   createWindow();
