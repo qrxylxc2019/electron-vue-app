@@ -22,7 +22,7 @@
                   <span class="material-title">{{ currentMaterial.title }}</span>
                 </div>
               </template>
-              <div class="material-content">{{ currentMaterial.content }}</div>
+              <div class="material-content markdown-body" v-html="renderMarkdown(currentMaterial.content)"></div>
             </el-card>
           </div>
 
@@ -36,7 +36,7 @@
                 </div>
               </template>
 
-              <div class="question-title">{{ currentCaseQuestion.title }}</div>
+              <div class="question-title markdown-body" v-html="renderMarkdown(currentCaseQuestion.title)"></div>
 
               <!-- 手写输入区域 -->
               <div v-if="showHandwrite" class="handwrite-area">
@@ -63,7 +63,7 @@
                 <div v-if="showAnswer && currentCaseQuestion.answer" class="answer-content">
                   <el-divider />
                   <div class="answer-label">参考答案：</div>
-                  <div class="answer-text">{{ currentCaseQuestion.answer }}</div>
+                  <div class="answer-text markdown-body" v-html="renderMarkdown(currentCaseQuestion.answer)"></div>
                 </div>
               </div>
             </el-card>
@@ -129,6 +129,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import { marked } from 'marked';
 import type { CaseMaterial, CaseQuestion } from '../types';
 import { EditPen } from '@element-plus/icons-vue';
 
@@ -179,6 +180,11 @@ const isLastQuestion = computed(() => {
   if (caseQuestions.value.length === 0) return true;
   return currentQuestionIndex.value === caseQuestions.value.length - 1;
 });
+
+// Markdown 渲染
+const renderMarkdown = (content: string) => {
+  return marked.parse(content || '', { async: false }) as string;
+};
 
 // 加载数据
 const loadData = async () => {
@@ -488,8 +494,90 @@ onMounted(() => {
   font-size: 22px;
   color: #4a4540;
   line-height: 1.8;
-  white-space: pre-wrap;
   padding: 8px 0;
+}
+
+/* Markdown 样式 */
+.markdown-body :deep(h1),
+.markdown-body :deep(h2),
+.markdown-body :deep(h3),
+.markdown-body :deep(h4) {
+  margin-top: 16px;
+  margin-bottom: 10px;
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.markdown-body :deep(p) {
+  margin-bottom: 10px;
+}
+
+.markdown-body :deep(strong) {
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.markdown-body :deep(code) {
+  background: #f0ece7;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+}
+
+.markdown-body :deep(pre) {
+  background: #f5f3f0;
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin-bottom: 12px;
+}
+
+.markdown-body :deep(pre code) {
+  background: transparent;
+  padding: 0;
+}
+
+.markdown-body :deep(ul),
+.markdown-body :deep(ol) {
+  margin-bottom: 12px;
+  padding-left: 24px;
+}
+
+.markdown-body :deep(li) {
+  margin-bottom: 6px;
+}
+
+.markdown-body :deep(blockquote) {
+  border-left: 4px solid #c4a882;
+  padding-left: 16px;
+  margin-left: 0;
+  color: #6b6560;
+  font-style: italic;
+}
+
+.markdown-body :deep(hr) {
+  border: none;
+  border-top: 1px solid #e8e4df;
+  margin: 20px 0;
+}
+
+.markdown-body :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+}
+
+.markdown-body :deep(th),
+.markdown-body :deep(td) {
+  border: 1px solid #e8e4df;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.markdown-body :deep(th) {
+  background: #f5f3f0;
+  font-weight: 600;
 }
 
 .question-section {

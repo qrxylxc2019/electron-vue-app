@@ -1,4 +1,4 @@
-﻿﻿<template>
+﻿﻿﻿﻿<template>
   <div class="quiz-container">
     <el-page-header @back="goBack" :content="directoryName" />
 
@@ -33,7 +33,7 @@
               </div>
             </template>
 
-            <div class="question-title">{{ currentQuestion.title }}</div>
+            <div class="question-title markdown-body" v-html="renderMarkdown(currentQuestion.title)"></div>
 
             <!-- 选择题选项 -->
             <div v-if="currentQuestion.question_type === 'single' || currentQuestion.question_type === 'multiple'" class="options-list">
@@ -59,9 +59,7 @@
                   @click="selectOption(option.key)"
                 >
                   <span class="option-key">{{ option.key }}.</span>
-                  <span class="option-text" :class="{ 'strikethrough': option.deleted }">
-                    {{ option.text || '无内容' }}
-                  </span>
+                  <span class="option-text markdown-body" :class="{ 'strikethrough': option.deleted }" v-html="renderMarkdown(option.text || '')"></span>
                   <!-- 答案对错的图标显示 -->
                   <el-icon v-if="showAnswer && isCorrectOption(option.key)" class="result-icon correct-icon"><CircleCheck /></el-icon>
                   <el-icon v-if="showAnswer && isWrongOption(option.key)" class="result-icon wrong-icon"><CircleClose /></el-icon>
@@ -89,7 +87,7 @@
                     class="paragraph-item"
                     :class="{ 'hidden': hiddenParagraphs.has(index) }"
                   >
-                    <p class="paragraph-text">{{ paragraph }}</p>
+                    <p class="paragraph-text markdown-body" v-html="renderMarkdown(paragraph)"></p>
                   </div>
                   <el-button
                     class="toggle-btn"
@@ -160,9 +158,7 @@
             <!-- 答案显示 -->
             <div v-if="showAnswer" class="answer-result">
               <el-divider />
-              <div v-if="currentQuestion.explanation" class="explanation-line">
-                <strong>解析：</strong>{{ currentQuestion.explanation }}
-              </div>
+              <div v-if="currentQuestion.explanation" class="explanation-line markdown-body" v-html="renderMarkdown('**解析：**' + currentQuestion.explanation)"></div>
             </div>
           </el-card>
         </div>
@@ -304,7 +300,7 @@
                   <el-tag :type="similarQuestionTypeTag.type">{{ similarQuestionTypeTag.text }}</el-tag>
                 </div>
               </template>
-              <div class="question-title">{{ currentSimilarQuestion.title }}</div>
+              <div class="question-title markdown-body" v-html="renderMarkdown(currentSimilarQuestion.title)"></div>
               <!-- 选项 -->
               <div class="options-list">
                 <div
@@ -319,7 +315,7 @@
                 >
                   <div class="option-item" @click="selectSimilarOption(option.key)">
                     <span class="option-key">{{ option.key }}.</span>
-                    <span class="option-text">{{ option.text || '无内容' }}</span>
+                    <span class="option-text markdown-body" v-html="renderMarkdown(option.text || '')"></span>
                     <el-icon v-if="showSimilarAnswer && isSimilarCorrectOption(option.key)" class="result-icon correct-icon"><CircleCheck /></el-icon>
                     <el-icon v-if="showSimilarAnswer && isSimilarWrongOption(option.key)" class="result-icon wrong-icon"><CircleClose /></el-icon>
                   </div>
@@ -331,9 +327,7 @@
                 <div class="explanation-line">
                   <strong>正确答案：</strong>{{ currentSimilarQuestion.correct_answer }}
                 </div>
-                <div v-if="currentSimilarQuestion.explanation" class="explanation-line">
-                  <strong>解析：</strong>{{ currentSimilarQuestion.explanation }}
-                </div>
+                <div v-if="currentSimilarQuestion.explanation" class="explanation-line markdown-body" v-html="renderMarkdown('**解析：**' + currentSimilarQuestion.explanation)"></div>
               </div>
             </el-card>
             <!-- 操作按钮 -->
@@ -1469,6 +1463,88 @@ onMounted(() => {
   padding: 10px 0;
 }
 
+/* Markdown 渲染样式 */
+.markdown-body :deep(h1),
+.markdown-body :deep(h2),
+.markdown-body :deep(h3),
+.markdown-body :deep(h4) {
+  margin-top: 16px;
+  margin-bottom: 10px;
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.markdown-body :deep(p) {
+  margin-bottom: 10px;
+}
+
+.markdown-body :deep(strong) {
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.markdown-body :deep(code) {
+  background: #f0ece7;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+}
+
+.markdown-body :deep(pre) {
+  background: #f5f3f0;
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin-bottom: 12px;
+}
+
+.markdown-body :deep(pre code) {
+  background: transparent;
+  padding: 0;
+}
+
+.markdown-body :deep(ul),
+.markdown-body :deep(ol) {
+  margin-bottom: 12px;
+  padding-left: 24px;
+}
+
+.markdown-body :deep(li) {
+  margin-bottom: 6px;
+}
+
+.markdown-body :deep(blockquote) {
+  border-left: 4px solid #c4a882;
+  padding-left: 16px;
+  margin-left: 0;
+  color: #6b6560;
+  font-style: italic;
+}
+
+.markdown-body :deep(hr) {
+  border: none;
+  border-top: 1px solid #e8e4df;
+  margin: 20px 0;
+}
+
+.markdown-body :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+}
+
+.markdown-body :deep(th),
+.markdown-body :deep(td) {
+  border: 1px solid #e8e4df;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.markdown-body :deep(th) {
+  background: #f5f3f0;
+  font-weight: 600;
+}
 
 .confirm-btn {
   margin-top: 20px;
