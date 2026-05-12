@@ -764,6 +764,8 @@ const resetQuestionState = () => {
   selectedAnswer.value = '';
   selectedAnswers.value.clear();
   showAnswer.value = false;
+  // 清空高项论文手写输入
+  handwriteInputs.value = {};
 };
 
 // 监听题目变化，清空删除状态和 AI 状态
@@ -773,6 +775,8 @@ watch(currentQuestion, () => {
   selectedAnswer.value = '';
   selectedAnswers.value.clear();
   showAnswer.value = false;
+  // 清空高项论文手写输入
+  handwriteInputs.value = {};
   // 关闭 AI 抽屉并重置状态
   aiDrawerVisible.value = false;
   aiLoading.value = false;
