@@ -127,10 +127,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import type { CaseMaterial, CaseQuestion } from '../types';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { marked } from 'marked';
-import type { CaseMaterial, CaseQuestion } from '../types';
 import { EditPen } from '@element-plus/icons-vue';
 
 const props = defineProps<{
@@ -186,6 +186,15 @@ const renderMarkdown = (content: string) => {
   return marked.parse(content || '', { async: false }) as string;
 };
 
+// 数组随机打乱
+function shuffleArray<T>(array: T[]): T[] {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
 // 加载数据
 const loadData = async () => {
   try {
@@ -197,14 +206,37 @@ const loadData = async () => {
     }
 
     // 加载案例材料
-    const mats = await window.electronAPI.getCaseMaterials(dirId);
+    let mats = await window.electronAPI.getCaseMaterials(dirId);
     if (mats.length === 0) {
       ElMessage.warning('该科目暂无案例');
       return;
     }
+
+    // 处理出题设置参数
+    const mode = route.query.mode as string;
+    const count = parseInt(route.query.count as string) || mats.length;
+    const repeat = parseInt(route.query.repeat as string) || 1;
+
+    // 先随机打乱
+    mats = shuffleArray([...mats]);
+
+    if (mode === 'random' && count < mats.length) {
+      mats = mats.slice(0, count);
+    }
+
+    if (repeat > 1) {
+      const baseMaterials = [...mats];
+      const repeated: CaseMaterial[] = [];
+      for (let i = 0; i < repeat; i++) {
+        repeated.push(...shuffleArray([...baseMaterials]));
+      }
+      mats = repeated;
+    }
+
     materials.value = mats;
 
     // 加载每个材料的小题
+    caseQuestionsMap.value = {};
     for (const mat of mats) {
       const questions = await window.electronAPI.getCaseQuestions(mat.id);
       caseQuestionsMap.value[mat.id] = questions;
@@ -237,13 +269,16 @@ const prevQuestion = () => {
   }
 };
 
-// 下一题（仅在同案例的小题间切换，不跨案例）
+// 下一题（同案例的小题间切换，当前案例最后一个小题后进入下一大题）
 const nextQuestion = () => {
   if (currentQuestionIndex.value < caseQuestions.value.length - 1) {
     // 同一案例的下一小题
     currentQuestionIndex.value++;
     showAnswer.value = false;
     handwriteInput.value = '';
+  } else {
+    // 当前案例已是最后一个小题，进入下一大题
+    nextMaterial();
   }
 };
 
@@ -254,6 +289,10 @@ const nextMaterial = () => {
     currentQuestionIndex.value = 0;
     showAnswer.value = false;
     handwriteInput.value = '';
+  } else {
+    // 已经是最后一题，重新加载题目（按照配置重新随机获取）
+    ElMessage.success('本轮题目已完成，即将重新开始');
+    loadData();
   }
 };
 

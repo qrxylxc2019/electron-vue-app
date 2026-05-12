@@ -1,4 +1,4 @@
-﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿<template>
   <div class="directory-list">
     <div class="header">
       <h1>选择科目</h1>
@@ -199,7 +199,12 @@ const enterQuiz = (directoryId: number) => {
   if (isCaseDir) {
     router.push({
       name: 'CaseQuiz',
-      params: { directoryId: directoryId.toString() }
+      params: { directoryId: directoryId.toString() },
+      query: {
+        mode: quizSettings.value.mode,
+        count: quizSettings.value.count.toString(),
+        repeat: quizSettings.value.repeat.toString()
+      }
     });
     return;
   }
