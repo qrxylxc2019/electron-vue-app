@@ -112,9 +112,8 @@
             <el-button
               class="next-material-btn"
               @click="nextMaterial"
-              :disabled="currentMaterialIndex === materials.length - 1"
             >
-              下一大题 <el-icon><ArrowRight /></el-icon>
+              {{ currentMaterialIndex === materials.length - 1 ? '重新开始' : '下一大题' }} <el-icon><ArrowRight /></el-icon>
             </el-button>
           </div>
         </div>
