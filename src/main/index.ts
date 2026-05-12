@@ -8,10 +8,10 @@ let db: Database.Database | null = null;
 
 // ��ȡ���ݿ�·??
 function getDbPath(): string {
-  // ͳһʹ�� out/win-unpacked/resources/data/qingrui.db
+  // ͳһʹ�� out/data/qingrui.db
   // ����ģʺʹ�װexe��ʹ��ͬһ��·��
   const projectRoot = path.join(__dirname, '..', '..');
-  return path.join(projectRoot, 'out', 'win-unpacked', 'resources', 'data', 'qingrui.db');
+  return path.join(projectRoot, 'out', 'data', 'qingrui.db');
 }
 
 // ��ʼ�����ݿ�

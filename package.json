@@ -46,7 +46,7 @@
     ],
     "extraResources": [
       {
-        "from": "out/win-unpacked/resources/data/qingrui.db",
+        "from": "out/data/qingrui.db",
         "to": "data/qingrui.db"
       }
     ],
