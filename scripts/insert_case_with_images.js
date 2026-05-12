@@ -24,7 +24,7 @@ const fs = require('fs');
 const path = require('path');
 
 // 配置
-const DB_PATH = path.join(__dirname, '..', 'src', 'main', 'qingrui.db');
+const DB_PATH = path.join(__dirname, '..', 'out', 'win-unpacked', 'resources', 'data', 'qingrui.db');
 const TARGET_IMAGE_DIR = path.join(__dirname, '..', 'src', 'renderer', 'public', 'case_images');
 const SUBJECT_NAME = '高项案例';
 

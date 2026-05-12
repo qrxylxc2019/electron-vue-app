@@ -8,13 +8,10 @@ let db: Database.Database | null = null;
 
 // ��ȡ���ݿ�·??
 function getDbPath(): string {
-  const isDev = !app.isPackaged;
-  if (isDev) {
-    // ����ģʽ��ʹ�� src/main ��Ŀ¼�µ���ݿ�
-    return path.join(__dirname, '..', '..', 'src', 'main', 'qingrui.db');
-  }
-  // ���򷢲�ģʽ��ʹ�� extraResources �е�����
-  return path.join(process.resourcesPath, 'data', 'qingrui.db');
+  // ͳһʹ�� out/win-unpacked/resources/data/qingrui.db
+  // ����ģʺʹ�װexe��ʹ��ͬһ��·��
+  const projectRoot = path.join(__dirname, '..', '..');
+  return path.join(projectRoot, 'out', 'win-unpacked', 'resources', 'data', 'qingrui.db');
 }
 
 // ��ʼ�����ݿ�
