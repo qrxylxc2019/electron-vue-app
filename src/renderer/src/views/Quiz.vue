@@ -272,7 +272,7 @@
                       <div
                         v-for="option in aiSimilarOptionsList"
                         :key="option.key"
-                        class="ai-similar-option"
+                        class="ai-similar-option-row"
                         :class="{
                           'selected': aiSelectedSimilarAnswer === option.key,
                           'deleted': option.deleted,
@@ -283,7 +283,7 @@
                         <div class="delete-btn" :class="{ 'is-deleted': option.deleted }" @click.stop="aiToggleDeleteOption(option.key)">
                           <el-icon><Delete /></el-icon>
                         </div>
-                        <div class="option-content" @click="aiSelectSimilarOption(option.key)">
+                        <div class="ai-similar-option" @click="aiSelectSimilarOption(option.key)">
                           <span class="option-key">{{ option.key }}.</span>
                           <span class="option-text">{{ option.text }}</span>
                         </div>
@@ -2184,7 +2184,7 @@ onMounted(() => {
   padding:10px 0;
   display:flex;
   flex-direction:column;
-  gap:5px;
+  gap:20px;
 }
 
 .generate-similar-btn {
@@ -2241,7 +2241,42 @@ onMounted(() => {
   margin-bottom: 16px;
 }
 
+.ai-similar-option-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ai-similar-option-row .delete-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: transparent;
+  color: #f56c6c;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.ai-similar-option-row .delete-btn.is-deleted {
+  color: #c0c4cc;
+}
+
+.ai-similar-option-row .delete-btn:hover {
+  color: #ff7875;
+}
+
+.ai-similar-option-row.deleted .ai-similar-option {
+  opacity: 0.3;
+  text-decoration: line-through;
+  pointer-events: none;
+}
+
 .ai-similar-option {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -2256,54 +2291,19 @@ onMounted(() => {
   background: #f0ece7;
 }
 
-.ai-similar-option.selected {
+.ai-similar-option-row.selected .ai-similar-option {
   background: #e8f5e9;
   border: 1.5px solid #c8e6c9;
 }
 
-.ai-similar-option.correct {
+.ai-similar-option-row.correct .ai-similar-option {
   background: #e8f5e9;
   border: 1.5px solid #67c23a;
 }
 
-.ai-similar-option.wrong {
+.ai-similar-option-row.wrong .ai-similar-option {
   background: #fef0f0;
   border: 1.5px solid #f56c6c;
-}
-
-.ai-similar-option.deleted {
-  opacity: 0.3;
-  text-decoration: line-through;
-  pointer-events: none;
-}
-
-.ai-similar-option .delete-btn {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  background: transparent;
-  color: #f56c6c;
-  cursor: pointer;
-  flex-shrink: 0;
-  font-size: 18px;
-}
-
-.ai-similar-option .delete-btn.is-deleted {
-  color: #c0c4cc;
-}
-
-.ai-similar-option .delete-btn:hover {
-  color: #ff7875;
-}
-
-.ai-similar-option .option-content {
-  flex: 1;
-  display: flex;
-  gap: 8px;
-  font-size: 16px;
 }
 
 .ai-similar-answer {
