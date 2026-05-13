@@ -155,7 +155,7 @@
                 @click="openAIChatDrawer"
               >
                 <el-icon><Cpu /></el-icon>
-                {{ aiLoading ? 'AI 思考中...' : 'AI讲解' }}
+                AI讲解
               </el-button>
               <el-button
                 class="similar-btn"
@@ -241,9 +241,7 @@
             <!-- 正在输入中 v-if="aiLoading"-->
             <div v-if="aiLoading" class="chat-message assistant">
               <div class="message-bubble loading-bubble">
-                <div v-if="aiProviderName" class="message-provider">{{ aiProviderName }}</div>
                 <el-icon class="is-loading"><Loading /></el-icon>
-                <span>AI 正在思考中...</span>
               </div>
             </div>
             <!-- 错误提示 -->
