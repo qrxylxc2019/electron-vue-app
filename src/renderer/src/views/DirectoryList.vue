@@ -1,10 +1,10 @@
-﻿﻿﻿﻿﻿﻿<template>
+﻿﻿<template>
   <div class="directory-list">
     <div class="header">
       <h1>选择科目</h1>
       <div class="header-actions">
         <el-button class="settings-btn" @click="openGlobalQuizSettings">
-          <el-icon><Setting /></el-icon>出题设置
+          <el-icon><Setting /></el-icon>设置
         </el-button>
         <el-button class="fullscreen-btn" @click="toggleFullscreen">
           <el-icon><FullScreen /></el-icon>
@@ -51,30 +51,78 @@
       </template>
     </el-dialog>
 
-    <!-- 出题设置对话框 -->
+    <!-- 设置对话框 -->
     <el-dialog
       v-model="showSettingsDialog"
-      title="出题设置"
-      width="500px"
-      class="warm-dialog"
+      title="设置"
+      width="700px"
+      class="warm-dialog settings-dialog"
     >
-      <el-form :model="quizSettings" label-width="120px">
-        <el-form-item label="出题模式">
-          <el-radio-group v-model="quizSettings.mode">
-            <el-radio label="all">全部题目</el-radio>
-            <el-radio label="random">随机出题</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="出题数量" v-if="quizSettings.mode === 'random'">
-          <el-input-number v-model="quizSettings.count" :min="1" :max="200" :step="1" />
-        </el-form-item>
-        <el-form-item label="重复次数">
-          <el-input-number v-model="quizSettings.repeat" :min="1" :max="10" :step="1" />
-        </el-form-item>
-      </el-form>
+      <div class="settings-layout">
+        <!-- 左侧菜单 -->
+        <div class="settings-menu">
+          <div
+            class="menu-item"
+            :class="{ active: activeSettingsTab === 'mode' }"
+            @click="activeSettingsTab = 'mode'"
+          >
+            <el-icon><Document /></el-icon>
+            <span>模式</span>
+          </div>
+          <div
+            class="menu-item"
+            :class="{ active: activeSettingsTab === 'api' }"
+            @click="activeSettingsTab = 'api'"
+          >
+            <el-icon><Connection /></el-icon>
+            <span>API设置</span>
+          </div>
+        </div>
+
+        <!-- 右侧内容区 -->
+        <div class="settings-content">
+          <!-- 模式设置 -->
+          <div v-if="activeSettingsTab === 'mode'" class="settings-panel">
+            <el-form :model="quizSettings" label-width="120px">
+              <el-form-item label="出题模式">
+                <el-radio-group v-model="quizSettings.mode">
+                  <el-radio label="all">全部题目</el-radio>
+                  <el-radio label="random">随机出题</el-radio>
+                </el-radio-group>
+              </el-form-item>
+              <el-form-item label="出题数量" v-if="quizSettings.mode === 'random'">
+                <el-input-number v-model="quizSettings.count" :min="1" :max="200" :step="1" />
+              </el-form-item>
+              <el-form-item label="重复次数">
+                <el-input-number v-model="quizSettings.repeat" :min="1" :max="10" :step="1" />
+              </el-form-item>
+            </el-form>
+          </div>
+
+          <!-- API设置 -->
+          <div v-if="activeSettingsTab === 'api'" class="settings-panel">
+            <div class="api-sort-hint">拖拽调整调用优先级</div>
+            <div class="api-provider-list">
+              <div
+                v-for="(provider, index) in apiProviderOrder"
+                :key="provider.key"
+                class="api-provider-item"
+                draggable="true"
+                @dragstart="handleDragStart($event, index)"
+                @dragover.prevent
+                @drop="handleDrop($event, index)"
+              >
+                <span class="provider-rank">{{ index + 1 }}</span>
+                <span class="provider-name">{{ provider.name }}</span>
+                <el-icon class="drag-icon"><Rank /></el-icon>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       <template #footer>
         <el-button @click="showSettingsDialog = false">取消</el-button>
-        <el-button class="add-btn" @click="saveQuizSettings">保存设置</el-button>
+        <el-button class="add-btn" @click="saveSettings">保存设置</el-button>
       </template>
     </el-dialog>
   </div>
@@ -85,6 +133,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import type { Directory, Article } from '../types';
+import { Rank } from '@element-plus/icons-vue';
 
 const router = useRouter();
 const directories = ref<Directory[]>([]);
@@ -104,7 +153,16 @@ const quizSettings = ref({
   repeat: 5
 });
 
-// 从缓存加载设置
+const API_PROVIDERS = [
+  { key: 'modelspace', name: 'ModelSpace' },
+  { key: 'deepseek', name: 'DeepSeek' },
+];
+
+const apiProviderOrder = ref([...API_PROVIDERS]);
+
+const activeSettingsTab = ref('mode');
+
+// 从缓存加载出题设置
 const loadSettingsFromStorage = () => {
   try {
     const stored = localStorage.getItem(SETTINGS_KEY);
@@ -119,10 +177,32 @@ const loadSettingsFromStorage = () => {
   }
 };
 
+const API_ORDER_KEY = 'apiProviderOrder';
+
+// 从本地缓存加载 API 厂商排序
+const loadApiSettings = () => {
+  try {
+    const stored = localStorage.getItem(API_ORDER_KEY);
+    if (stored) {
+      const order = JSON.parse(stored) as string[];
+      // 根据缓存的 key 顺序重新排列
+      const sorted = order
+        .map((key) => API_PROVIDERS.find((p) => p.key === key))
+        .filter(Boolean) as typeof API_PROVIDERS;
+      // 补充可能新增的厂商
+      const remaining = API_PROVIDERS.filter((p) => !order.includes(p.key));
+      apiProviderOrder.value = [...sorted, ...remaining];
+    }
+  } catch (e) {
+    console.error('加载API设置失败:', e);
+  }
+};
+
 // 保存设置到缓存
 const saveSettingsToStorage = () => {
   try {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(quizSettings.value));
+    localStorage.setItem(API_ORDER_KEY, JSON.stringify(apiProviderOrder.value.map((p) => p.key)));
   } catch (e) {
     console.error('保存设置失败:', e);
   }
@@ -227,10 +307,29 @@ const openGlobalQuizSettings = () => {
 };
 
 // 保存设置
-const saveQuizSettings = () => {
+const saveSettings = () => {
   saveSettingsToStorage();
   showSettingsDialog.value = false;
   ElMessage.success('设置已保存');
+};
+
+// 拖拽排序
+let dragIndex = -1;
+
+const handleDragStart = (e: DragEvent, index: number) => {
+  dragIndex = index;
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move';
+  }
+};
+
+const handleDrop = (_e: DragEvent, dropIndex: number) => {
+  if (dragIndex === -1 || dragIndex === dropIndex) return;
+  const list = [...apiProviderOrder.value];
+  const [removed] = list.splice(dragIndex, 1);
+  list.splice(dropIndex, 0, removed);
+  apiProviderOrder.value = list;
+  dragIndex = -1;
 };
 
 const addDirectory = async () => {
@@ -258,6 +357,7 @@ onMounted(() => {
   loadDirectories();
   checkFullscreen();
   loadSettingsFromStorage();
+  loadApiSettings();
 });
 </script>
 
@@ -396,5 +496,126 @@ h1 {
   padding: 4px 12px;
   border-radius: 12px;
   margin-top: 4px;
+}
+
+/* 设置对话框样式 */
+:deep(.settings-dialog .el-dialog__body) {
+  padding: 0;
+}
+
+.settings-layout {
+  display: flex;
+  min-height: 300px;
+}
+
+.settings-menu {
+  width: 140px;
+  background: #f5f3f0;
+  border-right: 1px solid #e8e4df;
+  padding: 16px 0;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #6b6560;
+  font-size: 14px;
+}
+
+.menu-item:hover {
+  background: #e8e4df;
+  color: #1a1a1a;
+}
+
+.menu-item.active {
+  background: #fff;
+  color: #1a1a1a;
+  border-right: 3px solid #c4a882;
+}
+
+.menu-item .el-icon {
+  font-size: 16px;
+}
+
+.settings-content {
+  flex: 1;
+  padding: 24px;
+}
+
+.settings-panel {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* API 厂商排序样式 */
+.api-sort-hint {
+  font-size: 13px;
+  color: #9a9590;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: #f5f3f0;
+  border-radius: 8px;
+}
+
+.api-provider-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.api-provider-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1.5px solid #e8e4df;
+  border-radius: 10px;
+  cursor: move;
+  transition: all 0.2s ease;
+}
+
+.api-provider-item:hover {
+  border-color: #c4a882;
+  background: #fdfbf8;
+}
+
+.provider-rank {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #c4a882;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.provider-name {
+  flex: 1;
+  font-size: 15px;
+  color: #1a1a1a;
+  font-weight: 500;
+}
+
+.drag-icon {
+  color: #c4a882;
+  font-size: 18px;
 }
 </style>

@@ -224,6 +224,7 @@
                 <span v-else>我</span>
               </div>
               <div class="message-bubble">
+                <div v-if="msg.provider" class="message-provider">{{ msg.provider }}</div>
                 <div class="ai-markdown" v-html="renderMarkdown(msg.content)"></div>
               </div>
             </div>
@@ -233,6 +234,7 @@
                 <el-icon><Cpu /></el-icon>
               </div>
               <div class="message-bubble loading-bubble">
+                <div v-if="aiProviderName" class="message-provider">{{ aiProviderName }}</div>
                 <el-icon class="is-loading"><Loading /></el-icon>
                 <span>AI 正在思考中...</span>
               </div>
@@ -243,7 +245,7 @@
                 <el-icon><Warning /></el-icon>
               </div>
               <div class="message-bubble error-bubble">
-                <span>{{ aiError }}</span>
+                <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:inherit;">{{ aiError }}</pre>
               </div>
             </div>
           </div>
@@ -361,6 +363,21 @@ import { marked } from 'marked';
 import type { Question, Article, QuestionType, OptionWithState } from '../types';
 import { Cpu, Collection, Delete, ArrowRight, Loading, Warning, CircleCheck, CircleClose, Close, Promotion, EditPen } from '@element-plus/icons-vue';
 
+const API_ORDER_KEY = 'apiProviderOrder';
+
+// 获取本地缓存的厂商排序
+function getProviderOrder(): string[] {
+  try {
+    const stored = localStorage.getItem(API_ORDER_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    console.error('读取厂商排序失败:', e);
+  }
+  return ['modelspace', 'deepseek'];
+}
+
 const props = defineProps<{
   directoryId: string;
 }>();
@@ -384,7 +401,8 @@ const hiddenParagraphs = ref<Set<number>>(new Set());
 const aiDrawerVisible = ref(false);
 const aiLoading = ref(false);
 const aiError = ref('');
-const aiChatMessages = ref<Array<{role: 'user' | 'assistant'; content: string}>>([]);
+const aiProviderName = ref('');
+const aiChatMessages = ref<Array<{role: 'user' | 'assistant'; content: string; provider?: string}>>([]);
 const aiUserInput = ref('');
 const aiChatContentRef = ref<HTMLDivElement | null>(null);
 const aiChatMessagesRef = ref<HTMLDivElement | null>(null);
@@ -781,6 +799,7 @@ watch(currentQuestion, () => {
   aiDrawerVisible.value = false;
   aiLoading.value = false;
   aiError.value = '';
+  aiProviderName.value = '';
   aiChatMessages.value = [];
   aiUserInput.value = '';
   aiUnsubscribers.forEach(fn => fn());
@@ -839,12 +858,14 @@ const callAIExplain = async (isFollowUp = false, userMessage = '') => {
 
   aiLoading.value = true;
   aiError.value = '';
+  aiProviderName.value = '';
 
   // 清理之前的监听器
   aiUnsubscribers.forEach(fn => fn());
   aiUnsubscribers = [];
 
   let assistantContent = '';
+  let currentProvider = '';
 
   // 设置流式监听
   const unsubChunk = window.electronAPI.onAIStreamChunk((content: string) => {
@@ -853,10 +874,14 @@ const callAIExplain = async (isFollowUp = false, userMessage = '') => {
     const lastMsg = aiChatMessages.value[aiChatMessages.value.length - 1];
     if (lastMsg && lastMsg.role === 'assistant') {
       lastMsg.content = assistantContent;
+      if (currentProvider && !lastMsg.provider) {
+        lastMsg.provider = currentProvider;
+      }
     } else {
       aiChatMessages.value.push({
         role: 'assistant',
-        content: assistantContent
+        content: assistantContent,
+        provider: currentProvider || undefined
       });
     }
     scrollToBottom();
@@ -865,6 +890,7 @@ const callAIExplain = async (isFollowUp = false, userMessage = '') => {
 
   const unsubDone = window.electronAPI.onAIStreamDone(async () => {
     aiLoading.value = false;
+    aiProviderName.value = '';
     // AI 解析完成后，保存到数据库（只保存首次讲解）
     if (!isFollowUp && currentQuestion.value && assistantContent) {
       try {
@@ -880,6 +906,7 @@ const callAIExplain = async (isFollowUp = false, userMessage = '') => {
 
   const unsubError = window.electronAPI.onAIStreamError((error: string) => {
     aiLoading.value = false;
+    aiProviderName.value = '';
     aiError.value = error;
   });
   aiUnsubscribers.push(unsubError);
@@ -893,7 +920,12 @@ const callAIExplain = async (isFollowUp = false, userMessage = '') => {
   }
 
   try {
-    await window.electronAPI.explainQuestion({
+    const providerOrder = getProviderOrder();
+    // 预估当前会使用的厂商（第一个）
+    currentProvider = providerOrder[0] === 'modelspace' ? 'ModelSpace' : providerOrder[0] === 'deepseek' ? 'DeepSeek' : providerOrder[0];
+    aiProviderName.value = currentProvider;
+
+    const result = await window.electronAPI.explainQuestion({
       title: currentQuestion.value.title,
       options: optionsText,
       correctAnswer: currentQuestion.value.correct_answer,
@@ -901,9 +933,17 @@ const callAIExplain = async (isFollowUp = false, userMessage = '') => {
       questionId: currentQuestion.value.id,
       isFollowUp,
       userMessage,
+      providerOrder,
     });
+
+    if (!result.success && result.error) {
+      aiLoading.value = false;
+      aiProviderName.value = '';
+      aiError.value = result.error;
+    }
   } catch (err: any) {
     aiLoading.value = false;
+    aiProviderName.value = '';
     aiError.value = err.message || '调用失败';
   }
 };
@@ -994,6 +1034,7 @@ const openSimilarDrawer = async () => {
       options: optionsText,
       correctAnswer: currentQuestion.value.correct_answer,
       explanation: currentQuestion.value.explanation || '',
+      providerOrder: getProviderOrder(),
     });
 
     if (result.success && result.questions) {
@@ -1750,6 +1791,16 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   color: #6b6560;
+}
+
+.message-provider {
+  font-size: 12px;
+  color: #9a9590;
+  margin-bottom: 6px;
+  padding: 2px 8px;
+  background: #f5f3f0;
+  border-radius: 4px;
+  display: inline-block;
 }
 
 .error-bubble {

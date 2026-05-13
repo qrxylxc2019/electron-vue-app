@@ -47,6 +47,10 @@ const electronAPI = {
   getSimilarQuestions: (pid: number) => ipcRenderer.invoke('db:getSimilarQuestions', pid),
   addSimilarQuestions: (questions: any[]) => ipcRenderer.invoke('db:addSimilarQuestions', questions),
   generateSimilarQuestions: (questionData: any) => ipcRenderer.invoke('ai:generateSimilarQuestions', questionData),
+
+  // API 设置
+  getApiSettings: () => ipcRenderer.invoke('db:getApiSettings'),
+  saveApiSettings: (settings: any) => ipcRenderer.invoke('db:saveApiSettings', settings),
 };
 
 // 暴露给渲染进程的 API

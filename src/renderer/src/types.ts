@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿// 类型声明
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿// 类型声明
 export interface Directory {
   id: number;
   name: string;
@@ -78,6 +78,7 @@ export interface AIQuestionData {
   questionId?: number;
   isFollowUp?: boolean;
   userMessage?: string;
+  providerOrder?: string[];
 }
 
 // AI 对话消息
@@ -114,6 +115,9 @@ declare global {
       getSimilarQuestions: (pid: number) => Promise<Question[]>;
       addSimilarQuestions: (questions: any[]) => Promise<Question[]>;
       generateSimilarQuestions: (questionData: AIQuestionData) => Promise<{ success: boolean; questions?: any[]; error?: string }>;
+      // API 设置（已改为前端本地存储，保留兼容）
+      getApiSettings: () => Promise<Record<string, string>>;
+      saveApiSettings: (settings: any) => Promise<boolean>;
     };
   }
 }

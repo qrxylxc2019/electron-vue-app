@@ -3,6 +3,7 @@ import path from 'path';
 import Database from 'better-sqlite3';
 import { OpenAI } from 'openai';
 import fs from 'fs';
+import { getOpenAIClient, getCurrentModel, PROMPTS, callAIWithFallback } from './apikey';
 
 let mainWindow: BrowserWindow | null = null;
 let db: Database.Database | null = null;
@@ -189,6 +190,8 @@ function initDatabase() {
       )
     `);
 
+    // API 设置已改为前端本地存储 + 后端硬编码，无需数据库表
+
     console.log('Database initialized successfully');
 
     // 初始化默认数据：高项论文章节和论文题目
@@ -197,6 +200,8 @@ function initDatabase() {
     console.error('Database initialization error:', err);
   }
 }
+
+// API 设置已改为前端本地存储 + 后端硬编码，无需数据库相关函数
 
 // 初始化默认数据
 function seedDefaultData() {
@@ -710,57 +715,41 @@ ipcMain.handle('window:isFullScreen', () => {
 // AI 对话上下文存储（按题目ID存储对话历史）
 const aiChatContexts = new Map<number, Array<{role: string; content: string}>>();
 
-// AI 讲解：流式调用 ModelScope API，支持多轮对话
+// AI 讲解：流式调用 API，支持多轮对话，带厂商兜底
 ipcMain.handle('ai:explainQuestion', async (_event, questionData: any) => {
-  try {
-    const client = new OpenAI({
-      apiKey: 'ms-9dadd6e0-9d06-4e91-b639-5a7af28da529',
-      baseURL: 'https://api-inference.modelscope.cn/v1',
-    });
+  const questionId = questionData.questionId as number;
+  const isFollowUp = questionData.isFollowUp as boolean;
+  const userMessage = questionData.userMessage as string || '';
+  const providerOrder = (questionData.providerOrder as string[]) || ['modelspace', 'deepseek'];
 
-    const questionId = questionData.questionId as number;
-    const isFollowUp = questionData.isFollowUp as boolean;
-    const userMessage = questionData.userMessage as string || '';
+  // 获取或初始化对话上下文
+  let messages: Array<{role: string; content: string}> = [];
+  if (isFollowUp && aiChatContexts.has(questionId)) {
+    messages = [...aiChatContexts.get(questionId)!];
+  }
 
-    const systemPrompt = `你是一位资深软考培训讲师，擅长用通俗易懂的方式讲解IT知识。你的讲解风格：
-1. 用生活中的比喻和类比来解释抽象概念
-2. 先讲核心原理，再展开细节
-3. 结合题目选项逐一分析，说明为什么对、为什么错
-4. 语言生动有趣，像讲故事一样
-5. 适当使用例子帮助理解
-6. 最后总结记忆口诀或要点`;
+  // 如果是首次讲解，构建初始题目信息
+  if (!isFollowUp) {
+    const prompt = PROMPTS.explainQuestion(
+      questionData.title,
+      questionData.correctAnswer,
+      questionData.explanation
+    );
+    messages = [
+      { role: 'system', content: prompt.system },
+      { role: 'user', content: prompt.user },
+    ];
+  } else {
+    // 追问模式：添加用户新问题
+    messages.push({ role: 'user', content: userMessage });
+  }
 
-    // 获取或初始化对话上下文
-    let messages: Array<{role: string; content: string}> = [];
-    if (isFollowUp && aiChatContexts.has(questionId)) {
-      messages = [...aiChatContexts.get(questionId)!];
-    }
-
-    // 如果是首次讲解，构建初始题目信息
-    if (!isFollowUp) {
-      const userPrompt = `请详细讲解以下这道软考题目：
-
-【题干】${questionData.title}
-
-【选项】
-${questionData.options || '（判断题/简答题，无选项）'}
-
-【正确答案】${questionData.correctAnswer}
-
-【解析】${questionData.explanation || '暂无解析'}
-
-请用生动的比喻和例子，详细讲解这道题涉及的知识点，并分析每个选项为什么对或错。`;
-      messages = [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ];
-    } else {
-      // 追问模式：添加用户新问题
-      messages.push({ role: 'user', content: userMessage });
-    }
+  const result = await callAIWithFallback(providerOrder, async (provider) => {
+    const client = getOpenAIClient(provider);
+    const model = getCurrentModel(provider);
 
     const stream = await client.chat.completions.create({
-      model: 'deepseek-ai/DeepSeek-R1-0528',
+      model,
       messages: messages as any,
       stream: true,
       temperature: 0.7,
@@ -785,62 +774,35 @@ ${questionData.options || '（判断题/简答题，无选项）'}
       mainWindow.webContents.send('ai:streamDone');
     }
 
-    return { success: true };
-  } catch (err: any) {
-    console.error('AI explain error:', err);
+    return assistantContent;
+  });
+
+  if (!result.success) {
+    console.error('AI explain error:', result.error);
     if (mainWindow) {
-      mainWindow.webContents.send('ai:streamError', err.message || 'AI调用失败');
+      mainWindow.webContents.send('ai:streamError', result.error);
     }
-    return { success: false, error: err.message };
+    return { success: false, error: result.error };
   }
+
+  return { success: true };
 });
 
-// AI 生成同类题
+// AI 生成同类题，带厂商兜底
 ipcMain.handle('ai:generateSimilarQuestions', async (_event, questionData: any) => {
-  try {
-    const client = new OpenAI({
-      apiKey: 'ms-9dadd6e0-9d06-4e91-b639-5a7af28da529',
-      baseURL: 'https://api-inference.modelscope.cn/v1',
-    });
+  const providerOrder = (questionData.providerOrder as string[]) || ['modelspace', 'deepseek'];
 
-    const systemPrompt = `你是一位资深软考命题专家，擅长根据已有题目生成高质量的同类练习题。生成要求：
-1. 保持与原题相同的知识点和考查方向
-2. 题干表述要有所变化，不能照搬原题
-3. 选项内容要重新设计，但考查点一致
-4. 难度与原题相当
-5. 必须输出标准JSON格式，包含5道题目
-6. 每道题包含：title(题干)、option_a/b/c/d(选项)、correct_answer(正确答案A/B/C/D)、explanation(解析)
-7. 题目类型与原题一致`;
+  const prompt = PROMPTS.generateSimilar(questionData);
 
-    const userPrompt = `请根据以下原题，生成5道同类练习题（考查相同知识点，但题干和选项重新设计）：
-
-【原题】${questionData.title}
-
-【选项】
-${questionData.options || '（判断题/简答题，无选项）'}
-
-【正确答案】${questionData.correctAnswer}
-
-【解析】${questionData.explanation || '暂无解析'}
-
-请直接返回JSON数组格式，不要包含任何其他文字说明。格式如下：
-[
-  {
-    "title": "题干内容",
-    "option_a": "选项A",
-    "option_b": "选项B",
-    "option_c": "选项C",
-    "option_d": "选项D",
-    "correct_answer": "A",
-    "explanation": "解析内容"
-  }
-]`;
+  const result = await callAIWithFallback(providerOrder, async (provider) => {
+    const client = getOpenAIClient(provider);
+    const model = getCurrentModel(provider);
 
     const response = await client.chat.completions.create({
-      model: 'deepseek-ai/DeepSeek-R1-0528',
+      model,
       messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
+        { role: 'system', content: prompt.system },
+        { role: 'user', content: prompt.user },
       ],
       stream: false,
       temperature: 0.8,
@@ -853,12 +815,24 @@ ${questionData.options || '（判断题/简答题，无选项）'}
     if (!jsonMatch) {
       throw new Error('AI返回格式不正确');
     }
-    const questions = JSON.parse(jsonMatch[0]);
-    return { success: true, questions };
-  } catch (err: any) {
-    console.error('AI generate similar questions error:', err);
-    return { success: false, error: err.message };
+    return JSON.parse(jsonMatch[0]);
+  });
+
+  if (!result.success) {
+    console.error('AI generate similar questions error:', result.error);
+    return { success: false, error: result.error };
   }
+
+  return { success: true, questions: result.data };
+});
+
+// API 设置已改为前端本地存储，IPC 接口保留空实现以兼容旧代码
+ipcMain.handle('db:getApiSettings', () => {
+  return {};
+});
+
+ipcMain.handle('db:saveApiSettings', () => {
+  return true;
 });
 
 app.on('window-all-closed', () => {
