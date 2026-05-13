@@ -3,8 +3,9 @@ import path from 'path';
 import Database from 'better-sqlite3';
 import { OpenAI } from 'openai';
 import fs from 'fs';
-import { getOpenAIClient, getCurrentModel, PROMPTS, callAIWithFallback } from './apikey';
-import { setupDeepSeekIpc } from './deepseek';
+import { getOpenAIClient, getCurrentModel, PROMPTS, callAIWithFallback, setDeepSeekLocalToken } from './apikey';
+import { setupDeepSeekIpc, initDeepSeekClient, getDeepSeekClient } from './deepseek';
+import { DeepSeekClient } from './deepseek/client';
 
 let mainWindow: BrowserWindow | null = null;
 let db: Database.Database | null = null;
@@ -750,6 +751,44 @@ ipcMain.handle('ai:explainQuestion', async (_event, questionData: any) => {
     providerOrder,
     async (provider) => {
       log(`[AI] 开始调用厂商: ${provider}`);
+      // 支持 DeepSeek 本地版
+      if (provider === 'deepseekLocal') {
+        const dsClient = getDeepSeekClient();
+        if (!dsClient) {
+          throw new Error('DeepSeek 本地版客户端未初始化，请先设置 Token');
+        }
+        log(`[AI] 使用 DeepSeek 本地版客户端`);
+
+        // 转换消息格式为 DeepSeekMessage
+        const dsMessages = messages.map(m => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content
+        }));
+
+        let assistantContent = '';
+        for await (const chunk of dsClient.chatStream(dsMessages, 'deepseek-chat')) {
+          if (chunk.type === 'text' && chunk.content) {
+            assistantContent += chunk.content;
+            if (mainWindow) {
+              mainWindow.webContents.send('ai:streamChunk', chunk.content);
+            }
+          } else if (chunk.type === 'error') {
+            throw new Error(chunk.content || 'DeepSeek 聊天失败');
+          }
+        }
+
+        // 保存对话上下文
+        messages.push({ role: 'assistant', content: assistantContent });
+        aiChatContexts.set(questionId, messages);
+
+        if (mainWindow) {
+          mainWindow.webContents.send('ai:streamDone');
+        }
+
+        log(`[AI] DeepSeek 本地版调用成功`);
+        return assistantContent;
+      }
+
       const client = getOpenAIClient(provider);
       const model = getCurrentModel(provider);
       log(`[AI] 使用模型: ${model}`);
@@ -809,6 +848,32 @@ ipcMain.handle('ai:generateSimilarQuestions', async (_event, questionData: any) 
   const prompt = PROMPTS.generateSimilar(questionData);
 
   const result = await callAIWithFallback(providerOrder, async (provider) => {
+    // 支持 DeepSeek 本地版
+    if (provider === 'deepseekLocal') {
+      const dsClient = getDeepSeekClient();
+      if (!dsClient) {
+        throw new Error('DeepSeek 本地版客户端未初始化，请先设置 Token');
+      }
+
+      const dsMessages: { role: 'user' | 'assistant'; content: string }[] = [
+        { role: 'user', content: `${prompt.system}\n\n${prompt.user}` }
+      ];
+
+      let content = '';
+      let thinking = '';
+      for await (const chunk of dsClient.chatStream(dsMessages, 'deepseek-chat')) {
+        if (chunk.type === 'text' && chunk.content) {
+          content += chunk.content;
+        } else if (chunk.type === 'thinking' && chunk.content) {
+          thinking += chunk.content;
+        } else if (chunk.type === 'error') {
+          throw new Error(chunk.content || 'DeepSeek 聊天失败');
+        }
+      }
+
+      return { content };
+    }
+
     const client = getOpenAIClient(provider);
     const model = getCurrentModel(provider);
 
@@ -847,6 +912,25 @@ ipcMain.handle('db:getApiSettings', () => {
 
 ipcMain.handle('db:saveApiSettings', () => {
   return true;
+});
+
+// DeepSeek 本地版 Token 测试
+ipcMain.handle('deepseekLocal:testToken', async (_event, token: string) => {
+  try {
+    // 使用 DeepSeekClient 直接测试 token
+    const testClient = new DeepSeekClient({ token });
+    const isValid = await testClient.checkTokenStatus();
+    if (isValid) {
+      // 测试成功，初始化客户端并保存 token
+      initDeepSeekClient(token);
+      setDeepSeekLocalToken(token);
+      return { success: true };
+    }
+    return { success: false, error: 'Token 无效或已过期' };
+  } catch (err: any) {
+    console.error('DeepSeek 本地版测试失败:', err);
+    return { success: false, error: err.message || '连接失败' };
+  }
 });
 
 app.on('window-all-closed', () => {

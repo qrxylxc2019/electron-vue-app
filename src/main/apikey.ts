@@ -22,11 +22,35 @@ export const DEFAULT_API_CONFIGS: Record<string, ApiProviderConfig> = {
     defaultModel: 'deepseek-v4-flash',
     apiKey: 'sk-793f0d8a79b547b996d39f2f1f8af852',
   },
+  deepseekLocal: {
+    name: 'DeepSeek本地版',
+    baseURL: 'http://localhost:8000/v1',
+    defaultModel: 'deepseek-chat',
+    apiKey: '',
+  },
 };
 
-// 提示词配置
+// DeepSeek 本地版 Token 存储（由业务层传入，不直接访问 localStorage）
+let deepSeekLocalTokenCache: string = '';
+
+// 获取 DeepSeek 本地版 Token
+export function getDeepSeekLocalToken(): string {
+  return deepSeekLocalTokenCache;
+}
+
+// 设置 DeepSeek 本地版 Token
+export function setDeepSeekLocalToken(token: string): void {
+  deepSeekLocalTokenCache = token;
+}
+
+// 导出 DeepSeek 本地版配置
+export const DEEPSEEK_LOCAL_CONFIG = {
+  name: 'DeepSeek本地版',
+  baseURL: 'https://chat.deepseek.com',
+  defaultModel: 'deepseek-chat',
+};
+
 export const PROMPTS = {
-  // AI 解释题目
   explainQuestion: (questionTitle: string, correctAnswer: string, explanation: string) => ({
     system: `你是一位资深的信息系统项目管理师考试辅导专家，擅长用通俗易懂的方式讲解题目。
 你的讲解风格：

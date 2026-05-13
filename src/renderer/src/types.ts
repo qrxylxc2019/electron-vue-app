@@ -139,6 +139,8 @@ declare global {
       onDSStreamChunk: (callback: (data: { sessionKey: string; type: string; content: string }) => void) => () => void;
       onDSStreamDone: (callback: (data: { sessionKey: string }) => void) => () => void;
       onDSStreamError: (callback: (data: { sessionKey: string; error: string }) => void) => () => void;
+      // DeepSeek 本地版
+      testDeepseekLocalToken: (token: string) => Promise<{ success: boolean; error?: string }>;
     };
   }
 }

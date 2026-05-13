@@ -79,6 +79,9 @@ const electronAPI = {
     ipcRenderer.on('ds:streamError', handler);
     return () => ipcRenderer.removeListener('ds:streamError', handler);
   },
+
+  // DeepSeek 本地版
+  testDeepseekLocalToken: (token: string) => ipcRenderer.invoke('deepseekLocal:testToken', token),
 };
 
 // 暴露给渲染进程的 API

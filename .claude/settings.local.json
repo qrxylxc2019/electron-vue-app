@@ -4,7 +4,10 @@
       "Bash(npx electron-rebuild *)",
       "Bash(npm run *)",
       "Bash(node *)",
-      "Bash(npx *)"
+      "Bash(npx *)",
+      "WebFetch(domain:github.com)",
+      "Bash(gh repo *)",
+      "Bash(gh api *)"
     ]
   }
 }

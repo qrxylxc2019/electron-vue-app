@@ -120,6 +120,22 @@
                 <el-icon class="drag-icon"><Rank /></el-icon>
               </div>
             </div>
+            <!-- DeepSeek 本地版 Token 设置 -->
+            <div class="deepseek-local-section">
+              <div class="section-title">DeepSeek 本地版设置</div>
+              <el-input
+                v-model="deepseekLocalToken"
+                placeholder="请输入 DeepSeek 本地版 Token"
+                show-password
+                class="deepseek-token-input"
+              >
+                <template #append>
+                  <el-button @click="testDeepseekLocalToken" :loading="deepseekLocalTesting">测试连接</el-button>
+                </template>
+              </el-input>
+              <el-tag v-if="deepseekLocalStatus === 'success'" type="success">连接成功</el-tag>
+              <el-tag v-if="deepseekLocalStatus === 'error'" type="danger">连接失败</el-tag>
+            </div>
           </div>
         </div>
       </div>
@@ -235,11 +251,18 @@ const quizSettings = ref({
 const API_PROVIDERS = [
   { key: 'modelspace', name: 'ModelSpace' },
   { key: 'deepseek', name: 'DeepSeek' },
+  { key: 'deepseekLocal', name: 'DeepSeek本地版' },
 ];
 
 const apiProviderOrder = ref([...API_PROVIDERS]);
 
 const activeSettingsTab = ref('mode');
+
+// DeepSeek 本地版设置
+const deepseekLocalToken = ref('');
+const deepseekLocalTesting = ref(false);
+const deepseekLocalStatus = ref<'idle' | 'success' | 'error'>('idle');
+const DEEPSEEK_LOCAL_TOKEN_KEY = 'deepseekLocalToken';
 
 // DeepSeek 测试相关
 const showDSTestDialog = ref(false);
@@ -393,6 +416,38 @@ const loadSavedToken = () => {
   const saved = localStorage.getItem(DS_TOKEN_KEY);
   if (saved) {
     dsToken.value = saved;
+  }
+  // 加载 DeepSeek 本地版 Token
+  const localSaved = localStorage.getItem(DEEPSEEK_LOCAL_TOKEN_KEY);
+  if (localSaved) {
+    deepseekLocalToken.value = localSaved;
+  }
+};
+
+// 测试 DeepSeek 本地版 Token
+const testDeepseekLocalToken = async () => {
+  if (!deepseekLocalToken.value.trim()) {
+    ElMessage.warning('请输入 Token');
+    return;
+  }
+  deepseekLocalTesting.value = true;
+  deepseekLocalStatus.value = 'idle';
+  try {
+    const result = await window.electronAPI.testDeepseekLocalToken(deepseekLocalToken.value.trim());
+    if (result.success) {
+      deepseekLocalStatus.value = 'success';
+      ElMessage.success('连接成功');
+      // 保存到本地缓存
+      localStorage.setItem(DEEPSEEK_LOCAL_TOKEN_KEY, deepseekLocalToken.value.trim());
+    } else {
+      deepseekLocalStatus.value = 'error';
+      ElMessage.error(result.error || '连接失败');
+    }
+  } catch (e: any) {
+    deepseekLocalStatus.value = 'error';
+    ElMessage.error(e.message || '连接失败');
+  } finally {
+    deepseekLocalTesting.value = false;
   }
 };
 
@@ -868,6 +923,74 @@ h1 {
 .drag-icon {
   color: #c4a882;
   font-size: 18px;
+}
+
+/* DeepSeek 本地版设置样式 */
+.deepseek-local-section {
+  margin-top: 24px;
+  padding: 20px;
+  background: #faf9f7;
+  border-radius: 12px;
+  border: 1px solid #e8e4df;
+}
+
+.deepseek-local-section .section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.deepseek-local-section .section-title::before {
+  content: '';
+  width: 4px;
+  height: 16px;
+  background: #4a7c59;
+  border-radius: 2px;
+}
+
+.deepseek-token-input {
+  width: 100%;
+}
+
+.deepseek-token-input :deep(.el-input__wrapper) {
+  box-shadow: 0 0 0 1px #e8e4df inset;
+  border-radius: 8px;
+}
+
+.deepseek-token-input :deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px #c4a882 inset;
+}
+
+.deepseek-token-input :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px #4a7c59 inset;
+}
+
+.deepseek-token-input :deep(.el-input-group__append) {
+  background: #4a7c59;
+  border-color: #4a7c59;
+  color: #fff;
+  padding: 0 16px;
+}
+
+.deepseek-token-input :deep(.el-input-group__append .el-button) {
+  color: #fff;
+  font-weight: 500;
+}
+
+.deepseek-token-input :deep(.el-input-group__append:hover) {
+  background: #3d6b4a;
+  border-color: #3d6b4a;
+}
+
+.deepseek-local-section .el-tag {
+  margin-top: 12px;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
 }
 
 /* DeepSeek 测试对话框样式 */
