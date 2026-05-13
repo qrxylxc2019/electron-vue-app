@@ -264,36 +264,38 @@
                 </el-button>
                 <!-- 同类题卡片 -->
                 <div v-if="aiSimilarQuestions.length > 0" class="ai-similar-card">
-                  <div class="ai-similar-header">
-                    <el-tag :type="aiSimilarCurrentTag.type">{{ aiSimilarCurrentTag.text }}</el-tag>
-                    <span class="ai-similar-progress">{{ aiSimilarCurrentIndex + 1 }} / {{ aiSimilarQuestions.length }}</span>
-                  </div>
-                  <div class="ai-similar-title markdown-body" v-html="renderMarkdown(aiCurrentSimilarQuestion?.title || '')"></div>
-                  <div class="ai-similar-options">
-                    <div
-                      v-for="option in aiSimilarOptionsList"
-                      :key="option.key"
-                      class="ai-similar-option"
-                      :class="{
-                        'selected': aiSelectedSimilarAnswer === option.key,
-                        'deleted': option.deleted,
-                        'correct': aiShowSimilarAnswer && aiIsSimilarCorrectOption(option.key),
-                        'wrong': aiShowSimilarAnswer && aiIsSimilarWrongOption(option.key)
-                      }"
-                    >
-                      <div class="delete-btn" :class="{ 'is-deleted': option.deleted }" @click.stop="aiToggleDeleteOption(option.key)">
-                        <el-icon><Delete /></el-icon>
-                      </div>
-                      <div class="option-content" @click="aiSelectSimilarOption(option.key)">
-                        <span class="option-key">{{ option.key }}.</span>
-                        <span class="option-text">{{ option.text }}</span>
+                  <div class="ai-similar-main">
+                    <div class="ai-similar-header">
+                      <el-tag :type="aiSimilarCurrentTag.type">{{ aiSimilarCurrentTag.text }}</el-tag>
+                      <span class="ai-similar-progress">{{ aiSimilarCurrentIndex + 1 }} / {{ aiSimilarQuestions.length }}</span>
+                    </div>
+                    <div class="ai-similar-title markdown-body" v-html="renderMarkdown(aiCurrentSimilarQuestion?.title || '')"></div>
+                    <div class="ai-similar-options">
+                      <div
+                        v-for="option in aiSimilarOptionsList"
+                        :key="option.key"
+                        class="ai-similar-option"
+                        :class="{
+                          'selected': aiSelectedSimilarAnswer === option.key,
+                          'deleted': option.deleted,
+                          'correct': aiShowSimilarAnswer && aiIsSimilarCorrectOption(option.key),
+                          'wrong': aiShowSimilarAnswer && aiIsSimilarWrongOption(option.key)
+                        }"
+                      >
+                        <div class="delete-btn" :class="{ 'is-deleted': option.deleted }" @click.stop="aiToggleDeleteOption(option.key)">
+                          <el-icon><Delete /></el-icon>
+                        </div>
+                        <div class="option-content" @click="aiSelectSimilarOption(option.key)">
+                          <span class="option-key">{{ option.key }}.</span>
+                          <span class="option-text">{{ option.text }}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div v-if="aiShowSimilarAnswer" class="ai-similar-answer">
-                    <el-divider />
-                    <div class="answer-label">正确答案：{{ aiCurrentSimilarQuestion?.correct_answer }}</div>
-                    <div class="answer-explanation markdown-body" v-html="renderMarkdown(aiCurrentSimilarQuestion?.explanation || '')"></div>
+                    <div v-if="aiShowSimilarAnswer" class="ai-similar-answer">
+                      <el-divider />
+                      <div class="answer-label">正确答案：{{ aiCurrentSimilarQuestion?.correct_answer }}</div>
+                      <div class="answer-explanation markdown-body" v-html="renderMarkdown(aiCurrentSimilarQuestion?.explanation || '')"></div>
+                    </div>
                   </div>
                   <div class="ai-similar-actions">
                     <el-button
@@ -2135,7 +2137,10 @@ onMounted(() => {
 .similar-bubble {
   width: 100%;
   max-width: 100%;
-  padding:10px 0
+  padding:10px 0;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
 }
 
 .generate-similar-btn {
@@ -2145,6 +2150,7 @@ onMounted(() => {
   border-radius: 10px;
   padding: 12px 24px;
   font-size: 15px;
+  width:200px;
 }
 
 .generate-similar-btn:hover {
@@ -2155,6 +2161,14 @@ onMounted(() => {
   background: #fff;
   border-radius: 12px;
   padding: 16px;
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+}
+
+.ai-similar-main {
+  flex: 1;
+  min-width: 0;
 }
 
 .ai-similar-header {
@@ -2267,8 +2281,10 @@ onMounted(() => {
 
 .ai-similar-actions {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  justify-content: center;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .ai-similar-actions .nav-btn {
@@ -2277,6 +2293,7 @@ onMounted(() => {
   font-size: 17px;
   min-height: 52px;
   height: auto;
+  min-width: 120px;
 }
 
 .ai-similar-actions .delete-question-btn {
@@ -2293,7 +2310,8 @@ onMounted(() => {
   background: #1a1a1a;
   color: #fff;
   border: none;
-  min-width: 140px;
+  min-width: 120px;
+  margin-left:0
 }
 
 .ai-similar-actions .next-btn:hover:not(:disabled) {
