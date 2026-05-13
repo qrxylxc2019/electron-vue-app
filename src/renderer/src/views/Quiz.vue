@@ -252,6 +252,70 @@
                 <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:inherit;">{{ aiError }}</pre>
               </div>
             </div>
+            <!-- AI 回答完毕后的同类题区域 -->
+            <div v-if="!aiLoading && aiChatMessages.length > 0 && aiChatMessages[aiChatMessages.length - 1].role === 'assistant'" class="chat-message assistant">
+              <div class="message-bubble similar-bubble">
+                <el-button
+                  v-if="aiSimilarQuestions.length === 0"
+                  class="generate-similar-btn"
+                  :loading="aiSimilarLoading"
+                  @click="generateAISimilarQuestions"
+                >
+                  <el-icon><Collection /></el-icon>
+                  生成同类题（20道）
+                </el-button>
+                <!-- 同类题卡片 -->
+                <div v-else class="ai-similar-card">
+                  <div class="ai-similar-header">
+                    <el-tag :type="aiSimilarCurrentTag.type">{{ aiSimilarCurrentTag.text }}</el-tag>
+                    <span class="ai-similar-progress">{{ aiSimilarCurrentIndex + 1 }} / {{ aiSimilarQuestions.length }}</span>
+                  </div>
+                  <div class="ai-similar-title markdown-body" v-html="renderMarkdown(aiCurrentSimilarQuestion?.title || '')"></div>
+                  <div class="ai-similar-options">
+                    <div
+                      v-for="option in aiSimilarOptionsList"
+                      :key="option.key"
+                      class="ai-similar-option"
+                      :class="{
+                        'selected': aiSelectedSimilarAnswer === option.key,
+                        'deleted': option.deleted,
+                        'correct': aiShowSimilarAnswer && aiIsSimilarCorrectOption(option.key),
+                        'wrong': aiShowSimilarAnswer && aiIsSimilarWrongOption(option.key)
+                      }"
+                    >
+                      <div class="delete-btn" @click.stop="aiToggleDeleteOption(option.key)">
+                        <el-icon><Delete /></el-icon>
+                      </div>
+                      <div class="option-content" @click="aiSelectSimilarOption(option.key)">
+                        <span class="option-key">{{ option.key }}.</span>
+                        <span class="option-text">{{ option.text }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div v-if="aiShowSimilarAnswer" class="ai-similar-answer">
+                    <el-divider />
+                    <div class="answer-label">正确答案：{{ aiCurrentSimilarQuestion?.correct_answer }}</div>
+                    <div class="answer-explanation markdown-body" v-html="renderMarkdown(aiCurrentSimilarQuestion?.explanation || '')"></div>
+                  </div>
+                  <div class="ai-similar-actions">
+                    <el-button
+                      class="nav-btn"
+                      @click="aiPrevSimilarQuestion"
+                      :disabled="aiSimilarCurrentIndex === 0"
+                    >
+                      上一题
+                    </el-button>
+                    <el-button
+                      class="nav-btn next-btn"
+                      @click="aiNextSimilarQuestion"
+                      :disabled="aiSimilarCurrentIndex >= aiSimilarQuestions.length - 1"
+                    >
+                      下一题
+                    </el-button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <!-- 底部输入框 -->
@@ -414,6 +478,14 @@ let aiUnsubscribers: (() => void)[] = [];
 // 复制按钮状态
 const copySuccess = ref(false);
 let copyTimer: ReturnType<typeof setTimeout> | null = null;
+
+// AI 生成同类题状态
+const aiSimilarQuestions = ref<Question[]>([]);
+const aiSimilarLoading = ref(false);
+const aiSimilarCurrentIndex = ref(0);
+const aiSelectedSimilarAnswer = ref('');
+const aiShowSimilarAnswer = ref(false);
+const aiSimilarDeletedOptions = ref<Set<string>>(new Set());
 
 // 手写输入相关状态
 const showHandwrite = ref(false);
@@ -1016,6 +1088,129 @@ const copyQuestionContent = async () => {
   } catch (e) {
     console.error('复制失败:', e);
     ElMessage.error('复制失败');
+  }
+};
+
+// AI 聊天区域生成同类题
+const generateAISimilarQuestions = async () => {
+  if (!currentQuestion.value) return;
+
+  aiSimilarLoading.value = true;
+  aiSimilarQuestions.value = [];
+  aiSimilarCurrentIndex.value = 0;
+  aiSelectedSimilarAnswer.value = '';
+  aiShowSimilarAnswer.value = false;
+  aiSimilarDeletedOptions.value.clear();
+
+  try {
+    const optionsText = optionsList.value.map(o => `${o.key}. ${o.text}`).join('\n');
+    const result = await window.electronAPI.generateSimilarQuestions({
+      title: currentQuestion.value.title,
+      options: optionsText,
+      correctAnswer: currentQuestion.value.correct_answer,
+      explanation: currentQuestion.value.explanation || '',
+      providerOrder: getProviderOrder(),
+    });
+
+    if (result.success && result.questions) {
+      // 添加 pid 和 directory_id
+      const questionsToAdd = result.questions.map((q: any) => ({
+        ...q,
+        pid: currentQuestion.value!.id,
+        directory_id: currentQuestion.value!.directory_id,
+        question_type: currentQuestion.value!.question_type,
+      }));
+
+      const saved = await window.electronAPI.addSimilarQuestions(questionsToAdd);
+      aiSimilarQuestions.value = saved;
+      aiSimilarCurrentIndex.value = 0;
+      aiSelectedSimilarAnswer.value = '';
+      aiShowSimilarAnswer.value = false;
+      aiSimilarDeletedOptions.value.clear();
+      ElMessage.success(`已生成 ${saved.length} 道同类题`);
+      scrollToBottom();
+    } else {
+      ElMessage.error(result.error || '生成同类题失败');
+    }
+  } catch (err: any) {
+    ElMessage.error(err.message || '生成同类题失败');
+  } finally {
+    aiSimilarLoading.value = false;
+  }
+};
+
+// 当前 AI 同类题
+const aiCurrentSimilarQuestion = computed(() => {
+  return aiSimilarQuestions.value[aiSimilarCurrentIndex.value] || null;
+});
+
+// AI 同类题类型标签
+const aiSimilarCurrentTag = computed(() => {
+  if (!aiCurrentSimilarQuestion.value) return { text: '', type: 'info' };
+  switch (aiCurrentSimilarQuestion.value.question_type) {
+    case 'single': return { text: '单选题', type: 'primary' };
+    case 'multiple': return { text: '多选题', type: 'warning' };
+    case 'judge': return { text: '判断题', type: 'success' };
+    default: return { text: '选择题', type: 'primary' };
+  }
+});
+
+// AI 同类题选项列表
+const aiSimilarOptionsList = computed<OptionWithState[]>(() => {
+  if (!aiCurrentSimilarQuestion.value) return [];
+  const q = aiCurrentSimilarQuestion.value;
+  return [
+    { key: 'A', text: q.option_a, deleted: aiSimilarDeletedOptions.value.has('A') },
+    { key: 'B', text: q.option_b, deleted: aiSimilarDeletedOptions.value.has('B') },
+    { key: 'C', text: q.option_c, deleted: aiSimilarDeletedOptions.value.has('C') },
+    { key: 'D', text: q.option_d, deleted: aiSimilarDeletedOptions.value.has('D') },
+    { key: 'E', text: q.option_e, deleted: aiSimilarDeletedOptions.value.has('E') },
+  ].filter(o => o.text !== null && o.text !== undefined);
+});
+
+// 选择 AI 同类题选项
+const aiSelectSimilarOption = (key: string) => {
+  if (aiShowSimilarAnswer.value) return;
+  aiSelectedSimilarAnswer.value = key;
+  aiShowSimilarAnswer.value = true;
+};
+
+// 判断 AI 同类题选项是否正确
+const aiIsSimilarCorrectOption = (key: string) => {
+  if (!aiCurrentSimilarQuestion.value || !aiShowSimilarAnswer.value) return false;
+  return aiCurrentSimilarQuestion.value.correct_answer === key;
+};
+
+// 判断 AI 同类题选项是否错误
+const aiIsSimilarWrongOption = (key: string) => {
+  if (!aiCurrentSimilarQuestion.value || !aiShowSimilarAnswer.value) return false;
+  return aiSelectedSimilarAnswer.value === key && aiCurrentSimilarQuestion.value.correct_answer !== key;
+};
+
+// 切换删除 AI 同类题选项
+const aiToggleDeleteOption = (key: string) => {
+  if (aiSimilarDeletedOptions.value.has(key)) {
+    aiSimilarDeletedOptions.value.delete(key);
+  } else {
+    aiSimilarDeletedOptions.value.add(key);
+  }
+};
+
+// AI 同类题上一题
+const aiPrevSimilarQuestion = () => {
+  if (aiSimilarCurrentIndex.value > 0) {
+    aiSimilarCurrentIndex.value--;
+    aiSelectedSimilarAnswer.value = '';
+    aiShowSimilarAnswer.value = false;
+  }
+};
+
+// AI 同类题下一题（随机顺序）
+const aiNextSimilarQuestion = () => {
+  if (aiSimilarCurrentIndex.value < aiSimilarQuestions.value.length - 1) {
+    aiSimilarCurrentIndex.value++;
+    aiSelectedSimilarAnswer.value = '';
+    aiShowSimilarAnswer.value = false;
   }
 };
 
@@ -1928,6 +2123,155 @@ onMounted(() => {
 .ai-send-btn:disabled {
   background-color: #c0c4cc;
   cursor: not-allowed;
+}
+
+/* AI 聊天区域同类题样式 */
+.similar-bubble {
+  width: 100%;
+  max-width: 100%;
+  padding: 16px;
+  background: #fff;
+  border-radius: 12px;
+}
+
+.generate-similar-btn {
+  background: #1a1a1a;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 24px;
+  font-size: 15px;
+}
+
+.generate-similar-btn:hover {
+  background: #333;
+}
+
+.ai-similar-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.ai-similar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.ai-similar-progress {
+  font-size: 14px;
+  color: #9a9590;
+}
+
+.ai-similar-title {
+  font-size: 18px;
+  line-height: 1.8;
+  color: #1a1a1a;
+  margin-bottom: 16px;
+}
+
+.ai-similar-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.ai-similar-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #f8f7f5;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-similar-option:hover {
+  background: #f0ece7;
+}
+
+.ai-similar-option.selected {
+  background: #e8f5e9;
+  border: 1.5px solid #c8e6c9;
+}
+
+.ai-similar-option.correct {
+  background: #e8f5e9;
+  border: 1.5px solid #67c23a;
+}
+
+.ai-similar-option.wrong {
+  background: #fef0f0;
+  border: 1.5px solid #f56c6c;
+}
+
+.ai-similar-option.deleted {
+  opacity: 0.3;
+  text-decoration: line-through;
+  pointer-events: none;
+}
+
+.ai-similar-option .delete-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: #fff;
+  color: #c0c4cc;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.ai-similar-option .delete-btn:hover {
+  background: #fde2e2;
+  color: #f56c6c;
+}
+
+.ai-similar-option .option-content {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  font-size: 16px;
+}
+
+.ai-similar-answer {
+  margin-bottom: 16px;
+}
+
+.ai-similar-answer .answer-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+}
+
+.ai-similar-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ai-similar-actions .nav-btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 15px;
+}
+
+.ai-similar-actions .next-btn {
+  background: #1a1a1a;
+  color: #fff;
+  border: none;
+}
+
+.ai-similar-actions .next-btn:hover:not(:disabled) {
+  background: #333;
 }
 
 /* Markdown 渲染样式 */
