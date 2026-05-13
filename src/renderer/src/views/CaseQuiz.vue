@@ -17,7 +17,20 @@
             <template #header>
               <div class="material-header">
                 <el-tag type="info">案例材料</el-tag>
-                <span class="material-title">{{ currentMaterial.title }}</span>
+                <div class="header-actions">
+                  <span class="material-title">{{ currentMaterial.title }}</span>
+                  <el-button
+                    class="copy-btn"
+                    size="small"
+                    @click="copyCaseContent"
+                    :title="copySuccess ? '已复制' : '复制材料与题目'"
+                  >
+                    <el-icon :size="18">
+                      <Check v-if="copySuccess" style="color: #67c23a;" />
+                      <DocumentCopy v-else />
+                    </el-icon>
+                  </el-button>
+                </div>
               </div>
             </template>
             <div class="material-content markdown-body" v-html="renderMarkdown(currentMaterial.content)"></div>
@@ -127,7 +140,7 @@ import type { CaseMaterial, CaseQuestion } from '../types';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { marked } from 'marked';
-import { EditPen } from '@element-plus/icons-vue';
+import { EditPen, DocumentCopy, Check } from '@element-plus/icons-vue';
 
 const props = defineProps<{
   directoryId: string;
@@ -148,6 +161,10 @@ const showAnswer = ref(false);
 // 手写输入相关状态
 const showHandwrite = ref(false);
 const handwriteInput = ref('');
+
+// 复制按钮状态
+const copySuccess = ref(false);
+let copyTimer: ReturnType<typeof setTimeout> | null = null;
 
 // 当前案例材料
 const currentMaterial = computed(() => {
@@ -180,6 +197,38 @@ const isLastQuestion = computed(() => {
 // Markdown 渲染
 const renderMarkdown = (content: string) => {
   return marked.parse(content || '', { async: false }) as string;
+};
+
+// 复制案例材料与题目到剪贴板
+const copyCaseContent = async () => {
+  if (!currentMaterial.value) return;
+
+  let text = `【案例材料】\n${currentMaterial.value.title}\n\n${currentMaterial.value.content}`;
+
+  // 添加所有小题
+  const questions = caseQuestions.value;
+  if (questions.length > 0) {
+    text += '\n\n【题目】';
+    questions.forEach((q, index) => {
+      text += `\n\n第 ${q.question_number} 小题：\n${q.title}`;
+      if (q.answer) {
+        text += `\n【参考答案】\n${q.answer}`;
+      }
+    });
+  }
+
+  try {
+    await navigator.clipboard.writeText(text);
+    copySuccess.value = true;
+    if (copyTimer) clearTimeout(copyTimer);
+    copyTimer = setTimeout(() => {
+      copySuccess.value = false;
+    }, 2000);
+    ElMessage.success('材料与题目已复制到剪贴板');
+  } catch (e) {
+    console.error('复制失败:', e);
+    ElMessage.error('复制失败');
+  }
 };
 
 // 数组随机打乱
@@ -534,7 +583,29 @@ onMounted(() => {
 .material-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.copy-btn {
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: #9a9590;
+  font-size: 18px;
+}
+
+.copy-btn:hover {
+  color: #1a1a1a;
+  background: #f5f3f0;
 }
 
 .material-title {

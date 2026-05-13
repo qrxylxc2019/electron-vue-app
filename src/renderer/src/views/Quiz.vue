@@ -24,9 +24,12 @@
                     class="copy-btn"
                     size="small"
                     @click="copyQuestionContent"
-                    title="复制题目"
+                    :title="copySuccess ? '已复制' : '复制题目'"
                   >
-                    <el-icon><DocumentCopy /></el-icon>
+                    <el-icon :size="18">
+                      <Check v-if="copySuccess" style="color: #67c23a;" />
+                      <DocumentCopy v-else />
+                    </el-icon>
                   </el-button>
                   <!-- 答对/答错结果 -->
                   <div v-if="showAnswer" class="answer-status">
@@ -361,7 +364,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { marked } from 'marked';
 import type { Question, Article, QuestionType, OptionWithState } from '../types';
-import { Cpu, Collection, Delete, ArrowRight, Loading, Warning, CircleCheck, CircleClose, Close, Promotion, EditPen, DocumentCopy } from '@element-plus/icons-vue';
+import { Cpu, Collection, Delete, ArrowRight, Loading, Warning, CircleCheck, CircleClose, Close, Promotion, EditPen, DocumentCopy, Check } from '@element-plus/icons-vue';
 
 const API_ORDER_KEY = 'apiProviderOrder';
 
@@ -407,6 +410,10 @@ const aiUserInput = ref('');
 const aiChatContentRef = ref<HTMLDivElement | null>(null);
 const aiChatMessagesRef = ref<HTMLDivElement | null>(null);
 let aiUnsubscribers: (() => void)[] = [];
+
+// 复制按钮状态
+const copySuccess = ref(false);
+let copyTimer: ReturnType<typeof setTimeout> | null = null;
 
 // 手写输入相关状态
 const showHandwrite = ref(false);
@@ -969,6 +976,11 @@ const copyQuestionContent = async () => {
 
   try {
     await navigator.clipboard.writeText(text);
+    copySuccess.value = true;
+    if (copyTimer) clearTimeout(copyTimer);
+    copyTimer = setTimeout(() => {
+      copySuccess.value = false;
+    }, 2000);
     ElMessage.success('题目已复制到剪贴板');
   } catch (e) {
     console.error('复制失败:', e);
@@ -1298,10 +1310,11 @@ onMounted(() => {
 }
 
 .copy-btn {
-  padding: 6px 10px;
+  padding: 8px 12px;
   border: none;
   background: transparent;
   color: #9a9590;
+  font-size: 18px;
 }
 
 .copy-btn:hover {
