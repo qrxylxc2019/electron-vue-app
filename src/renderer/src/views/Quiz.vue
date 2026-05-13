@@ -2555,7 +2555,7 @@ onMounted(() => {
   display: flex;
   flex-direction: row;
   gap: 16px;
-  align-items: flex-start;
+  align-items: center;
 }
 
 .similar-question-card {
