@@ -6,6 +6,9 @@
         <el-button class="settings-btn" @click="openGlobalQuizSettings">
           <el-icon><Setting /></el-icon>设置
         </el-button>
+        <el-button class="ds-test-btn" @click="showDSTestDialog = true">
+          <el-icon><ChatDotRound /></el-icon>DeepSeek测试
+        </el-button>
         <el-button class="fullscreen-btn" @click="toggleFullscreen">
           <el-icon><FullScreen /></el-icon>
           {{ isFullscreen ? '取消全屏' : '全屏' }}
@@ -125,15 +128,91 @@
         <el-button class="add-btn" @click="saveSettings">保存设置</el-button>
       </template>
     </el-dialog>
+
+    <!-- DeepSeek 测试对话框 -->
+    <el-dialog
+      v-model="showDSTestDialog"
+      title="DeepSeek 逆向 API 测试"
+      width="700px"
+      class="warm-dialog ds-test-dialog"
+      :close-on-click-modal="false"
+    >
+      <div class="ds-test-content">
+        <!-- Token 设置 -->
+        <div class="ds-token-section">
+          <el-input
+            v-model="dsToken"
+            placeholder="请输入 DeepSeek Token (Bearer 后面的内容)"
+            show-password
+            class="ds-token-input"
+          >
+            <template #append>
+              <el-button @click="initDSToken" :loading="dsInitLoading">初始化</el-button>
+            </template>
+          </el-input>
+          <el-tag v-if="dsTokenValid === true" type="success">Token 有效</el-tag>
+          <el-tag v-if="dsTokenValid === false" type="danger">Token 无效</el-tag>
+        </div>
+
+        <!-- 模型选择 -->
+        <div class="ds-model-section">
+          <el-radio-group v-model="dsModel">
+            <el-radio-button label="deepseek-chat">普通对话</el-radio-button>
+            <el-radio-button label="deepseek-reasoner">深度思考</el-radio-button>
+            <el-radio-button label="deepseek-chat-search">联网搜索</el-radio-button>
+            <el-radio-button label="deepseek-reasoner-search">思考+搜索</el-radio-button>
+          </el-radio-group>
+        </div>
+
+        <!-- 对话历史 -->
+        <div class="ds-chat-history" ref="chatHistoryRef">
+          <div
+            v-for="(msg, index) in dsMessages"
+            :key="index"
+            :class="['ds-message', msg.role === 'user' ? 'ds-user' : 'ds-assistant']"
+          >
+            <div class="ds-message-role">{{ msg.role === 'user' ? '用户' : 'DeepSeek' }}</div>
+            <div class="ds-message-content">{{ msg.content }}</div>
+          </div>
+          <div v-if="dsLoading" class="ds-message ds-assistant">
+            <div class="ds-message-role">DeepSeek</div>
+            <div class="ds-message-content">
+              <el-icon class="is-loading"><Loading /></el-icon> 思考中...
+            </div>
+          </div>
+        </div>
+
+        <!-- 输入框 -->
+        <div class="ds-input-section">
+          <el-input
+            v-model="dsInput"
+            type="textarea"
+            :rows="2"
+            placeholder="输入消息，按 Enter 发送，Shift+Enter 换行"
+            @keydown.enter.prevent="handleDSSend"
+            :disabled="dsLoading"
+          />
+          <el-button
+            type="primary"
+            class="ds-send-btn"
+            @click="handleDSSend"
+            :loading="dsLoading"
+            :disabled="!dsInput.trim()"
+          >
+            发送
+          </el-button>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, nextTick, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import type { Directory, Article } from '../types';
-import { Rank } from '@element-plus/icons-vue';
+import { Rank, ChatDotRound, Loading } from '@element-plus/icons-vue';
 
 const router = useRouter();
 const directories = ref<Directory[]>([]);
@@ -161,6 +240,161 @@ const API_PROVIDERS = [
 const apiProviderOrder = ref([...API_PROVIDERS]);
 
 const activeSettingsTab = ref('mode');
+
+// DeepSeek 测试相关
+const showDSTestDialog = ref(false);
+const dsToken = ref('');
+const dsTokenValid = ref<boolean | null>(null);
+const dsInitLoading = ref(false);
+const dsModel = ref('deepseek-chat');
+const dsInput = ref('');
+const dsLoading = ref(false);
+const dsMessages = ref<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+const chatHistoryRef = ref<HTMLElement | null>(null);
+const DS_SESSION_KEY = 'ds-test-session';
+const DS_TOKEN_KEY = 'ds-token';
+
+// 自动滚动到底部
+const scrollToBottom = async () => {
+  await nextTick();
+  if (chatHistoryRef.value) {
+    chatHistoryRef.value.scrollTop = chatHistoryRef.value.scrollHeight;
+  }
+};
+
+watch(dsMessages, scrollToBottom, { deep: true });
+
+// 初始化 Token
+const initDSToken = async () => {
+  if (!dsToken.value.trim()) {
+    ElMessage.warning('请输入 Token');
+    return;
+  }
+  dsInitLoading.value = true;
+  try {
+    // 保存 token
+    localStorage.setItem(DS_TOKEN_KEY, dsToken.value.trim());
+    // 初始化客户端
+    const initResult = await window.electronAPI.dsInitToken(dsToken.value.trim());
+    if (!initResult.success) {
+      ElMessage.error(initResult.error || '初始化失败');
+      dsTokenValid.value = false;
+      return;
+    }
+    // 检查 token 有效性
+    const checkResult = await window.electronAPI.dsCheckToken(dsToken.value.trim());
+    dsTokenValid.value = checkResult.valid || false;
+    if (checkResult.valid) {
+      ElMessage.success('Token 有效，已初始化');
+    } else {
+      ElMessage.warning('Token 可能无效');
+    }
+  } catch (error: any) {
+    ElMessage.error('初始化失败: ' + error.message);
+    dsTokenValid.value = false;
+  } finally {
+    dsInitLoading.value = false;
+  }
+};
+
+// 发送消息
+const handleDSSend = async () => {
+  const text = dsInput.value.trim();
+  if (!text || dsLoading.value) return;
+
+  // 如果没有初始化过 token，尝试从本地读取
+  if (dsTokenValid.value !== true) {
+    const savedToken = localStorage.getItem(DS_TOKEN_KEY);
+    if (savedToken) {
+      dsToken.value = savedToken;
+      await initDSToken();
+      if (dsTokenValid.value !== true) {
+        ElMessage.warning('Token 无效，请先初始化');
+        return;
+      }
+    } else {
+      ElMessage.warning('请先输入并初始化 Token');
+      return;
+    }
+  }
+
+  // 添加用户消息
+  dsMessages.value.push({ role: 'user', content: text });
+  dsInput.value = '';
+  dsLoading.value = true;
+
+  // 注册流式监听
+  let currentContent = '';
+  const removeChunkListener = window.electronAPI.onDSStreamChunk((data) => {
+    if (data.sessionKey !== DS_SESSION_KEY) return;
+    currentContent += data.content;
+    // 更新最后一条 assistant 消息
+    const lastMsg = dsMessages.value[dsMessages.value.length - 1];
+    if (lastMsg && lastMsg.role === 'assistant') {
+      lastMsg.content = currentContent;
+    } else {
+      dsMessages.value.push({ role: 'assistant', content: currentContent });
+    }
+  });
+
+  const removeDoneListener = window.electronAPI.onDSStreamDone((data) => {
+    if (data.sessionKey !== DS_SESSION_KEY) return;
+    dsLoading.value = false;
+    removeChunkListener();
+    removeDoneListener();
+    removeErrorListener();
+  });
+
+  const removeErrorListener = window.electronAPI.onDSStreamError((data) => {
+    if (data.sessionKey !== DS_SESSION_KEY) return;
+    dsLoading.value = false;
+    ElMessage.error('对话错误: ' + data.error);
+    removeChunkListener();
+    removeDoneListener();
+    removeErrorListener();
+  });
+
+  try {
+    // 先添加一个空的 assistant 消息占位
+    dsMessages.value.push({ role: 'assistant', content: '' });
+
+    const result = await window.electronAPI.dsChatStream({
+      sessionKey: DS_SESSION_KEY,
+      messages: [{ role: 'user', content: text }],
+      model: dsModel.value,
+      token: dsToken.value,
+    });
+
+    if (!result.success) {
+      dsLoading.value = false;
+      // 移除空消息
+      if (dsMessages.value[dsMessages.value.length - 1]?.role === 'assistant' && dsMessages.value[dsMessages.value.length - 1]?.content === '') {
+        dsMessages.value.pop();
+      }
+      ElMessage.error(result.error || '对话失败');
+      removeChunkListener();
+      removeDoneListener();
+      removeErrorListener();
+    }
+  } catch (error: any) {
+    dsLoading.value = false;
+    if (dsMessages.value[dsMessages.value.length - 1]?.role === 'assistant' && dsMessages.value[dsMessages.value.length - 1]?.content === '') {
+      dsMessages.value.pop();
+    }
+    ElMessage.error('对话异常: ' + error.message);
+    removeChunkListener();
+    removeDoneListener();
+    removeErrorListener();
+  }
+};
+
+// 加载保存的 token
+const loadSavedToken = () => {
+  const saved = localStorage.getItem(DS_TOKEN_KEY);
+  if (saved) {
+    dsToken.value = saved;
+  }
+};
 
 // 从缓存加载出题设置
 const loadSettingsFromStorage = () => {
@@ -358,6 +592,7 @@ onMounted(() => {
   checkFullscreen();
   loadSettingsFromStorage();
   loadApiSettings();
+  loadSavedToken();
 });
 </script>
 
@@ -476,6 +711,22 @@ h1 {
 .header-actions .settings-btn:hover {
   border-color: #c4a882;
   background-color: #fdfbf8;
+}
+
+.ds-test-btn {
+  background-color: #4a7c59;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 22px 32px;
+  font-size: 18px;
+  transition: all 0.2s ease;
+  min-height: 56px;
+}
+
+.ds-test-btn:hover {
+  background-color: #3d6b4a;
+  transform: translateY(-1px);
 }
 
 .directory-name {
@@ -617,5 +868,114 @@ h1 {
 .drag-icon {
   color: #c4a882;
   font-size: 18px;
+}
+
+/* DeepSeek 测试对话框样式 */
+:deep(.ds-test-dialog .el-dialog__body) {
+  padding: 20px;
+}
+
+.ds-test-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ds-token-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ds-token-input {
+  flex: 1;
+}
+
+.ds-model-section {
+  display: flex;
+  justify-content: center;
+}
+
+.ds-chat-history {
+  min-height: 300px;
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #e8e4df;
+  border-radius: 12px;
+  padding: 16px;
+  background: #faf9f7;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ds-message {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 85%;
+}
+
+.ds-user {
+  align-self: flex-end;
+}
+
+.ds-assistant {
+  align-self: flex-start;
+}
+
+.ds-message-role {
+  font-size: 12px;
+  color: #9a9590;
+  font-weight: 500;
+}
+
+.ds-user .ds-message-role {
+  text-align: right;
+}
+
+.ds-message-content {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ds-user .ds-message-content {
+  background: #4a7c59;
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.ds-assistant .ds-message-content {
+  background: #fff;
+  color: #1a1a1a;
+  border: 1px solid #e8e4df;
+  border-bottom-left-radius: 4px;
+}
+
+.ds-input-section {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.ds-input-section .el-textarea {
+  flex: 1;
+}
+
+.ds-send-btn {
+  min-height: 56px;
+  padding: 0 24px;
+  border-radius: 12px;
+  background: #4a7c59;
+  border-color: #4a7c59;
+}
+
+.ds-send-btn:hover {
+  background: #3d6b4a;
+  border-color: #3d6b4a;
 }
 </style>

@@ -4,6 +4,7 @@ import Database from 'better-sqlite3';
 import { OpenAI } from 'openai';
 import fs from 'fs';
 import { getOpenAIClient, getCurrentModel, PROMPTS, callAIWithFallback } from './apikey';
+import { setupDeepSeekIpc } from './deepseek';
 
 let mainWindow: BrowserWindow | null = null;
 let db: Database.Database | null = null;
@@ -688,6 +689,7 @@ app.whenReady().then(() => {
   log(`userData: ${app.getPath('userData')}`);
   initDatabase();
   setupIpc();
+  setupDeepSeekIpc(() => mainWindow);
   createWindow();
 
   app.on('activate', () => {

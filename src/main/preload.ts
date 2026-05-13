@@ -56,6 +56,29 @@ const electronAPI = {
   // API 设置
   getApiSettings: () => ipcRenderer.invoke('db:getApiSettings'),
   saveApiSettings: (settings: any) => ipcRenderer.invoke('db:saveApiSettings', settings),
+
+  // DeepSeek 逆向 API
+  dsInitToken: (token: string) => ipcRenderer.invoke('ds:initToken', token),
+  dsCheckToken: (token: string) => ipcRenderer.invoke('ds:checkToken', token),
+  dsChatStream: (params: any) => ipcRenderer.invoke('ds:chatStream', params),
+  dsChat: (params: any) => ipcRenderer.invoke('ds:chat', params),
+  dsClearContext: (sessionKey: string) => ipcRenderer.invoke('ds:clearContext', sessionKey),
+  dsGetContext: (sessionKey: string) => ipcRenderer.invoke('ds:getContext', sessionKey),
+  onDSStreamChunk: (callback: (data: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('ds:streamChunk', handler);
+    return () => ipcRenderer.removeListener('ds:streamChunk', handler);
+  },
+  onDSStreamDone: (callback: (data: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('ds:streamDone', handler);
+    return () => ipcRenderer.removeListener('ds:streamDone', handler);
+  },
+  onDSStreamError: (callback: (data: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('ds:streamError', handler);
+    return () => ipcRenderer.removeListener('ds:streamError', handler);
+  },
 };
 
 // 暴露给渲染进程的 API

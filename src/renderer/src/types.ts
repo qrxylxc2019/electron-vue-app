@@ -119,6 +119,26 @@ declare global {
       // API 设置（已改为前端本地存储，保留兼容）
       getApiSettings: () => Promise<Record<string, string>>;
       saveApiSettings: (settings: any) => Promise<boolean>;
+      // DeepSeek 逆向 API
+      dsInitToken: (token: string) => Promise<{ success: boolean; error?: string }>;
+      dsCheckToken: (token: string) => Promise<{ success: boolean; valid?: boolean; error?: string }>;
+      dsChatStream: (params: {
+        sessionKey: string;
+        messages: Array<{ role: string; content: string }>;
+        model?: string;
+        token?: string;
+      }) => Promise<{ success: boolean; content?: string; thinking?: string; error?: string }>;
+      dsChat: (params: {
+        sessionKey: string;
+        messages: Array<{ role: string; content: string }>;
+        model?: string;
+        token?: string;
+      }) => Promise<{ success: boolean; content?: string; thinking?: string; error?: string }>;
+      dsClearContext: (sessionKey: string) => Promise<{ success: boolean }>;
+      dsGetContext: (sessionKey: string) => Promise<{ success: boolean; messages?: Array<{ role: string; content: string }> }>;
+      onDSStreamChunk: (callback: (data: { sessionKey: string; type: string; content: string }) => void) => () => void;
+      onDSStreamDone: (callback: (data: { sessionKey: string }) => void) => () => void;
+      onDSStreamError: (callback: (data: { sessionKey: string; error: string }) => void) => () => void;
     };
   }
 }
