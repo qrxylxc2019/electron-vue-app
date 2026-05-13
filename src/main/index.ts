@@ -736,7 +736,8 @@ ipcMain.handle('ai:explainQuestion', async (_event, questionData: any) => {
     const prompt = PROMPTS.explainQuestion(
       questionData.title,
       questionData.correctAnswer,
-      questionData.explanation
+      questionData.explanation,
+      questionData.options
     );
     messages = [
       { role: 'system', content: prompt.system },

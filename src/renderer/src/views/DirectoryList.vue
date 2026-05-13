@@ -6,7 +6,7 @@
         <el-button class="settings-btn" @click="openGlobalQuizSettings">
           <el-icon><Setting /></el-icon>设置
         </el-button>
-        <el-button class="ds-test-btn" @click="showDSTestDialog = true">
+        <el-button class="ds-test-btn" style="display:none" @click="showDSTestDialog = true">
           <el-icon><ChatDotRound /></el-icon>DeepSeek测试
         </el-button>
         <el-button class="fullscreen-btn" @click="toggleFullscreen">

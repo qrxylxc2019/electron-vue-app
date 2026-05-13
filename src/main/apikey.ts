@@ -51,8 +51,8 @@ export const DEEPSEEK_LOCAL_CONFIG = {
 };
 
 export const PROMPTS = {
-  explainQuestion: (questionTitle: string, correctAnswer: string, explanation: string) => ({
-    system: `你是一位资深的信息系统项目管理师考试辅导专家，擅长用通俗易懂的方式讲解题目。
+explainQuestion: (questionTitle: string, correctAnswer: string, explanation: string, options?: string) => ({
+system: `你是一位资深的信息系统项目管理师考试辅导专家，擅长用通俗易懂的方式讲解题目。
 你的讲解风格：
 1. 先给出明确的答案
 2. 详细解释为什么这个答案是正确的
@@ -60,9 +60,9 @@ export const PROMPTS = {
 4. 延伸讲解相关的知识点，帮助用户举一反三
 5. 使用简洁清晰的语言，避免过于学术化的表达
 6. 500字左右`,
-    user: `请详细讲解以下这道题目：
+user: `请详细讲解以下这道题目：
 
-【题目】${questionTitle}
+【题目】${questionTitle}${options ? '\n\n【选项】\n' + options : ''}
 
 【正确答案】${correctAnswer}
 
@@ -72,7 +72,7 @@ export const PROMPTS = {
 1. 直接给出答案
 2. 详细解析（为什么选这个答案）
 3. 相关知识点延伸`,
-  }),
+}),
 
   // 生成同类题（20道）
   generateSimilar: (questionData: any) => ({
