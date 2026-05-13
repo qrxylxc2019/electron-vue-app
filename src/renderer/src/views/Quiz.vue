@@ -2071,6 +2071,25 @@ onMounted(() => {
   overflow-y: auto;
   padding: 24px;
   background: #f8f7f5;
+  scrollbar-width: thin;
+  scrollbar-color: #c4c4c4 transparent;
+}
+
+.ai-chat-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ai-chat-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ai-chat-content::-webkit-scrollbar-thumb {
+  background: #c4c4c4;
+  border-radius: 3px;
+}
+
+.ai-chat-content::-webkit-scrollbar-thumb:hover {
+  background: #a0a0a0;
 }
 
 .chat-messages {
