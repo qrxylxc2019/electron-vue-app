@@ -813,6 +813,26 @@ watch(currentQuestion, () => {
   aiUnsubscribers = [];
 });
 
+// 构建题目展示文本
+const buildQuestionDisplayText = (): string => {
+  if (!currentQuestion.value) return '';
+  let text = currentQuestion.value.title;
+
+  if (currentQuestion.value.question_type === 'single' || currentQuestion.value.question_type === 'multiple') {
+    const options = optionsList.value
+      .filter(o => !o.deleted)
+      .map(o => `${o.key}. ${o.text}`)
+      .join('\n');
+    if (options) {
+      text += '\n\n' + options;
+    }
+  } else if (currentQuestion.value.question_type === 'judge') {
+    text += '\n\n正确\n错误';
+  }
+
+  return text;
+};
+
 // 打开 AI 讲解抽屉
 const openAIChatDrawer = async () => {
   if (!currentQuestion.value) return;
@@ -824,8 +844,12 @@ const openAIChatDrawer = async () => {
     return;
   }
 
-  // 如果数据库中有缓存的 AI 解析，先显示缓存内容
+  // 如果数据库中有缓存的 AI 解析，先显示题目再显示缓存内容
   if (currentQuestion.value.ai_explanation) {
+    aiChatMessages.value.push({
+      role: 'user',
+      content: buildQuestionDisplayText()
+    });
     aiChatMessages.value.push({
       role: 'assistant',
       content: currentQuestion.value.ai_explanation
@@ -833,6 +857,13 @@ const openAIChatDrawer = async () => {
     scrollToBottom();
     return;
   }
+
+  // 首次打开：先显示题目作为用户消息，再调用 AI
+  aiChatMessages.value.push({
+    role: 'user',
+    content: buildQuestionDisplayText()
+  });
+  scrollToBottom();
 
   await callAIExplain(false);
 };
