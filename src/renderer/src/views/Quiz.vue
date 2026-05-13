@@ -297,11 +297,11 @@
                   </div>
                   <div class="ai-similar-actions">
                     <el-button
-                      class="nav-btn"
-                      @click="aiPrevSimilarQuestion"
-                      :disabled="aiSimilarCurrentIndex === 0"
+                      class="nav-btn delete-question-btn"
+                      @click="aiDeleteCurrentQuestion"
                     >
-                      上一题
+                      <el-icon><Delete /></el-icon>
+                      删除本题
                     </el-button>
                     <el-button
                       class="nav-btn next-btn"
@@ -1188,12 +1188,21 @@ const aiToggleDeleteOption = (key: string) => {
   }
 };
 
-// AI 同类题上一题
-const aiPrevSimilarQuestion = () => {
-  if (aiSimilarCurrentIndex.value > 0) {
+// 删除当前 AI 同类题
+const aiDeleteCurrentQuestion = () => {
+  if (aiSimilarQuestions.value.length === 0) return;
+  aiSimilarQuestions.value.splice(aiSimilarCurrentIndex.value, 1);
+  aiSelectedSimilarAnswer.value = '';
+  aiShowSimilarAnswer.value = false;
+  aiSimilarDeletedOptions.value.clear();
+  // 如果删除的是最后一题，索引回退
+  if (aiSimilarCurrentIndex.value >= aiSimilarQuestions.value.length && aiSimilarCurrentIndex.value > 0) {
     aiSimilarCurrentIndex.value--;
-    aiSelectedSimilarAnswer.value = '';
-    aiShowSimilarAnswer.value = false;
+  }
+  if (aiSimilarQuestions.value.length === 0) {
+    ElMessage.success('已删除全部同类题');
+  } else {
+    ElMessage.success('已删除本题');
   }
 };
 
@@ -2256,8 +2265,13 @@ onMounted(() => {
   gap: 12px;
 }
 
+.ai-similar-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
 .ai-similar-actions .nav-btn {
-  flex: 1;
   padding: 16px 20px;
   border-radius: 12px;
   font-size: 17px;
@@ -2265,10 +2279,21 @@ onMounted(() => {
   height: auto;
 }
 
+.ai-similar-actions .delete-question-btn {
+  background: transparent;
+  color: #f56c6c;
+  border: 1.5px solid #f56c6c;
+}
+
+.ai-similar-actions .delete-question-btn:hover {
+  background: #fef0f0;
+}
+
 .ai-similar-actions .next-btn {
   background: #1a1a1a;
   color: #fff;
   border: none;
+  min-width: 140px;
 }
 
 .ai-similar-actions .next-btn:hover:not(:disabled) {
