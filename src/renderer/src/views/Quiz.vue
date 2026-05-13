@@ -233,7 +233,9 @@
               
               <div class="message-bubble">
                 <div v-if="msg.provider" class="message-provider">{{ msg.provider }}</div>
-                <div class="ai-markdown" v-html="renderMarkdown(msg.content)"></div>
+                <!-- 用户消息保留换行格式，AI消息使用Markdown渲染 -->
+                <div v-if="msg.role === 'user'" class="user-message-text">{{ msg.content }}</div>
+                <div v-else class="ai-markdown" v-html="renderMarkdown(msg.content)"></div>
               </div>
             </div>
             <!-- 正在输入中 v-if="aiLoading"-->
@@ -1153,12 +1155,12 @@ const generateAISimilarQuestions = async () => {
       ElMessage.success(`已追加 ${saved.length} 道同类题，共 ${aiSimilarQuestions.value.length} 道`);
       scrollToBottom();
     } else {
-      console.error('[generateAISimilarQuestions] 失败:', result);
-      ElMessage.error(result.error || '生成同类题失败');
+      console.error('[generateAISimilarQuestions] 错误:', result);
+      ElMessage.error(result.error || '同类题错误');
     }
   } catch (err: any) {
-    console.error('[generateAISimilarQuestions] 异常:', err);
-    ElMessage.error(err.message || '生成同类题失败');
+    console.error('[generateAISimilarQuestions] 错误:', err);
+    ElMessage.error(err.message || '同类题错误');
   } finally {
     aiSimilarLoading.value = false;
   }
@@ -2388,9 +2390,17 @@ onMounted(() => {
 
 /* Markdown 渲染样式 */
 .ai-markdown {
-  font-size: 18px;
-  line-height: 1.8;
-  color: #1a1a1a;
+font-size: 18px;
+line-height: 1.8;
+color: #1a1a1a;
+}
+
+.user-message-text {
+font-size: 18px;
+line-height: 1.8;
+color: #1a1a1a;
+white-space: pre-wrap;
+word-break: break-word;
 }
 
 .ai-markdown :deep(h1),
