@@ -225,7 +225,7 @@
                 <div class="ai-markdown" v-html="renderMarkdown(msg.content)"></div>
               </div>
             </div>
-            <!-- 正在输入中 -->
+            <!-- 正在输入中 v-if="aiLoading"-->
             <div v-if="aiLoading" class="chat-message assistant">
               <div class="message-bubble loading-bubble">
                 <div v-if="aiProviderName" class="message-provider">{{ aiProviderName }}</div>
@@ -1729,7 +1729,7 @@ onMounted(() => {
 .chat-messages {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 5px;
   max-width: 800px;
   margin: 0 auto;
   width: 100%;
@@ -1749,10 +1749,8 @@ onMounted(() => {
 }
 
 .message-bubble {
-  max-width: 80%;
-  padding: 16px 20px;
-  border-radius: 16px;
-  background: #fff;
+  padding: 5px 0px;
+  border-radius: 1px;
   font-size: 18px;
   line-height: 1.8;
   color: #1a1a1a;
@@ -1760,6 +1758,9 @@ onMounted(() => {
 
 .chat-message.user .message-bubble {
   background: #f0f0f0;
+  padding:18px 19px;
+  border-radius: 12px;
+  max-width: 80%;
 }
 
 .loading-bubble {
@@ -1785,12 +1786,11 @@ onMounted(() => {
 }
 
 .ai-chat-input-area {
-  padding: 16px 24px;
+  padding: 16px 0px;
   border-top: 1px solid #e8e4df;
   background: #fff;
   display: flex;
   gap: 12px;
-  align-items: flex-end;
   flex-shrink: 0;
   max-width: 800px;
   margin: 0 auto;
@@ -1848,7 +1848,6 @@ onMounted(() => {
 }
 
 .ai-markdown :deep(p) {
-  margin-bottom: 10px;
 }
 
 .ai-markdown :deep(strong) {
