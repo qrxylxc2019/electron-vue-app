@@ -110,6 +110,7 @@ declare global {
       onAIStreamChunk: (callback: (content: string) => void) => () => void;
       onAIStreamDone: (callback: () => void) => () => void;
       onAIStreamError: (callback: (error: string) => void) => () => void;
+      onAIProviderSwitch: (callback: (provider: string) => void) => () => void;
       updateAIExplanation: (id: number, aiExplanation: string) => Promise<boolean>;
       // 同类题
       getSimilarQuestions: (pid: number) => Promise<Question[]>;

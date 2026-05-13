@@ -991,6 +991,18 @@ const callAIExplain = async (isFollowUp = false, userMessage = '') => {
   let assistantContent = '';
   let currentProvider = '';
 
+  // 设置厂商切换监听
+  const unsubProviderSwitch = window.electronAPI.onAIProviderSwitch((provider: string) => {
+    currentProvider = provider === 'modelspace' ? 'ModelSpace' : provider === 'deepseek' ? 'DeepSeek' : provider;
+    aiProviderName.value = currentProvider;
+    // 更新最后一条 assistant 消息的 provider
+    const lastMsg = aiChatMessages.value[aiChatMessages.value.length - 1];
+    if (lastMsg && lastMsg.role === 'assistant') {
+      lastMsg.provider = currentProvider;
+    }
+  });
+  aiUnsubscribers.push(unsubProviderSwitch);
+
   // 设置流式监听
   const unsubChunk = window.electronAPI.onAIStreamChunk((content: string) => {
     assistantContent += content;

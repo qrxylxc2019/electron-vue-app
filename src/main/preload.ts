@@ -41,6 +41,11 @@ const electronAPI = {
     ipcRenderer.on('ai:streamError', handler);
     return () => ipcRenderer.removeListener('ai:streamError', handler);
   },
+  onAIProviderSwitch: (callback: (provider: string) => void) => {
+    const handler = (_event: any, provider: string) => callback(provider);
+    ipcRenderer.on('ai:providerSwitch', handler);
+    return () => ipcRenderer.removeListener('ai:providerSwitch', handler);
+  },
   updateAIExplanation: (id: number, aiExplanation: string) => ipcRenderer.invoke('db:updateAIExplanation', id, aiExplanation),
 
   // 同类题
