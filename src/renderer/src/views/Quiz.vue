@@ -253,17 +253,17 @@
             <!-- AI 回答完毕后的同类题区域 -->
             <div v-if="!aiLoading && aiChatMessages.length > 0 && aiChatMessages[aiChatMessages.length - 1].role === 'assistant'" class="chat-message assistant">
               <div class="message-bubble similar-bubble">
+                <!-- 同类题按钮始终显示 -->
                 <el-button
-                  v-if="aiSimilarQuestions.length === 0"
                   class="generate-similar-btn"
                   :loading="aiSimilarLoading"
                   @click="generateAISimilarQuestions"
                 >
                   <el-icon><Collection /></el-icon>
-                  生成同类题（20道）
+                  {{ aiSimilarQuestions.length > 0 ? '再生成5道同类题' : '生成同类题（20道）' }}
                 </el-button>
                 <!-- 同类题卡片 -->
-                <div v-else class="ai-similar-card">
+                <div v-if="aiSimilarQuestions.length > 0" class="ai-similar-card">
                   <div class="ai-similar-header">
                     <el-tag :type="aiSimilarCurrentTag.type">{{ aiSimilarCurrentTag.text }}</el-tag>
                     <span class="ai-similar-progress">{{ aiSimilarCurrentIndex + 1 }} / {{ aiSimilarQuestions.length }}</span>
@@ -281,7 +281,7 @@
                         'wrong': aiShowSimilarAnswer && aiIsSimilarWrongOption(option.key)
                       }"
                     >
-                      <div class="delete-btn" @click.stop="aiToggleDeleteOption(option.key)">
+                      <div class="delete-btn" :class="{ 'is-deleted': option.deleted }" @click.stop="aiToggleDeleteOption(option.key)">
                         <el-icon><Delete /></el-icon>
                       </div>
                       <div class="option-content" @click="aiSelectSimilarOption(option.key)">
@@ -306,9 +306,8 @@
                     <el-button
                       class="nav-btn next-btn"
                       @click="aiNextSimilarQuestion"
-                      :disabled="aiSimilarCurrentIndex >= aiSimilarQuestions.length - 1"
                     >
-                      下一题
+                      {{ aiSimilarCurrentIndex >= aiSimilarQuestions.length - 1 ? '再来一组' : '下一题' }}
                     </el-button>
                   </div>
                 </div>
@@ -1094,12 +1093,6 @@ const generateAISimilarQuestions = async () => {
   if (!currentQuestion.value) return;
 
   aiSimilarLoading.value = true;
-  aiSimilarQuestions.value = [];
-  aiSimilarCurrentIndex.value = 0;
-  aiSelectedSimilarAnswer.value = '';
-  aiShowSimilarAnswer.value = false;
-  aiSimilarDeletedOptions.value.clear();
-
   try {
     const optionsText = optionsList.value.map(o => `${o.key}. ${o.text}`).join('\n');
     const result = await window.electronAPI.generateSimilarQuestions({
@@ -1120,12 +1113,13 @@ const generateAISimilarQuestions = async () => {
       }));
 
       const saved = await window.electronAPI.addSimilarQuestions(questionsToAdd);
-      aiSimilarQuestions.value = saved;
+      // 追加到已有数组并重新随机排序
+      aiSimilarQuestions.value = shuffleArray([...aiSimilarQuestions.value, ...saved]);
       aiSimilarCurrentIndex.value = 0;
       aiSelectedSimilarAnswer.value = '';
       aiShowSimilarAnswer.value = false;
       aiSimilarDeletedOptions.value.clear();
-      ElMessage.success(`已生成 ${saved.length} 道同类题`);
+      ElMessage.success(`已追加 ${saved.length} 道同类题，共 ${aiSimilarQuestions.value.length} 道`);
       scrollToBottom();
     } else {
       ElMessage.error(result.error || '生成同类题失败');
@@ -1203,13 +1197,18 @@ const aiPrevSimilarQuestion = () => {
   }
 };
 
-// AI 同类题下一题（随机顺序）
+// AI 同类题下一题（循环随机出题）
 const aiNextSimilarQuestion = () => {
-  if (aiSimilarCurrentIndex.value < aiSimilarQuestions.value.length - 1) {
+  if (aiSimilarCurrentIndex.value >= aiSimilarQuestions.value.length - 1) {
+    // 最后一题：重新打乱顺序，从头再来一组
+    aiSimilarQuestions.value = shuffleArray([...aiSimilarQuestions.value]);
+    aiSimilarCurrentIndex.value = 0;
+  } else {
     aiSimilarCurrentIndex.value++;
-    aiSelectedSimilarAnswer.value = '';
-    aiShowSimilarAnswer.value = false;
   }
+  aiSelectedSimilarAnswer.value = '';
+  aiShowSimilarAnswer.value = false;
+  aiSimilarDeletedOptions.value.clear();
 };
 
 // 同类题相关状态
@@ -2127,9 +2126,7 @@ onMounted(() => {
 .similar-bubble {
   width: 100%;
   max-width: 100%;
-  padding: 16px;
-  background: #fff;
-  border-radius: 12px;
+  padding:10px 0
 }
 
 .generate-similar-btn {
@@ -2214,21 +2211,25 @@ onMounted(() => {
 }
 
 .ai-similar-option .delete-btn {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  background: #fff;
-  color: #c0c4cc;
+  background: transparent;
+  color: #f56c6c;
   cursor: pointer;
   flex-shrink: 0;
+  font-size: 18px;
+}
+
+.ai-similar-option .delete-btn.is-deleted {
+  color: #c0c4cc;
 }
 
 .ai-similar-option .delete-btn:hover {
-  background: #fde2e2;
-  color: #f56c6c;
+  color: #ff7875;
 }
 
 .ai-similar-option .option-content {
@@ -2257,9 +2258,11 @@ onMounted(() => {
 
 .ai-similar-actions .nav-btn {
   flex: 1;
-  padding: 12px;
-  border-radius: 10px;
-  font-size: 15px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  font-size: 17px;
+  min-height: 52px;
+  height: auto;
 }
 
 .ai-similar-actions .next-btn {
