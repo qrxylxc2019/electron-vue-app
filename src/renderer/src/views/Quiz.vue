@@ -151,7 +151,6 @@
             <div class="ai-explain-section">
               <el-button
                 class="ai-explain-btn"
-                :loading="aiLoading"
                 @click="openAIChatDrawer"
               >
                 <el-icon><Cpu /></el-icon>
@@ -159,7 +158,6 @@
               </el-button>
               <el-button
                 class="similar-btn"
-                :loading="similarLoading"
                 @click="openSimilarDrawer"
               >
                 <el-icon><Collection /></el-icon>
@@ -413,7 +411,18 @@
             <span>AI 正在生成同类题...</span>
           </div>
           <div v-else class="similar-empty">
-            <el-empty description="暂无同类题" />
+            <el-empty description="暂无同类题">
+              <template #default>
+                <el-button
+                  class="generate-similar-btn"
+                  :loading="similarLoading"
+                  @click="generateSimilarInDrawer"
+                >
+                  <el-icon><Collection /></el-icon>
+                  生成同类题（20道）
+                </el-button>
+              </template>
+            </el-empty>
           </div>
         </div>
       </div>
@@ -1287,19 +1296,23 @@ const openSimilarDrawer = async () => {
   currentSimilarIndex.value = 0;
   selectedSimilarAnswer.value = '';
   showSimilarAnswer.value = false;
+  similarLoading.value = false;
 
-  // 先查询是否已有同类题
+  // 查询是否已有同类题，有则反显
   try {
     const existing = await window.electronAPI.getSimilarQuestions(currentQuestion.value.id);
     if (existing.length > 0) {
       similarQuestions.value = existing;
-      return;
     }
   } catch (e) {
     console.error('查询同类题失败:', e);
   }
+};
 
-  // 没有同类题，调用 AI 生成
+// 抽屉内生成同类题
+const generateSimilarInDrawer = async () => {
+  if (!currentQuestion.value) return;
+
   similarLoading.value = true;
   try {
     const optionsText = optionsList.value.map(o => `${o.key}. ${o.text}`).join('\n');
@@ -1321,12 +1334,13 @@ const openSimilarDrawer = async () => {
       }));
 
       const saved = await window.electronAPI.addSimilarQuestions(questionsToAdd);
-      similarQuestions.value = saved;
+      // 追加到已有数组并重新随机排序
+      similarQuestions.value = shuffleArray([...similarQuestions.value, ...saved]);
       currentSimilarIndex.value = 0;
       selectedSimilarAnswer.value = '';
       showSimilarAnswer.value = false;
-      similarCount.value = saved.length;
-      ElMessage.success(`已生成 ${saved.length} 道同类题`);
+      similarCount.value = similarQuestions.value.length;
+      ElMessage.success(`已追加 ${saved.length} 道同类题，共 ${similarQuestions.value.length} 道`);
     } else {
       ElMessage.error(result.error || '生成同类题失败');
     }
