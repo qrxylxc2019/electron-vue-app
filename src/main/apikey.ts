@@ -179,18 +179,17 @@ export async function callAIWithFallback<T>(
 
   for (const provider of providerOrder) {
     try {
-      console.log(`[AI Fallback] 尝试调用厂商: ${provider}`);
+      console.log(`[AI Fallback] 尝试调用: ${provider}`);
       if (onProviderSwitch) {
         onProviderSwitch(provider);
       }
       const data = await callFn(provider);
-      console.log(`[AI Fallback] 厂商 ${provider} 调用成功`);
+      console.log(`[AI Fallback]  ${provider} 调用成功`);
       return { success: true, data, provider };
     } catch (err: any) {
       const msg = err.message || String(err);
       errors.push(`${getProviderName(provider)}: ${msg}`);
       console.warn(`[AI Fallback] ${provider} 调用失败:`, msg);
-      // 继续尝试下一个厂商
     }
   }
 

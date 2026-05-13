@@ -820,11 +820,11 @@ ipcMain.handle('ai:explainQuestion', async (_event, questionData: any) => {
         mainWindow.webContents.send('ai:streamDone');
       }
 
-      log(`[AI] 厂商 ${provider} 调用成功`);
+      log(`[AI]  ${provider} 调用成功`);
       return assistantContent;
     },
     (provider) => {
-      log(`[AI Fallback] 切换到厂商: ${provider}`);
+      log(`[AI Fallback] 切换到: ${provider}`);
       if (mainWindow) {
         mainWindow.webContents.send('ai:providerSwitch', provider);
       }
