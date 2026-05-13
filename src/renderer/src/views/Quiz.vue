@@ -19,16 +19,26 @@
                 <el-tag :type="questionTypeTag.type">
                   {{ questionTypeTag.text }}
                 </el-tag>
-                <!-- 答对/答错结果 -->
-                <div v-if="showAnswer" class="answer-status">
-                  <el-icon :class="isCorrect ? 'correct-icon' : 'wrong-icon'">
-                    <CircleCheck v-if="isCorrect" />
-                    <CircleClose v-else />
-                  </el-icon>
-                  <span :class="isCorrect ? 'correct-text' : 'wrong-text'">
-                    {{ isCorrect ? '答对了！' : '答错了！' }}
-                  </span>
-                  <span class="correct-answer">正确答案：{{ currentQuestion.correct_answer }}</span>
+                <div class="header-actions">
+                  <el-button
+                    class="copy-btn"
+                    size="small"
+                    @click="copyQuestionContent"
+                    title="复制题目"
+                  >
+                    <el-icon><DocumentCopy /></el-icon>
+                  </el-button>
+                  <!-- 答对/答错结果 -->
+                  <div v-if="showAnswer" class="answer-status">
+                    <el-icon :class="isCorrect ? 'correct-icon' : 'wrong-icon'">
+                      <CircleCheck v-if="isCorrect" />
+                      <CircleClose v-else />
+                    </el-icon>
+                    <span :class="isCorrect ? 'correct-text' : 'wrong-text'">
+                      {{ isCorrect ? '答对了！' : '答错了！' }}
+                    </span>
+                    <span class="correct-answer">正确答案：{{ currentQuestion.correct_answer }}</span>
+                  </div>
                 </div>
               </div>
             </template>
@@ -142,7 +152,7 @@
                 @click="openAIChatDrawer"
               >
                 <el-icon><Cpu /></el-icon>
-                {{ aiLoading ? 'AI 思考中...' : 'AI 详细讲解' }}
+                {{ aiLoading ? 'AI 思考中...' : 'AI讲解' }}
               </el-button>
               <el-button
                 class="similar-btn"
@@ -207,7 +217,7 @@
         @click.stop
       >
         <div class="drawer-header">
-          <h2>AI 详细讲解</h2>
+          <h2>AI讲解</h2>
           <el-icon class="drawer-close" @click="closeAIChatDrawer"><Close /></el-icon>
         </div>
         <div class="drawer-content ai-chat-content" ref="aiChatContentRef">
@@ -351,7 +361,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { marked } from 'marked';
 import type { Question, Article, QuestionType, OptionWithState } from '../types';
-import { Cpu, Collection, Delete, ArrowRight, Loading, Warning, CircleCheck, CircleClose, Close, Promotion, EditPen } from '@element-plus/icons-vue';
+import { Cpu, Collection, Delete, ArrowRight, Loading, Warning, CircleCheck, CircleClose, Close, Promotion, EditPen, DocumentCopy } from '@element-plus/icons-vue';
 
 const API_ORDER_KEY = 'apiProviderOrder';
 
@@ -938,6 +948,34 @@ const callAIExplain = async (isFollowUp = false, userMessage = '') => {
   }
 };
 
+// 复制题目内容到剪贴板
+const copyQuestionContent = async () => {
+  if (!currentQuestion.value) return;
+
+  let text = currentQuestion.value.title;
+
+  // 添加选项
+  if (currentQuestion.value.question_type === 'single' || currentQuestion.value.question_type === 'multiple') {
+    const options = optionsList.value
+      .filter(o => !o.deleted)
+      .map(o => `${o.key}. ${o.text}`)
+      .join('\n');
+    if (options) {
+      text += '\n\n' + options;
+    }
+  } else if (currentQuestion.value.question_type === 'judge') {
+    text += '\n\n正确\n错误';
+  }
+
+  try {
+    await navigator.clipboard.writeText(text);
+    ElMessage.success('题目已复制到剪贴板');
+  } catch (e) {
+    console.error('复制失败:', e);
+    ElMessage.error('复制失败');
+  }
+};
+
 // 同类题相关状态
 const drawerVisible = ref(false);
 const similarLoading = ref(false);
@@ -1251,6 +1289,24 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.copy-btn {
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: #9a9590;
+}
+
+.copy-btn:hover {
+  color: #1a1a1a;
+  background: #f5f3f0;
 }
 
 .answer-status {
