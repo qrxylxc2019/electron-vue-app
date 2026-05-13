@@ -360,50 +360,56 @@
               <el-progress :percentage="similarProgressPercent" :show-text="false" />
             </div>
             <!-- 题目内容 -->
-            <el-card class="similar-question-card">
-              <template #header>
-                <div class="question-header">
-                  <el-tag :type="similarQuestionTypeTag.type">{{ similarQuestionTypeTag.text }}</el-tag>
-                </div>
-              </template>
-              <div class="question-title markdown-body" v-html="renderMarkdown(currentSimilarQuestion.title)"></div>
-              <!-- 选项 -->
-              <div class="options-list">
-                <div
-                  v-for="option in similarOptionsList"
-                  :key="option.key"
-                  class="option-row"
-                  :class="{
-                    'selected': selectedSimilarAnswer === option.key,
-                    'correct': showSimilarAnswer && isSimilarCorrectOption(option.key),
-                    'wrong': showSimilarAnswer && isSimilarWrongOption(option.key)
-                  }"
-                >
-                  <div class="option-item" @click="selectSimilarOption(option.key)">
-                    <span class="option-key">{{ option.key }}.</span>
-                    <span class="option-text markdown-body" v-html="renderMarkdown(option.text || '')"></span>
-                    <el-icon v-if="showSimilarAnswer && isSimilarCorrectOption(option.key)" class="result-icon correct-icon"><CircleCheck /></el-icon>
-                    <el-icon v-if="showSimilarAnswer && isSimilarWrongOption(option.key)" class="result-icon wrong-icon"><CircleClose /></el-icon>
+            <div class="similar-quiz-main">
+              <el-card class="similar-question-card">
+                <template #header>
+                  <div class="question-header">
+                    <el-tag :type="similarQuestionTypeTag.type">{{ similarQuestionTypeTag.text }}</el-tag>
+                  </div>
+                </template>
+                <div class="question-title markdown-body" v-html="renderMarkdown(currentSimilarQuestion.title)"></div>
+                <!-- 选项 -->
+                <div class="options-list">
+                  <div
+                    v-for="option in similarOptionsList"
+                    :key="option.key"
+                    class="option-row"
+                    :class="{
+                      'selected': selectedSimilarAnswer === option.key,
+                      'deleted': option.deleted,
+                      'correct': showSimilarAnswer && isSimilarCorrectOption(option.key),
+                      'wrong': showSimilarAnswer && isSimilarWrongOption(option.key)
+                    }"
+                  >
+                    <div class="delete-btn" :class="{ 'is-deleted': option.deleted }" @click.stop="toggleSimilarDeleteOption(option.key)">
+                      <el-icon><Delete /></el-icon>
+                    </div>
+                    <div class="option-item" @click="selectSimilarOption(option.key)">
+                      <span class="option-key">{{ option.key }}.</span>
+                      <span class="option-text markdown-body" v-html="renderMarkdown(option.text || '')"></span>
+                      <el-icon v-if="showSimilarAnswer && isSimilarCorrectOption(option.key)" class="result-icon correct-icon"><CircleCheck /></el-icon>
+                      <el-icon v-if="showSimilarAnswer && isSimilarWrongOption(option.key)" class="result-icon wrong-icon"><CircleClose /></el-icon>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <!-- 答案显示 -->
-              <div v-if="showSimilarAnswer" class="answer-result">
-                <el-divider />
-                <div class="explanation-line">
-                  <strong>正确答案：</strong>{{ currentSimilarQuestion.correct_answer }}
+                <!-- 答案显示 -->
+                <div v-if="showSimilarAnswer" class="answer-result">
+                  <el-divider />
+                  <div class="explanation-line">
+                    <strong>正确答案：</strong>{{ currentSimilarQuestion.correct_answer }}
+                  </div>
+                  <div v-if="currentSimilarQuestion.explanation" class="explanation-line markdown-body" v-html="renderMarkdown('**解析：**' + currentSimilarQuestion.explanation)"></div>
                 </div>
-                <div v-if="currentSimilarQuestion.explanation" class="explanation-line markdown-body" v-html="renderMarkdown('**解析：**' + currentSimilarQuestion.explanation)"></div>
+              </el-card>
+              <!-- 操作按钮 -->
+              <div class="similar-actions">
+                <el-button class="delete-question-btn" @click="deleteSimilarQuestion">
+                  <el-icon><Delete /></el-icon> 删除题目
+                </el-button>
+                <el-button class="next-question-btn" @click="nextSimilarQuestion">
+                  {{ currentSimilarIndex >= similarQuestions.length - 1 ? '再来一组' : '下一题' }}
+                </el-button>
               </div>
-            </el-card>
-            <!-- 操作按钮 -->
-            <div class="similar-actions">
-              <el-button class="delete-question-btn" @click="deleteSimilarQuestion">
-                <el-icon><Delete /></el-icon> 删除题目
-              </el-button>
-              <el-button class="next-question-btn" @click="nextSimilarQuestion">
-                下一题 <el-icon><ArrowRight /></el-icon>
-              </el-button>
             </div>
           </div>
           <div v-else-if="similarLoading" class="similar-loading">
@@ -1262,18 +1268,30 @@ const similarQuestionTypeTag = computed(() => {
   }
 });
 
+// 抽屉内同类题删除的选项状态
+const similarDeletedOptions = ref<Set<string>>(new Set());
+
 // 同类题选项列表
 const similarOptionsList = computed<OptionWithState[]>(() => {
   if (!currentSimilarQuestion.value) return [];
   const q = currentSimilarQuestion.value;
   return [
-    { key: 'A', text: q.option_a, deleted: false },
-    { key: 'B', text: q.option_b, deleted: false },
-    { key: 'C', text: q.option_c, deleted: false },
-    { key: 'D', text: q.option_d, deleted: false },
-    { key: 'E', text: q.option_e, deleted: false },
+    { key: 'A', text: q.option_a, deleted: similarDeletedOptions.value.has('A') },
+    { key: 'B', text: q.option_b, deleted: similarDeletedOptions.value.has('B') },
+    { key: 'C', text: q.option_c, deleted: similarDeletedOptions.value.has('C') },
+    { key: 'D', text: q.option_d, deleted: similarDeletedOptions.value.has('D') },
+    { key: 'E', text: q.option_e, deleted: similarDeletedOptions.value.has('E') },
   ].filter(o => o.text !== null && o.text !== undefined);
 });
+
+// 切换抽屉内同类题选项删除状态
+const toggleSimilarDeleteOption = (key: string) => {
+  if (similarDeletedOptions.value.has(key)) {
+    similarDeletedOptions.value.delete(key);
+  } else {
+    similarDeletedOptions.value.add(key);
+  }
+};
 
 // 加载同类题数量
 const loadSimilarCount = async () => {
@@ -1375,18 +1393,18 @@ const isSimilarWrongOption = (key: string) => {
   return selectedSimilarAnswer.value === key && currentSimilarQuestion.value.correct_answer !== key;
 };
 
-// 下一道同类题
+// 下一道同类题（循环随机）
 const nextSimilarQuestion = () => {
-  if (currentSimilarIndex.value < similarQuestions.value.length - 1) {
-    currentSimilarIndex.value++;
-    selectedSimilarAnswer.value = '';
-    showSimilarAnswer.value = false;
-  } else {
-    ElMessage.success('同类题已完成');
+  if (currentSimilarIndex.value >= similarQuestions.value.length - 1) {
+    // 最后一题：重新打乱顺序，从头再来一组
+    similarQuestions.value = shuffleArray([...similarQuestions.value]);
     currentSimilarIndex.value = 0;
-    selectedSimilarAnswer.value = '';
-    showSimilarAnswer.value = false;
+  } else {
+    currentSimilarIndex.value++;
   }
+  selectedSimilarAnswer.value = '';
+  showSimilarAnswer.value = false;
+  similarDeletedOptions.value.clear();
 };
 
 // 删除同类题
@@ -1399,12 +1417,12 @@ const deleteSimilarQuestion = async () => {
       similarQuestions.value = similarQuestions.value.filter(q => q.id !== currentSimilarQuestion.value!.id);
       if (similarQuestions.value.length === 0) {
         similarCount.value = 0;
-        closeDrawer();
       } else if (currentSimilarIndex.value >= similarQuestions.value.length) {
         currentSimilarIndex.value = similarQuestions.value.length - 1;
       }
       selectedSimilarAnswer.value = '';
       showSimilarAnswer.value = false;
+      similarDeletedOptions.value.clear();
     } else {
       ElMessage.error('删除失败');
     }
@@ -2533,8 +2551,16 @@ onMounted(() => {
   font-weight: 500;
 }
 
+.similar-quiz-main {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  align-items: flex-start;
+}
+
 .similar-question-card {
-  margin-bottom: 24px;
+  flex: 1;
+  min-width: 0;
   border-radius: 20px;
   border: 1px solid #e8e4df;
   background: #fff;
@@ -2542,9 +2568,43 @@ onMounted(() => {
 
 .similar-actions {
   display: flex;
-  gap: 16px;
+  flex-direction: column;
   justify-content: center;
-  margin-top: 24px;
+  gap: 12px;
+  flex-shrink: 0;
+  margin-top: 0;
+}
+
+.similar-actions .delete-question-btn {
+  background: transparent;
+  color: #f56c6c;
+  border: 1.5px solid #f56c6c;
+  padding: 16px 20px;
+  border-radius: 12px;
+  font-size: 17px;
+  min-height: 52px;
+  height: auto;
+  min-width: 120px;
+}
+
+.similar-actions .delete-question-btn:hover {
+  background: #fef0f0;
+}
+
+.similar-actions .next-question-btn {
+  background: #1a1a1a;
+  color: #fff;
+  border: none;
+  padding: 16px 20px;
+  border-radius: 12px;
+  font-size: 17px;
+  min-height: 52px;
+  height: auto;
+  min-width: 120px;
+}
+
+.similar-actions .next-question-btn:hover {
+  background: #333;
 }
 
 .similar-loading {
@@ -2559,5 +2619,57 @@ onMounted(() => {
 
 .similar-empty {
   padding: 60px 0;
+}
+
+/* 抽屉内选项删除按钮 */
+.option-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.option-row .delete-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: transparent;
+  color: #f56c6c;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.option-row .delete-btn.is-deleted {
+  color: #c0c4cc;
+}
+
+.option-row .delete-btn:hover {
+  color: #ff7875;
+}
+
+.option-row.deleted .option-item {
+  opacity: 0.3;
+  text-decoration: line-through;
+  pointer-events: none;
+}
+
+.option-row .option-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #f8f7f5;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.option-row .option-item:hover {
+  background: #f0ece7;
 }
 </style>
