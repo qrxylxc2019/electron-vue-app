@@ -1,6 +1,8 @@
 """
 DeepSeek API 客户端 - Python 实现
 参考 deepseek2api 项目逻辑，实现流式对话（包含 PoW 验证）
+
+放在 src/main/deepseek 目录下，被 pow_solver.py 调用
 """
 
 import requests
@@ -34,11 +36,10 @@ class DeepSeekChat:
 
     BASE_URL = "https://chat.deepseek.com"
 
-    # WASM 文件路径 - 使用项目中的备份
+    # WASM 文件路径 - 与本文件同目录
     WASM_PATH = os.path.join(os.path.dirname(__file__),
-                             "..", "src", "main", "deepseek",
                              "sha3_wasm_bg.7b9ca65ddd.wasm")
-    
+
     # 伪装 headers
     FAKE_HEADERS = {
         "Accept": "*/*",
@@ -58,7 +59,7 @@ class DeepSeekChat:
         "X-Client-Platform": "web",
         "X-Client-Version": "1.0.0",
     }
-    
+
     def __init__(self, token: str, wasm_path: str = None):
         """
         初始化客户端
@@ -79,14 +80,14 @@ class DeepSeekChat:
         self.session_id = None
 
         logger.info(f"DeepSeek 客户端初始化，Token: {self.token[:10]}...")
-    
+
     def get_auth_headers(self) -> dict:
         """获取带认证的请求头"""
         return {
             **self.FAKE_HEADERS,
             "Authorization": f"Bearer {self.token}",
         }
-    
+
     def compute_pow_answer(self, algorithm: str, challenge_str: str, salt: str,
                            difficulty: int, expire_at: int) -> Optional[int]:
         """
@@ -94,39 +95,39 @@ class DeepSeekChat:
         """
         if not WASM_AVAILABLE:
             raise RuntimeError("wasmtime 未安装")
-        
+
         if algorithm != "DeepSeekHashV1":
             raise ValueError(f"不支持的算法: {algorithm}")
-        
+
         prefix = f"{salt}_{expire_at}_"
-        
+
         # 加载 WASM 模块
         store = Store()
         linker = Linker(store.engine)
-        
+
         try:
             with open(self.wasm_path, "rb") as f:
                 wasm_bytes = f.read()
         except Exception as e:
             raise RuntimeError(f"加载 WASM 文件失败: {self.wasm_path}, 错误: {e}")
-        
+
         module = Module(store.engine, wasm_bytes)
         instance = linker.instantiate(store, module)
         exports = instance.exports(store)
-        
+
         memory = exports["memory"]
         add_to_stack = exports["__wbindgen_add_to_stack_pointer"]
         alloc = exports["__wbindgen_export_0"]
         wasm_solve = exports["wasm_solve"]
-        
+
         def write_memory(offset: int, data: bytes):
             base_addr = ctypes.cast(memory.data_ptr(store), ctypes.c_void_p).value
             ctypes.memmove(base_addr + offset, data, len(data))
-        
+
         def read_memory(offset: int, size: int) -> bytes:
             base_addr = ctypes.cast(memory.data_ptr(store), ctypes.c_void_p).value
             return ctypes.string_at(base_addr + offset, size)
-        
+
         def encode_string(text: str):
             data = text.encode("utf-8")
             length = len(data)
@@ -134,32 +135,32 @@ class DeepSeekChat:
             ptr = int(ptr_val.value) if hasattr(ptr_val, "value") else int(ptr_val)
             write_memory(ptr, data)
             return ptr, length
-        
+
         # 申请栈空间
         retptr = add_to_stack(store, -16)
-        
+
         # 编码字符串
         ptr_challenge, len_challenge = encode_string(challenge_str)
         ptr_prefix, len_prefix = encode_string(prefix)
-        
+
         # 调用 WASM 求解
-        wasm_solve(store, retptr, ptr_challenge, len_challenge, 
+        wasm_solve(store, retptr, ptr_challenge, len_challenge,
                    ptr_prefix, len_prefix, float(difficulty))
-        
+
         # 读取结果
         status_bytes = read_memory(retptr, 4)
         status = struct.unpack("<i", status_bytes)[0]
-        
+
         value_bytes = read_memory(retptr + 8, 8)
         value = struct.unpack("<d", value_bytes)[0]
-        
+
         # 恢复栈指针
         add_to_stack(store, 16)
-        
+
         if status == 0:
             return None
         return int(value)
-    
+
     def get_pow_response(self) -> Optional[str]:
         """
         获取 PoW 响应
@@ -171,16 +172,16 @@ class DeepSeekChat:
                 json={"target_path": "/api/v0/chat/completion"},
                 timeout=30
             )
-            
+
             # 打印响应状态码和内容用于调试
             print(f"PoW 请求状态码: {resp.status_code}")
-            
+
             data = resp.json()
             print(f"PoW 响应数据: {data}")
-            
+
             if resp.status_code == 200 and data.get("code") == 0:
                 challenge = data["data"]["biz_data"]["challenge"]
-                
+
                 # 计算答案
                 answer = self.compute_pow_answer(
                     challenge["algorithm"],
@@ -189,11 +190,11 @@ class DeepSeekChat:
                     challenge.get("difficulty", 144000),
                     challenge.get("expire_at", 1680000000)
                 )
-                
+
                 if answer is None:
                     print("PoW 答案计算失败")
                     return None
-                
+
                 # 构建响应
                 pow_dict = {
                     "algorithm": challenge["algorithm"],
@@ -203,7 +204,7 @@ class DeepSeekChat:
                     "signature": challenge["signature"],
                     "target_path": challenge["target_path"],
                 }
-                
+
                 pow_str = json.dumps(pow_dict, separators=(",", ":"), ensure_ascii=False)
                 encoded = base64.b64encode(pow_str.encode("utf-8")).decode("utf-8")
                 return encoded
@@ -212,13 +213,13 @@ class DeepSeekChat:
                 print(f"获取 PoW 失败: {error_msg}")
                 print(f"完整响应: {data}")
                 return None
-                
+
         except Exception as e:
             print(f"获取 PoW 异常: {e}")
             import traceback
             traceback.print_exc()
             return None
-    
+
     def create_session(self) -> Optional[str]:
         """创建会话"""
         try:
@@ -228,9 +229,9 @@ class DeepSeekChat:
                 json={"agent": "chat"},
                 timeout=15
             )
-            
+
             data = response.json()
-            
+
             if response.status_code == 200 and data.get("code") == 0:
                 session_id = data["data"]["biz_data"]["id"]
                 self.session_id = session_id
@@ -238,12 +239,12 @@ class DeepSeekChat:
             else:
                 print(f"创建会话失败: {data.get('msg', '未知错误')}")
                 return None
-                
+
         except Exception as e:
             print(f"创建会话异常: {e}")
             return None
-    
-    def chat_stream(self, question: str, thinking_enabled: bool = False, 
+
+    def chat_stream(self, question: str, thinking_enabled: bool = False,
                     search_enabled: bool = False, max_retries: int = 3) -> Generator[dict, None, None]:
         """
         流式对话
@@ -254,18 +255,18 @@ class DeepSeekChat:
                 session_id = self.create_session()
                 if not session_id:
                     raise Exception("创建会话失败")
-                
+
                 # 获取 PoW
                 pow_resp = self.get_pow_response()
                 if not pow_resp:
                     raise Exception("获取 PoW 失败")
-                
+
                 # 构建请求
                 headers = {
                     **self.get_auth_headers(),
                     "x-ds-pow-response": pow_resp,
                 }
-                
+
                 payload = {
                     "chat_session_id": session_id,
                     "parent_message_id": None,
@@ -274,7 +275,7 @@ class DeepSeekChat:
                     "thinking_enabled": thinking_enabled,
                     "search_enabled": search_enabled,
                 }
-                
+
                 response = self.session.post(
                     f"{self.BASE_URL}/api/v0/chat/completion",
                     headers=headers,
@@ -282,53 +283,53 @@ class DeepSeekChat:
                     stream=True,
                     timeout=300
                 )
-                
+
                 if response.status_code != 200:
                     raise Exception(f"请求失败: {response.status_code}")
-                
+
                 current_type = "text"
-                
+
                 for line in response.iter_lines():
                     if not line:
                         continue
-                    
+
                     line_text = line.decode('utf-8')
-                    
+
                     if not line_text.startswith("data:"):
                         continue
-                    
+
                     data_str = line_text[5:].strip()
-                    
+
                     if data_str == "[DONE]":
                         return
-                    
+
                     try:
                         data = json.loads(data_str)
-                        
+
                         if "v" in data:
                             v_value = data["v"]
-                            
+
                             if data.get("p") == "response/search_status":
                                 continue
-                            
+
                             if data.get("p") == "response/thinking_content":
                                 current_type = "thinking"
                             elif data.get("p") == "response/content":
                                 current_type = "text"
-                            
+
                             if isinstance(v_value, str):
                                 yield {"type": current_type, "content": v_value}
-                            
+
                             elif isinstance(v_value, list):
                                 for item in v_value:
                                     if item.get("p") == "status" and item.get("v") == "FINISHED":
                                         return
-                                        
+
                     except json.JSONDecodeError:
                         continue
-                
+
                 return
-                
+
             except Exception as e:
                 print(f"\n请求失败 (尝试 {retry + 1}/{max_retries}): {e}")
                 if retry < max_retries - 1:
@@ -336,11 +337,11 @@ class DeepSeekChat:
                 else:
                     raise
 
-    def chat(self, question: str, model: str = "deepseek-chat", 
+    def chat(self, question: str, model: str = "deepseek-chat",
              stream: bool = True, max_retries: int = 3) -> Optional[str]:
         """
         发送聊天请求
-        
+
         Args:
             question: 问题内容
             model: 模型名称
@@ -363,15 +364,15 @@ class DeepSeekChat:
         else:
             thinking_enabled = False
             search_enabled = False
-        
+
         full_content = ""
         full_thinking = ""
-        
+
         try:
             for chunk in self.chat_stream(question, thinking_enabled, search_enabled, max_retries):
                 content = chunk.get("content", "")
                 chunk_type = chunk.get("type", "text")
-                
+
                 if chunk_type == "thinking":
                     full_thinking += content
                     if stream and thinking_enabled:
@@ -380,16 +381,16 @@ class DeepSeekChat:
                     full_content += content
                     if stream:
                         print(content, end='', flush=True)
-            
+
             if stream:
                 print()
-            
+
             return full_content
-            
+
         except Exception as e:
             print(f"\n聊天失败: {e}")
             return None
-    
+
     def check_token_status(self) -> bool:
         """检查 token 是否有效"""
         try:
@@ -402,14 +403,14 @@ class DeepSeekChat:
             return data.get("code") == 0 and bool(data.get("data", {}).get("biz_data"))
         except Exception:
             return False
-    
+
     @staticmethod
     def get_token_instructions():
         """获取 token 的说明"""
         instructions = """
-╔══════════════════════════════════════════════════════════════╗
+╔═══════════════════════════════════════════════════════════════════════╗
 ║                    如何获取 Token                             ║
-╠══════════════════════════════════════════════════════════════╣
+╠═══════════════════════════════════════════════════════════════════════╝
 ║                                                              ║
 ║  1. 打开浏览器，访问 https://chat.deepseek.com               ║
 ║  2. 登录你的账号                                              ║
@@ -425,7 +426,7 @@ class DeepSeekChat:
 ║  - deepseek-chat-search: 联网搜索                            ║
 ║  - deepseek-reasoner-search: 深度思考 + 联网搜索             ║
 ║                                                              ║
-╚══════════════════════════════════════════════════════════════╝
+╚═══════════════════════════════════════════════════════════════════════╝
         """
         print(instructions)
 
@@ -435,9 +436,9 @@ def main():
     print("=" * 60)
     print("DeepSeek API 客户端")
     print("=" * 60)
-    
-    chat = DeepSeekChat()
-    
+
+    chat = DeepSeekChat(token="dummy")  # 单独运行时需要填充真实 token
+
     print("检查 token 状态...")
     if chat.check_token_status():
         print("✓ Token 有效")
@@ -445,23 +446,23 @@ def main():
         print("⚠ Token 可能无效")
         DeepSeekChat.get_token_instructions()
         return
-    
+
     print("\n可用模型: deepseek-chat, deepseek-reasoner")
     model = input("选择模型 (默认 deepseek-chat): ").strip() or "deepseek-chat"
-    
+
     print("\n开始对话 (输入 'quit' 退出)")
     print("=" * 60)
-    
+
     while True:
         question = input("\n你: ").strip()
-        
+
         if not question:
             continue
-        
+
         if question.lower() in ['quit', 'exit', 'q']:
             print("再见!")
             break
-        
+
         print("\nDeepSeek: ", end='')
         chat.chat(question, model=model)
 

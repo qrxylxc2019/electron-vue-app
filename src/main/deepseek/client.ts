@@ -81,18 +81,22 @@ export class DeepSeekClient {
     }
     this.wasmPath = wasmPath;
 
-    // 定位 pow_solver.py 脚本路径（在 ds 目录下）
+    // 定位 pow_solver.py 脚本路径（现在与本文件同目录）
     let pythonScriptPath = '';
     const isDev = !app.isPackaged;
     if (isDev) {
+      // 使用 app.getAppPath() 获取项目根目录
+      const appPath = app.getAppPath();
       const possibleScriptPaths = [
-        // ds 目录（开发环境，从项目根目录）
-        path.join(__dirname, '..', '..', '..', 'ds', 'pow_solver.py'),
-        path.join(__dirname, '..', '..', 'ds', 'pow_solver.py'),
-        // 源码目录（备用）
+        // 源码目录（开发环境）
+        path.join(appPath, 'src', 'main', 'deepseek', 'pow_solver.py'),
+        // tsc 编译后的 dist 目录（从 dist/main/deepseek 运行时）
+        path.join(__dirname, '..', '..', '..', 'src', 'main', 'deepseek', 'pow_solver.py'),
+        path.join(__dirname, '..', '..', 'src', 'main', 'deepseek', 'pow_solver.py'),
         path.join(__dirname, 'pow_solver.py'),
       ];
       for (const p of possibleScriptPaths) {
+        console.log('[DeepSeek] 检查 Python 脚本路径:', p, '存在:', fs.existsSync(p));
         if (fs.existsSync(p)) {
           pythonScriptPath = p;
           break;
@@ -100,7 +104,7 @@ export class DeepSeekClient {
       }
     } else {
       // 打包后
-      pythonScriptPath = path.join(process.resourcesPath, 'ds', 'pow_solver.py');
+      pythonScriptPath = path.join(process.resourcesPath, 'deepseek', 'pow_solver.py');
     }
     this.pythonScriptPath = pythonScriptPath;
 
@@ -140,22 +144,14 @@ export class DeepSeekClient {
         return;
       }
 
-      // 检查 ds.py 所在目录
-      let dsPyDir = path.dirname(this.pythonScriptPath);
-      let dsPyPath = path.join(dsPyDir, 'ds.py');
+      // Python 脚本所在目录（pow_solver.py 和 ds.py 现在同目录）
+      const scriptDir = path.dirname(this.pythonScriptPath);
+
+      // 检查 ds.py 是否存在
+      const dsPyPath = path.join(scriptDir, 'ds.py');
       if (!fs.existsSync(dsPyPath)) {
-        // 尝试其他可能的位置
-        const alternativePaths = [
-          path.join(__dirname, '..', '..', '..', 'ds', 'ds.py'),
-          path.join(__dirname, '..', '..', 'ds', 'ds.py'),
-          path.join(__dirname, 'ds.py'),
-        ];
-        for (const altPath of alternativePaths) {
-          if (fs.existsSync(altPath)) {
-            dsPyDir = path.dirname(altPath);
-            break;
-          }
-        }
+        reject(new Error(`ds.py 不存在于: ${scriptDir}`));
+        return;
       }
 
       // 获取 WASM 文件路径
@@ -183,12 +179,12 @@ export class DeepSeekClient {
       console.log('[DeepSeek] Python 输入:', input);
 
       // 调用 Python 脚本
-      // 设置工作目录为 ds.py 所在目录
+      // 设置工作目录为脚本所在目录
       // 使用环境变量传递 wasm_path（避免中文路径通过 stdin JSON 传递时编码损坏）
       console.log('[DeepSeek] 启动 Python 脚本:', this.pythonScriptPath);
-      console.log('[DeepSeek] Python 工作目录:', dsPyDir);
+      console.log('[DeepSeek] Python 工作目录:', scriptDir);
       const pythonProcess = spawn('python', ['-u', this.pythonScriptPath], {
-        cwd: dsPyDir,
+        cwd: scriptDir,
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {
           ...process.env,
