@@ -19,7 +19,7 @@ export const DEFAULT_API_CONFIGS: Record<string, ApiProviderConfig> = {
   deepseek: {
     name: 'DeepSeek',
     baseURL: 'https://api.deepseek.com',
-    defaultModel: 'deepseek-v4-pro',
+    defaultModel: 'deepseek-v4-flash',
     apiKey: 'sk-793f0d8a79b547b996d39f2f1f8af852',
   },
 };
@@ -128,6 +128,8 @@ export function getOpenAIClient(provider: string): OpenAI {
   return new OpenAI({
     apiKey: config.apiKey,
     baseURL: config.baseURL,
+    timeout: 30000,
+    maxRetries: 0,
   });
 }
 
@@ -153,10 +155,12 @@ export async function callAIWithFallback<T>(
 
   for (const provider of providerOrder) {
     try {
+      console.log(`[AI Fallback] 尝试调用厂商: ${provider}`);
       if (onProviderSwitch) {
         onProviderSwitch(provider);
       }
       const data = await callFn(provider);
+      console.log(`[AI Fallback] 厂商 ${provider} 调用成功`);
       return { success: true, data, provider };
     } catch (err: any) {
       const msg = err.message || String(err);

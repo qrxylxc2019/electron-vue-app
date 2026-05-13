@@ -744,38 +744,50 @@ ipcMain.handle('ai:explainQuestion', async (_event, questionData: any) => {
     messages.push({ role: 'user', content: userMessage });
   }
 
-  const result = await callAIWithFallback(providerOrder, async (provider) => {
-    const client = getOpenAIClient(provider);
-    const model = getCurrentModel(provider);
+  const result = await callAIWithFallback(
+    providerOrder,
+    async (provider) => {
+      log(`[AI] 开始调用厂商: ${provider}`);
+      const client = getOpenAIClient(provider);
+      const model = getCurrentModel(provider);
+      log(`[AI] 使用模型: ${model}`);
 
-    const stream = await client.chat.completions.create({
-      model,
-      messages: messages as any,
-      stream: true,
-      temperature: 0.7,
-      max_tokens: 2048,
-    });
+      const stream = await client.chat.completions.create({
+        model,
+        messages: messages as any,
+        stream: true,
+        temperature: 0.7,
+        max_tokens: 2048,
+      });
 
-    let assistantContent = '';
+      let assistantContent = '';
 
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content || '';
-      if (content && mainWindow) {
-        assistantContent += content;
-        mainWindow.webContents.send('ai:streamChunk', content);
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || '';
+        if (content && mainWindow) {
+          assistantContent += content;
+          mainWindow.webContents.send('ai:streamChunk', content);
+        }
+      }
+
+      // 保存对话上下文
+      messages.push({ role: 'assistant', content: assistantContent });
+      aiChatContexts.set(questionId, messages);
+
+      if (mainWindow) {
+        mainWindow.webContents.send('ai:streamDone');
+      }
+
+      log(`[AI] 厂商 ${provider} 调用成功`);
+      return assistantContent;
+    },
+    (provider) => {
+      log(`[AI Fallback] 切换到厂商: ${provider}`);
+      if (mainWindow) {
+        mainWindow.webContents.send('ai:providerSwitch', provider);
       }
     }
-
-    // 保存对话上下文
-    messages.push({ role: 'assistant', content: assistantContent });
-    aiChatContexts.set(questionId, messages);
-
-    if (mainWindow) {
-      mainWindow.webContents.send('ai:streamDone');
-    }
-
-    return assistantContent;
-  });
+  );
 
   if (!result.success) {
     console.error('AI explain error:', result.error);
