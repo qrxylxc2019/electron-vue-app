@@ -258,7 +258,7 @@
                   @click="generateAISimilarQuestions"
                 >
                   <el-icon><Collection /></el-icon>
-                  {{ aiSimilarQuestions.length > 0 ? '再生成5道同类题' : '生成同类题（20道）' }}
+                  {{ aiSimilarQuestions.length > 0 ? '再来5道同类题' : '同类题（20道）' }}
                 </el-button>
                 <!-- 同类题卡片 -->
                 <div v-if="aiSimilarQuestions.length > 0" class="ai-similar-card">
@@ -2214,6 +2214,7 @@ onMounted(() => {
   padding: 12px 24px;
   font-size: 15px;
   width:200px;
+  height:50px
 }
 
 .generate-similar-btn:hover {
