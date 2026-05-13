@@ -1,4 +1,4 @@
-﻿﻿﻿﻿<template>
+﻿﻿<template>
   <div class="quiz-container">
     <el-page-header @back="goBack" :content="directoryName" />
 
@@ -219,10 +219,7 @@
               class="chat-message"
               :class="msg.role"
             >
-              <div class="message-avatar">
-                <el-icon v-if="msg.role === 'assistant'"><Cpu /></el-icon>
-                <span v-else>我</span>
-              </div>
+              
               <div class="message-bubble">
                 <div v-if="msg.provider" class="message-provider">{{ msg.provider }}</div>
                 <div class="ai-markdown" v-html="renderMarkdown(msg.content)"></div>
@@ -230,9 +227,6 @@
             </div>
             <!-- 正在输入中 -->
             <div v-if="aiLoading" class="chat-message assistant">
-              <div class="message-avatar">
-                <el-icon><Cpu /></el-icon>
-              </div>
               <div class="message-bubble loading-bubble">
                 <div v-if="aiProviderName" class="message-provider">{{ aiProviderName }}</div>
                 <el-icon class="is-loading"><Loading /></el-icon>
@@ -241,9 +235,6 @@
             </div>
             <!-- 错误提示 -->
             <div v-if="aiError" class="chat-message assistant">
-              <div class="message-avatar">
-                <el-icon><Warning /></el-icon>
-              </div>
               <div class="message-bubble error-bubble">
                 <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:inherit;">{{ aiError }}</pre>
               </div>
@@ -266,7 +257,6 @@
             :disabled="!aiUserInput.trim()"
             @click="sendAIChatMessage"
           >
-            <el-icon><Promotion /></el-icon>
             发送
           </el-button>
         </div>
@@ -1740,34 +1730,22 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .chat-message {
   display: flex;
-  gap: 12px;
   align-items: flex-start;
 }
 
 .chat-message.user {
-  flex-direction: row-reverse;
+  justify-content: flex-end;
 }
 
-.message-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #1a1a1a;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 500;
-  flex-shrink: 0;
-}
-
-.chat-message.user .message-avatar {
-  background: #c4a882;
+.chat-message.assistant {
+  justify-content: flex-start;
 }
 
 .message-bubble {
@@ -1775,15 +1753,13 @@ onMounted(() => {
   padding: 16px 20px;
   border-radius: 16px;
   background: #fff;
-  border: 1px solid #e8e4df;
   font-size: 18px;
   line-height: 1.8;
   color: #1a1a1a;
 }
 
 .chat-message.user .message-bubble {
-  background: #e8f5e9;
-  border-color: #c8e6c9;
+  background: #f0f0f0;
 }
 
 .loading-bubble {
@@ -1806,7 +1782,6 @@ onMounted(() => {
 .error-bubble {
   color: #F56C6C;
   background: #fef0f0;
-  border-color: #fde2e2;
 }
 
 .ai-chat-input-area {
@@ -1817,6 +1792,9 @@ onMounted(() => {
   gap: 12px;
   align-items: flex-end;
   flex-shrink: 0;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .ai-chat-input {
