@@ -1132,7 +1132,9 @@ const generateAISimilarQuestions = async () => {
       providerOrder: getProviderOrder(),
     });
 
+    console.log('[generateAISimilarQuestions] 结果:', result);
     if (result.success && result.questions) {
+      console.log('[generateAISimilarQuestions] questions类型:', typeof result.questions, Array.isArray(result.questions));
       // 添加 pid 和 directory_id
       const questionsToAdd = result.questions.map((q: any) => ({
         ...q,
@@ -1151,9 +1153,11 @@ const generateAISimilarQuestions = async () => {
       ElMessage.success(`已追加 ${saved.length} 道同类题，共 ${aiSimilarQuestions.value.length} 道`);
       scrollToBottom();
     } else {
+      console.error('[generateAISimilarQuestions] 失败:', result);
       ElMessage.error(result.error || '生成同类题失败');
     }
   } catch (err: any) {
+    console.error('[generateAISimilarQuestions] 异常:', err);
     ElMessage.error(err.message || '生成同类题失败');
   } finally {
     aiSimilarLoading.value = false;

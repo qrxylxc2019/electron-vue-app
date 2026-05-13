@@ -849,6 +849,9 @@ ipcMain.handle('ai:generateSimilarQuestions', async (_event, questionData: any) 
   const prompt = PROMPTS.generateSimilar(questionData);
 
   const result = await callAIWithFallback(providerOrder, async (provider) => {
+    log(`[AI GenerateSimilar] 使用厂商: ${provider}`);
+    let content = '';
+
     // 支持 DeepSeek 本地版
     if (provider === 'deepseekLocal') {
       const dsClient = getDeepSeekClient();
@@ -860,7 +863,6 @@ ipcMain.handle('ai:generateSimilarQuestions', async (_event, questionData: any) 
         { role: 'user', content: `${prompt.system}\n\n${prompt.user}` }
       ];
 
-      let content = '';
       let thinking = '';
       for await (const chunk of dsClient.chatStream(dsMessages, 'deepseek-chat')) {
         if (chunk.type === 'text' && chunk.content) {
@@ -871,31 +873,45 @@ ipcMain.handle('ai:generateSimilarQuestions', async (_event, questionData: any) 
           throw new Error(chunk.content || 'DeepSeek 聊天失败');
         }
       }
+      log(`[AI GenerateSimilar] DeepSeek 本地版返回内容长度: ${content.length}`);
+    } else {
+      const client = getOpenAIClient(provider);
+      const model = getCurrentModel(provider);
 
-      return { content };
+      const response = await client.chat.completions.create({
+        model,
+        messages: [
+          { role: 'system', content: prompt.system },
+          { role: 'user', content: prompt.user },
+        ],
+        stream: false,
+        temperature: 0.8,
+        max_tokens: 4096,
+      });
+
+      content = response.choices[0]?.message?.content || '';
+      log(`[AI GenerateSimilar] ${provider} 返回内容长度: ${content.length}`);
     }
 
-    const client = getOpenAIClient(provider);
-    const model = getCurrentModel(provider);
-
-    const response = await client.chat.completions.create({
-      model,
-      messages: [
-        { role: 'system', content: prompt.system },
-        { role: 'user', content: prompt.user },
-      ],
-      stream: false,
-      temperature: 0.8,
-      max_tokens: 4096,
-    });
-
-    const content = response.choices[0]?.message?.content || '';
     // 提取JSON部分
+    log(`[AI GenerateSimilar] 原始内容前200字符: ${content.substring(0, 200)}`);
     const jsonMatch = content.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
-      throw new Error('AI返回格式不正确');
+      log(`[AI GenerateSimilar] 未找到JSON数组，内容: ${content.substring(0, 500)}`);
+      throw new Error('AI返回格式不正确，未找到JSON数组');
     }
-    return JSON.parse(jsonMatch[0]);
+
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      log(`[AI GenerateSimilar] JSON解析成功，题目数量: ${Array.isArray(parsed) ? parsed.length : '非数组'}`);
+      if (!Array.isArray(parsed)) {
+        throw new Error('AI返回的JSON不是数组');
+      }
+      return parsed;
+    } catch (e: any) {
+      log(`[AI GenerateSimilar] JSON解析失败: ${e.message}`);
+      throw new Error(`JSON解析失败: ${e.message}`);
+    }
   });
 
   if (!result.success) {
