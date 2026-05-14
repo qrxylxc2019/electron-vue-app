@@ -1981,7 +1981,7 @@ onMounted(() => {
 
 .result-icon {
   font-size: 24px;
-  margin-left: auto;
+  margin-left: 12px;
   flex-shrink: 0;
 }
 
@@ -2002,9 +2002,11 @@ onMounted(() => {
 }
 
 .option-text {
-  flex: 1;
+  flex: 0 1 auto;
   color: #4a4540;
   font-size: 20px;
+  min-width: 0;
+  word-break: break-all;
 }
 
 .strikethrough {
