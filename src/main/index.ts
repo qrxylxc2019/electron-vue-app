@@ -922,6 +922,91 @@ ipcMain.handle('ai:generateSimilarQuestions', async (_event, questionData: any) 
   return { success: true, questions: result.data };
 });
 
+// AI 根据主题生成同类题（技能模式）
+ipcMain.handle('ai:generateSimilarQuestionsByTopic', async (_event, data: any) => {
+  const providerOrder = (data.providerOrder as string[]) || ['modelspace', 'deepseek'];
+  const topic = data.topic as string;
+
+  if (!topic) {
+    return { success: false, error: '主题不能为空' };
+  }
+
+  const prompt = PROMPTS.generateSimilarByTopic(topic);
+
+  const result = await callAIWithFallback(providerOrder, async (provider) => {
+    log(`[AI GenerateSimilarByTopic] 使用厂商: ${provider}`);
+    let content = '';
+
+    // 支持 DeepSeek 本地版
+    if (provider === 'deepseekLocal') {
+      const dsClient = getDeepSeekClient();
+      if (!dsClient) {
+        throw new Error('DeepSeek 本地版客户端未初始化，请先设置 Token');
+      }
+
+      const dsMessages: { role: 'user' | 'assistant'; content: string }[] = [
+        { role: 'user', content: `${prompt.system}\n\n${prompt.user}` }
+      ];
+
+      let thinking = '';
+      for await (const chunk of dsClient.chatStream(dsMessages, 'deepseek-chat')) {
+        if (chunk.type === 'text' && chunk.content) {
+          content += chunk.content;
+        } else if (chunk.type === 'thinking' && chunk.content) {
+          thinking += chunk.content;
+        } else if (chunk.type === 'error') {
+          throw new Error(chunk.content || 'DeepSeek 聊天失败');
+        }
+      }
+      log(`[AI GenerateSimilarByTopic] DeepSeek 本地版返回内容长度: ${content.length}`);
+    } else {
+      const client = getOpenAIClient(provider);
+      const model = getCurrentModel(provider);
+
+      const response = await client.chat.completions.create({
+        model,
+        messages: [
+          { role: 'system', content: prompt.system },
+          { role: 'user', content: prompt.user },
+        ],
+        stream: false,
+        temperature: 0.8,
+        max_tokens: 4096,
+      });
+
+      content = response.choices[0]?.message?.content || '';
+      log(`[AI GenerateSimilarByTopic] ${provider} 返回内容长度: ${content.length}`);
+    }
+
+    // 提取JSON部分
+    log(`[AI GenerateSimilarByTopic] 原始内容前200字符: ${content.substring(0, 200)}`);
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      log(`[AI GenerateSimilarByTopic] 未找到JSON数组，内容: ${content.substring(0, 500)}`);
+      throw new Error('AI返回格式不正确，未找到JSON数组');
+    }
+
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      log(`[AI GenerateSimilarByTopic] JSON解析成功，题目数量: ${Array.isArray(parsed) ? parsed.length : '非数组'}`);
+      if (!Array.isArray(parsed)) {
+        throw new Error('AI返回的JSON不是数组');
+      }
+      return parsed;
+    } catch (e: any) {
+      log(`[AI GenerateSimilarByTopic] JSON解析失败: ${e.message}`);
+      throw new Error(`JSON解析失败: ${e.message}`);
+    }
+  });
+
+  if (!result.success) {
+    console.error('AI generate similar questions by topic error:', result.error);
+    return { success: false, error: result.error };
+  }
+
+  return { success: true, questions: result.data };
+});
+
 // API 设置已改为前端本地存储，IPC 接口保留空实现以兼容旧代码
 ipcMain.handle('db:getApiSettings', () => {
   return {};

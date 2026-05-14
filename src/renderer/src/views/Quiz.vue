@@ -319,22 +319,50 @@
         </div>
         <!-- 底部输入框 -->
         <div class="ai-chat-input-area">
-          <el-input
-            v-model="aiUserInput"
-            type="textarea"
-            :rows="2"
-            placeholder="对这道题还有疑问？继续向 AI 提问..."
-            class="ai-chat-input"
-            @keydown.enter.prevent="sendAIChatMessage"
-          />
-          <el-button
-            class="ai-send-btn"
-            :loading="aiLoading"
-            :disabled="!aiUserInput.trim()"
-            @click="sendAIChatMessage"
-          >
-            发送
-          </el-button>
+          <div class="input-box">
+            <el-input
+              v-model="aiUserInput"
+              type="textarea"
+              :rows="2"
+              :placeholder="aiInputPlaceholder"
+              class="ai-chat-input"
+              @keydown.enter.prevent="sendAIChatMessage"
+            />
+            <div class="input-toolbar-bottom">
+              <el-button
+                class="skill-btn"
+                size="small"
+                text
+                @click="showSkillList = !showSkillList"
+              >
+                <el-icon><MagicStick /></el-icon>
+                技能
+              </el-button>
+              <!-- 技能列表弹出层 -->
+              <div v-if="showSkillList" class="skill-popover">
+                <div
+                  v-for="skill in skillList"
+                  :key="skill.key"
+                  class="skill-item"
+                  @click="handleSkillClick(skill)"
+                >
+                  <el-icon><component :is="skill.icon" /></el-icon>
+                  <div class="skill-info">
+                    <div class="skill-name">{{ skill.name }}</div>
+                    <div class="skill-desc">{{ skill.desc }}</div>
+                  </div>
+                </div>
+              </div>
+              <el-button
+                class="ai-send-icon-btn"
+                :loading="aiLoading"
+                :disabled="!aiUserInput.trim()"
+                @click="sendAIChatMessage"
+              >
+                <el-icon><Promotion /></el-icon>
+              </el-button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -490,6 +518,35 @@ const aiUserInput = ref('');
 const aiChatContentRef = ref<HTMLDivElement | null>(null);
 const aiChatMessagesRef = ref<HTMLDivElement | null>(null);
 let aiUnsubscribers: (() => void)[] = [];
+
+// 技能相关状态
+const showSkillList = ref(false);
+const currentSkill = ref<string>('');
+const aiInputPlaceholder = ref('对这道题还有疑问？继续向 AI 提问...');
+
+// 技能列表
+const skillList = [
+  {
+    key: 'similar_questions',
+    name: '同类题',
+    desc: '根据主题生成同类练习题',
+    icon: 'Collection',
+    placeholder: '请输入主题，例如：项目风险管理、配置管理...',
+  },
+];
+
+// 处理技能点击
+const handleSkillClick = (skill: typeof skillList[0]) => {
+  currentSkill.value = skill.key;
+  aiInputPlaceholder.value = skill.placeholder;
+  aiUserInput.value = '';
+  showSkillList.value = false;
+  // 聚焦输入框
+  setTimeout(() => {
+    const inputEl = document.querySelector('.ai-chat-input textarea') as HTMLTextAreaElement;
+    if (inputEl) inputEl.focus();
+  }, 100);
+};
 
 // AI 聊天区域滚动状态
 const isUserScrolling = ref(false);
@@ -987,10 +1044,18 @@ const closeAIChatDrawer = () => {
 
 // 发送 AI 对话消息（追问）
 const sendAIChatMessage = async () => {
-  if (!currentQuestion.value || !aiUserInput.value.trim() || aiLoading.value) return;
+  if (!aiUserInput.value.trim() || aiLoading.value) return;
 
   const userMessage = aiUserInput.value.trim();
   aiUserInput.value = '';
+
+  // 如果是同类题技能模式
+  if (currentSkill.value === 'similar_questions') {
+    await handleSkillGenerateSimilar(userMessage);
+    return;
+  }
+
+  if (!currentQuestion.value) return;
 
   // 添加用户消息到对话列表
   aiChatMessages.value.push({
@@ -1000,6 +1065,77 @@ const sendAIChatMessage = async () => {
   scrollToBottom();
 
   await callAIExplain(true, userMessage);
+};
+
+// 处理技能：生成同类题
+const handleSkillGenerateSimilar = async (topic: string) => {
+  if (!currentQuestion.value) return;
+
+  aiLoading.value = true;
+  aiSimilarLoading.value = true;
+
+  // 添加用户消息
+  aiChatMessages.value.push({
+    role: 'user',
+    content: `生成同类题：${topic}`
+  });
+  scrollToBottom();
+
+  try {
+    const providerOrder = getProviderOrder();
+    const result = await window.electronAPI.generateSimilarQuestionsByTopic({
+      topic,
+      providerOrder,
+    });
+
+    console.log('[handleSkillGenerateSimilar] 结果:', result);
+
+    if (result.success && result.questions && Array.isArray(result.questions)) {
+      // 添加 pid 和 directory_id
+      const questionsToAdd = result.questions.map((q: any) => ({
+        ...q,
+        pid: currentQuestion.value!.id,
+        directory_id: currentQuestion.value!.directory_id,
+        question_type: 'single',
+      }));
+
+      const saved = await window.electronAPI.addSimilarQuestions(questionsToAdd);
+      // 追加到已有数组并重新随机排序
+      aiSimilarQuestions.value = shuffleArray([...aiSimilarQuestions.value, ...saved]);
+      aiSimilarCurrentIndex.value = 0;
+      aiSelectedSimilarAnswer.value = '';
+      aiShowSimilarAnswer.value = false;
+      aiSimilarDeletedOptions.value.clear();
+
+      // 添加 AI 回复
+      aiChatMessages.value.push({
+        role: 'assistant',
+        content: `已根据主题「${topic}」生成 ${saved.length} 道同类题，请在下方卡片中查看。`
+      });
+
+      ElMessage.success(`已生成 ${saved.length} 道同类题`);
+    } else {
+      console.error('[handleSkillGenerateSimilar] 失败:', result);
+      aiChatMessages.value.push({
+        role: 'assistant',
+        content: `生成失败：${result.error || '未知错误'}`
+      });
+      ElMessage.error(result.error || '生成同类题失败');
+    }
+  } catch (err: any) {
+    console.error('[handleSkillGenerateSimilar] 异常:', err);
+    aiChatMessages.value.push({
+      role: 'assistant',
+      content: `生成失败：${err.message || '未知错误'}`
+    });
+    ElMessage.error(err.message || '生成同类题失败');
+  } finally {
+    aiLoading.value = false;
+    aiSimilarLoading.value = false;
+    // 重置技能状态
+    currentSkill.value = '';
+    aiInputPlaceholder.value = '对这道题还有疑问？继续向 AI 提问...';
+  }
 };
 
 // 调用 AI 讲解（支持首次和追问）
@@ -2182,19 +2318,140 @@ onMounted(() => {
 }
 
 .ai-chat-input-area {
-  padding: 16px 0px;
-  border-top: 1px solid #e8e4df;
-  background: #fff;
-  display: flex;
-  gap: 12px;
-  flex-shrink: 0;
-  max-width: 800px;
-  margin: 0 auto;
-  width: 100%;
+padding: 16px 0px;
+border-top: 1px solid #e8e4df;
+background: #fff;
+display: flex;
+flex-direction: column;
+flex-shrink: 0;
+max-width: 800px;
+margin: 0 auto;
+width: 100%;
 }
 
-.ai-chat-input {
-  flex: 1;
+.input-box {
+background: #f5f3f0;
+border-radius: 16px;
+padding: 12px 16px;
+display: flex;
+flex-direction: column;
+gap: 8px;
+}
+
+.ai-chat-input :deep(.el-textarea__inner) {
+background: transparent;
+border: none;
+box-shadow: none;
+resize: none;
+padding: 0;
+font-size: 15px;
+line-height: 1.6;
+color: #1a1a1a;
+}
+
+.ai-chat-input :deep(.el-textarea__inner:focus) {
+box-shadow: none;
+}
+
+.ai-chat-input :deep(.el-textarea__inner::placeholder) {
+color: #9a9590;
+}
+
+.input-toolbar-bottom {
+display: flex;
+align-items: center;
+justify-content: space-between;
+position: relative;
+}
+
+.skill-btn {
+background: transparent;
+border: none;
+color: #6b6560;
+padding: 4px 8px;
+font-size: 13px;
+}
+
+.skill-btn:hover {
+background: #e8e4df;
+color: #1a1a1a;
+border-radius: 6px;
+}
+
+.skill-popover {
+position: absolute;
+bottom: 100%;
+left: 0;
+margin-bottom: 8px;
+background: #fff;
+border: 1px solid #e8e4df;
+border-radius: 12px;
+padding: 8px;
+box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+z-index: 100;
+min-width: 220px;
+}
+
+.skill-item {
+display: flex;
+align-items: center;
+gap: 12px;
+padding: 12px;
+border-radius: 8px;
+cursor: pointer;
+transition: all 0.2s ease;
+}
+
+.skill-item:hover {
+background: #f5f3f0;
+}
+
+.skill-item .el-icon {
+font-size: 20px;
+color: #c4a882;
+}
+
+.skill-info {
+display: flex;
+flex-direction: column;
+gap: 4px;
+}
+
+.skill-name {
+font-size: 14px;
+font-weight: 600;
+color: #1a1a1a;
+}
+
+.skill-desc {
+font-size: 12px;
+color: #9a9590;
+}
+
+.ai-send-icon-btn {
+width: 32px;
+height: 32px;
+padding: 0;
+border-radius: 8px;
+background: #1a1a1a;
+border: none;
+color: #fff;
+display: flex;
+align-items: center;
+justify-content: center;
+}
+
+.ai-send-icon-btn:hover {
+background: #333;
+}
+
+.ai-send-icon-btn.is-disabled {
+background: #ccc;
+opacity: 0.6;
+}
+
+.ai-send-icon-btn .el-icon {
+font-size: 16px;
 }
 
 .ai-chat-input :deep(.el-textarea__inner) {

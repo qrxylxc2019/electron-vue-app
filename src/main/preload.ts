@@ -52,6 +52,7 @@ const electronAPI = {
   getSimilarQuestions: (pid: number) => ipcRenderer.invoke('db:getSimilarQuestions', pid),
   addSimilarQuestions: (questions: any[]) => ipcRenderer.invoke('db:addSimilarQuestions', questions),
   generateSimilarQuestions: (questionData: any) => ipcRenderer.invoke('ai:generateSimilarQuestions', questionData),
+  generateSimilarQuestionsByTopic: (data: any) => ipcRenderer.invoke('ai:generateSimilarQuestionsByTopic', data),
 
   // API 设置
   getApiSettings: () => ipcRenderer.invoke('db:getApiSettings'),

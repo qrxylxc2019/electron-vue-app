@@ -108,6 +108,35 @@ ${questionData.options || '（判断题/简答题，无选项）'}
 ]`,
   }),
 
+  // 根据主题生成同类题（技能模式）
+  generateSimilarByTopic: (topic: string) => ({
+    system: `你是一位资深软考高项命题专家，擅长根据用户指定的主题生成高质量的高项同类练习题。生成要求：
+1. 题目必须紧扣用户指定的主题，考查高项核心知识点
+2. 题干表述清晰、专业，符合软考高项考试风格
+3. 选项设计要有干扰性，考查对知识点的深入理解
+4. 难度适中，符合高项考试水平
+5. 必须输出标准JSON格式，包含5道题目
+6. 每道题包含：title(题干)、option_a/b/c/d(选项)、correct_answer(正确答案A/B/C/D)、explanation(解析)
+7. 确保JSON格式完整有效，不要截断
+8. 解析要详细说明为什么正确选项是对的，其他选项错在哪里`,
+    user: `请根据以下主题，生成5道高项同类练习题：
+
+【主题】${topic}
+
+请直接返回JSON数组格式，不要包含任何其他文字说明。格式如下：
+[
+  {
+    "title": "题干内容",
+    "option_a": "选项A",
+    "option_b": "选项B",
+    "option_c": "选项C",
+    "option_d": "选项D",
+    "correct_answer": "A",
+    "explanation": "解析内容"
+  }
+]`,
+  }),
+
   // 案例题解析
   explainCase: (material: string, question: string, answer: string) => ({
     system: `你是一位资深的信息系统项目管理师案例题辅导专家，擅长分析案例并给出清晰的解题思路。
