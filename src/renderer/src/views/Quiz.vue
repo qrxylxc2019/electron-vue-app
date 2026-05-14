@@ -564,8 +564,8 @@ const aiSelectedSimilarAnswer = ref('');
 const aiShowSimilarAnswer = ref(false);
 const aiSimilarDeletedOptions = ref<Set<string>>(new Set());
 
-// 手写输入相关状态
-const showHandwrite = ref(false);
+// 手写输入相关状态（默认显示）
+const showHandwrite = ref(true);
 const handwriteInputs = ref<Record<number, string>>({});
 
 // 检测是否在底部（允许 10px 误差）
@@ -958,8 +958,9 @@ const resetQuestionState = () => {
   selectedAnswer.value = '';
   selectedAnswers.value.clear();
   showAnswer.value = false;
-  // 清空高项论文手写输入
+  // 清空高项论文手写输入，但保持显示
   handwriteInputs.value = {};
+  showHandwrite.value = true;
 };
 
 // 监听题目变化，清空删除状态和 AI 状态
@@ -972,8 +973,9 @@ watch(currentQuestion, async (newQuestion, oldQuestion) => {
   selectedAnswer.value = '';
   selectedAnswers.value.clear();
   showAnswer.value = false;
-  // 清空高项论文手写输入
+  // 清空高项论文手写输入，但保持显示
   handwriteInputs.value = {};
+  showHandwrite.value = true;
   // 关闭 AI 抽屉并重置状态
   aiDrawerVisible.value = false;
   aiLoading.value = false;
