@@ -1834,7 +1834,6 @@ onMounted(() => {
 
 .next-question-btn:hover:not(:disabled) {
   background-color: #333;
-  transform: translateY(-1px);
 }
 
 .next-question-btn:disabled {
@@ -1875,7 +1874,6 @@ onMounted(() => {
 
 .handwrite-btn:hover {
   background-color: #8b9a6d;
-  transform: translateY(-1px);
 }
 
 .handwrite-btn.active {
@@ -2134,7 +2132,6 @@ onMounted(() => {
 
 .confirm-btn:hover {
   background: #333;
-  transform: translateY(-1px);
 }
 
 /* 文章题样式 */
@@ -2216,7 +2213,6 @@ onMounted(() => {
 
 .ai-explain-btn:hover {
   background-color: #333;
-  transform: translateY(-1px);
 }
 
 /* AI 讲解抽屉 */
@@ -2499,7 +2495,6 @@ font-size: 16px;
 
 .ai-send-btn:hover:not(:disabled) {
   background-color: #333;
-  transform: translateY(-1px);
 }
 
 .ai-send-btn:disabled {
@@ -2805,7 +2800,6 @@ word-break: break-word;
 
 .similar-btn:hover {
   background-color: #333;
-  transform: translateY(-1px);
 }
 
 .similar-count {

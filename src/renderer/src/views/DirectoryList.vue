@@ -709,7 +709,6 @@ h1 {
 
 .add-btn:hover {
   background-color: #333;
-  transform: translateY(-1px);
 }
 
 .directory-grid {
@@ -780,7 +779,6 @@ h1 {
 
 .ds-test-btn:hover {
   background-color: #3d6b4a;
-  transform: translateY(-1px);
 }
 
 .directory-name {

@@ -807,7 +807,6 @@ const getProviderOrder = (): string[] => {
 
 .handwrite-btn:hover {
   background-color: #8b9a6d;
-  transform: translateY(-1px);
 }
 
 .delete-material-btn {
@@ -825,7 +824,6 @@ const getProviderOrder = (): string[] => {
 
 .delete-material-btn:hover {
   background-color: #f78989;
-  transform: translateY(-1px);
 }
 
 .next-material-btn {
@@ -844,7 +842,6 @@ const getProviderOrder = (): string[] => {
 
 .next-material-btn:hover:not(:disabled) {
   background-color: #333;
-  transform: translateY(-1px);
 }
 
 .next-material-btn:disabled {
@@ -1118,7 +1115,6 @@ const getProviderOrder = (): string[] => {
 
 .next-btn:hover:not(:disabled) {
   background-color: #333;
-  transform: translateY(-1px);
 }
 
 .nav-btn:disabled {
