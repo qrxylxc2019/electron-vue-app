@@ -62,8 +62,8 @@
                 />
               </div>
 
-              <!-- AI 讲解按钮 -->
-              <div class="ai-explain-section">
+              <!-- AI 讲解和答案按钮 -->
+              <div class="action-buttons">
                 <el-button
                   class="ai-explain-btn"
                   @click="openAIChatDrawer"
@@ -71,10 +71,6 @@
                   <el-icon><Cpu /></el-icon>
                   AI讲解
                 </el-button>
-              </div>
-
-              <!-- 答案区域 -->
-              <div class="answer-section">
                 <el-button
                   class="toggle-answer-btn"
                   @click="showAnswer = !showAnswer"
@@ -82,12 +78,13 @@
                   <el-icon><View v-if="!showAnswer" /><Hide v-else /></el-icon>
                   {{ showAnswer ? '隐藏答案' : '显示答案' }}
                 </el-button>
+              </div>
 
-                <div v-if="showAnswer && currentCaseQuestion.answer" class="answer-content">
-                  <el-divider />
-                  <div class="answer-label">参考答案：</div>
-                  <div class="answer-text markdown-body" v-html="renderMarkdown(currentCaseQuestion.answer)"></div>
-                </div>
+              <!-- 答案区域 -->
+              <div v-if="showAnswer && currentCaseQuestion.answer" class="answer-content">
+                <el-divider />
+                <div class="answer-label">参考答案：</div>
+                <div class="answer-text markdown-body" v-html="renderMarkdown(currentCaseQuestion.answer)"></div>
               </div>
             </el-card>
           </div>
@@ -1138,7 +1135,9 @@ const getProviderOrder = (): string[] => {
 }
 
 /* AI 讲解按钮 */
-.ai-explain-section {
+.action-buttons {
+  display: flex;
+  gap: 12px;
   margin: 16px 0;
 }
 
@@ -1150,11 +1149,12 @@ const getProviderOrder = (): string[] => {
   padding: 12px 20px;
   font-size: 15px;
   transition: all 0.2s ease;
+  height: auto;
+  min-height: 44px;
 }
 
 .ai-explain-btn:hover {
   background-color: #3d6b4a;
-  transform: translateY(-1px);
 }
 
 /* AI 讲解抽屉样式 */

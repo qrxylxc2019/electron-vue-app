@@ -1857,7 +1857,6 @@ onMounted(() => {
 
 .delete-question-btn:hover {
   background-color: #f78989;
-  transform: translateY(-1px);
 }
 
 .handwrite-btn {

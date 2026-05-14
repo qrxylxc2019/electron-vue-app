@@ -731,7 +731,6 @@ h1 {
 }
 
 .directory-card:hover {
-  transform: translateY(-4px);
   border-color: #c4a882;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
 }
