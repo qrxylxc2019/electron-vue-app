@@ -1160,34 +1160,34 @@ const getProviderOrder = (): string[] => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0);
   z-index: 1000;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.3s ease;
+  pointer-events: none;
+  transition: background 0.3s ease;
 }
 
 .ai-drawer-overlay.show {
-  opacity: 1;
-  visibility: visible;
+  background: rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
 }
 
 .ai-drawer {
   position: fixed;
   top: 0;
-  right: -500px;
-  width: 500px;
-  height: 100vh;
+  right: 0;
+  width: 90%;
+  height: 100%;
   background: #fff;
-  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
   z-index: 1001;
-  transition: right 0.3s ease;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
   display: flex;
   flex-direction: column;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
 }
 
 .ai-drawer.show {
-  right: 0;
+  transform: translateX(0);
 }
 
 .drawer-header {
