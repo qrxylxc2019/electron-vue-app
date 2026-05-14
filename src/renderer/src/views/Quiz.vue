@@ -963,7 +963,10 @@ const resetQuestionState = () => {
 };
 
 // 监听题目变化，清空删除状态和 AI 状态
-watch(currentQuestion, () => {
+watch(currentQuestion, async (newQuestion, oldQuestion) => {
+  // 如果是同一道题，不处理
+  if (newQuestion && oldQuestion && newQuestion.id === oldQuestion.id) return;
+
   deletedOptions.value.clear();
   hiddenParagraphs.value.clear();
   selectedAnswer.value = '';
@@ -980,6 +983,26 @@ watch(currentQuestion, () => {
   aiUserInput.value = '';
   aiUnsubscribers.forEach(fn => fn());
   aiUnsubscribers = [];
+
+  // 重置同类题状态
+  aiSimilarQuestions.value = [];
+  aiSimilarCurrentIndex.value = 0;
+  aiSelectedSimilarAnswer.value = '';
+  aiShowSimilarAnswer.value = false;
+  aiSimilarDeletedOptions.value.clear();
+
+  // 查询当前题目的同类题数据
+  if (newQuestion && newQuestion.id) {
+    try {
+      const similarData = await window.electronAPI.getSimilarQuestions(newQuestion.id);
+      if (similarData && similarData.length > 0) {
+        aiSimilarQuestions.value = shuffleArray([...similarData]);
+        aiSimilarCurrentIndex.value = 0;
+      }
+    } catch (e) {
+      console.error('查询同类题失败:', e);
+    }
+  }
 });
 
 // 构建题目展示文本
