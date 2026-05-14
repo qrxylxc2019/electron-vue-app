@@ -1007,6 +1007,136 @@ ipcMain.handle('ai:generateSimilarQuestionsByTopic', async (_event, data: any) =
   return { success: true, questions: result.data };
 });
 
+// AI 案例题小题讲解
+ipcMain.handle('ai:explainCaseQuestion', async (_event, data: any) => {
+  const providerOrder = (data.providerOrder as string[]) || ['modelspace', 'deepseek'];
+  const isFollowUp = data.isFollowUp as boolean;
+  const userMessage = data.userMessage as string || '';
+
+  // 案例题讲解上下文存储（按 materialId_questionNumber 存储）
+  const contextKey = `${data.materialTitle}_${data.questionNumber}`;
+
+  // 获取或初始化对话上下文
+  let messages: Array<{role: string; content: string}> = [];
+  if (isFollowUp && caseChatContexts.has(contextKey)) {
+    messages = [...caseChatContexts.get(contextKey)!];
+  }
+
+  // 如果是首次讲解，构建初始题目信息
+  if (!isFollowUp) {
+    const prompt = PROMPTS.explainCaseQuestion(
+      data.materialTitle,
+      data.materialContent,
+      data.questionNumber,
+      data.questionTitle,
+      data.answer
+    );
+    messages = [
+      { role: 'system', content: prompt.system },
+      { role: 'user', content: prompt.user },
+    ];
+  } else {
+    // 追问模式：添加用户新问题
+    messages.push({ role: 'user', content: userMessage });
+  }
+
+  const result = await callAIWithFallback(
+    providerOrder,
+    async (provider) => {
+      log(`[AI] 开始调用厂商: ${provider}`);
+      // 支持 DeepSeek 本地版
+      if (provider === 'deepseekLocal') {
+        const dsClient = getDeepSeekClient();
+        if (!dsClient) {
+          throw new Error('DeepSeek 本地版客户端未初始化，请先设置 Token');
+        }
+        log(`[AI] 使用 DeepSeek 本地版客户端`);
+
+        // 转换消息格式为 DeepSeekMessage
+        const dsMessages = messages.map(m => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content
+        }));
+
+        let assistantContent = '';
+        for await (const chunk of dsClient.chatStream(dsMessages, 'deepseek-chat')) {
+          if (chunk.type === 'text' && chunk.content) {
+            assistantContent += chunk.content;
+            if (mainWindow) {
+              mainWindow.webContents.send('ai:streamChunk', chunk.content);
+            }
+          } else if (chunk.type === 'error') {
+            throw new Error(chunk.content || 'DeepSeek 聊天失败');
+          }
+        }
+
+        // 保存对话上下文
+        messages.push({ role: 'assistant', content: assistantContent });
+        caseChatContexts.set(contextKey, messages);
+
+        if (mainWindow) {
+          mainWindow.webContents.send('ai:streamDone');
+        }
+
+        log(`[AI] DeepSeek 本地版调用成功`);
+        return assistantContent;
+      }
+
+      const client = getOpenAIClient(provider);
+      const model = getCurrentModel(provider);
+      log(`[AI] 使用模型: ${model}`);
+
+      const stream = await client.chat.completions.create({
+        model,
+        messages: messages as any,
+        stream: true,
+        temperature: 0.7,
+        max_tokens: 2048,
+      });
+
+      let assistantContent = '';
+
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || '';
+        if (content && mainWindow) {
+          assistantContent += content;
+          mainWindow.webContents.send('ai:streamChunk', content);
+        }
+      }
+
+      // 保存对话上下文
+      messages.push({ role: 'assistant', content: assistantContent });
+      caseChatContexts.set(contextKey, messages);
+
+      if (mainWindow) {
+        mainWindow.webContents.send('ai:streamDone');
+      }
+
+      log(`[AI] 厂商 ${provider} 调用成功`);
+      return assistantContent;
+    },
+    (provider) => {
+      log(`[AI Fallback] 切换到厂商: ${provider}`);
+      if (mainWindow) {
+        mainWindow.webContents.send('ai:providerSwitch', provider);
+      }
+    }
+  );
+
+  if (!result.success) {
+    console.error('AI explain case question error:', result.error);
+    if (mainWindow) {
+      mainWindow.webContents.send('ai:streamError', result.error);
+    }
+    return { success: false, error: result.error };
+  }
+
+  return { success: true };
+});
+
+// 案例题 AI 讲解上下文存储
+const caseChatContexts = new Map<string, Array<{role: string; content: string}>>();
+
 // API 设置已改为前端本地存储，IPC 接口保留空实现以兼容旧代码
 ipcMain.handle('db:getApiSettings', () => {
   return {};

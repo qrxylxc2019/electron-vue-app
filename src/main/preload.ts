@@ -54,6 +54,9 @@ const electronAPI = {
   generateSimilarQuestions: (questionData: any) => ipcRenderer.invoke('ai:generateSimilarQuestions', questionData),
   generateSimilarQuestionsByTopic: (data: any) => ipcRenderer.invoke('ai:generateSimilarQuestionsByTopic', data),
 
+  // 案例题 AI 讲解
+  explainCaseQuestion: (data: any) => ipcRenderer.invoke('ai:explainCaseQuestion', data),
+
   // API 设置
   getApiSettings: () => ipcRenderer.invoke('db:getApiSettings'),
   saveApiSettings: (settings: any) => ipcRenderer.invoke('db:saveApiSettings', settings),

@@ -62,6 +62,17 @@
                 />
               </div>
 
+              <!-- AI 讲解按钮 -->
+              <div class="ai-explain-section">
+                <el-button
+                  class="ai-explain-btn"
+                  @click="openAIChatDrawer"
+                >
+                  <el-icon><Cpu /></el-icon>
+                  AI讲解
+                </el-button>
+              </div>
+
               <!-- 答案区域 -->
               <div class="answer-section">
                 <el-button
@@ -131,16 +142,87 @@
     </div>
 
     <el-empty v-else description="暂无案例题目" />
+
+    <!-- AI 讲解抽屉 -->
+    <div
+      class="ai-drawer-overlay"
+      :class="{ 'show': aiDrawerVisible }"
+      @click="closeAIChatDrawer"
+    >
+      <div
+        class="ai-drawer"
+        :class="{ 'show': aiDrawerVisible }"
+        @click.stop
+      >
+        <div class="drawer-header">
+          <h2>AI讲解</h2>
+          <el-icon class="drawer-close" @click="closeAIChatDrawer"><Close /></el-icon>
+        </div>
+        <div class="drawer-content ai-chat-content" ref="aiChatContentRef">
+          <!-- 对话列表 -->
+          <div class="chat-messages" ref="aiChatMessagesRef">
+            <div
+              v-for="(msg, index) in aiChatMessages"
+              :key="index"
+              class="chat-message"
+              :class="msg.role"
+            >
+              <div class="message-bubble">
+                <div v-if="msg.provider" class="message-provider">{{ msg.provider }}</div>
+                <!-- 用户消息保留换行格式，AI消息使用Markdown渲染 -->
+                <div v-if="msg.role === 'user'" class="user-message-text">{{ msg.content }}</div>
+                <div v-else class="ai-markdown" v-html="renderMarkdown(msg.content)"></div>
+              </div>
+            </div>
+            <!-- 正在输入中 -->
+            <div v-if="aiLoading" class="chat-message assistant">
+              <div class="message-bubble loading-bubble">
+                <el-icon class="is-loading"><Loading /></el-icon>
+              </div>
+            </div>
+            <!-- 错误提示 -->
+            <div v-if="aiError" class="chat-message assistant">
+              <div class="message-bubble error-bubble">
+                <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:inherit;">{{ aiError }}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- 底部输入框 -->
+        <div class="ai-chat-input-area">
+          <div class="input-box">
+            <el-input
+              v-model="aiUserInput"
+              type="textarea"
+              :rows="2"
+              placeholder="对这道题还有疑问？继续向 AI 提问..."
+              class="ai-chat-input"
+              @keydown.enter.prevent="sendAIChatMessage"
+            />
+            <div class="input-toolbar-bottom">
+              <el-button
+                class="ai-send-icon-btn"
+                :loading="aiLoading"
+                :disabled="!aiUserInput.trim()"
+                @click="sendAIChatMessage"
+              >
+                <el-icon><Promotion /></el-icon>
+              </el-button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import type { CaseMaterial, CaseQuestion } from '../types';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { marked } from 'marked';
-import { EditPen, DocumentCopy, Check } from '@element-plus/icons-vue';
+import { EditPen, DocumentCopy, Check, Cpu, Close, Loading, Promotion, View, Hide, Delete, ArrowLeft, ArrowRight } from '@element-plus/icons-vue';
 
 const props = defineProps<{
   directoryId: string;
@@ -158,13 +240,33 @@ const currentMaterialIndex = ref(0);
 const currentQuestionIndex = ref(0);
 // 是否显示答案
 const showAnswer = ref(false);
-// 手写输入相关状态
-const showHandwrite = ref(false);
+// 手写输入相关状态（默认显示）
+const showHandwrite = ref(true);
 const handwriteInput = ref('');
 
 // 复制按钮状态
 const copySuccess = ref(false);
 let copyTimer: ReturnType<typeof setTimeout> | null = null;
+
+// AI 讲解相关状态
+const aiDrawerVisible = ref(false);
+const aiLoading = ref(false);
+const aiError = ref('');
+const aiProviderName = ref('');
+const aiChatMessages = ref<Array<{role: 'user' | 'assistant'; content: string; provider?: string}>>([]);
+const aiUserInput = ref('');
+const aiChatContentRef = ref<HTMLDivElement | null>(null);
+const aiChatMessagesRef = ref<HTMLDivElement | null>(null);
+let aiUnsubscribers: (() => void)[] = [];
+
+// 案例题 AI 讲解上下文（按 materialId_questionNumber 存储）
+const caseAIContexts = ref<Record<string, Array<{role: string; content: string}>>>({});
+
+// 当前案例题的唯一标识
+const currentCaseKey = computed(() => {
+  if (!currentMaterial.value || !currentCaseQuestion.value) return '';
+  return `${currentMaterial.value.id}_${currentCaseQuestion.value.question_number}`;
+});
 
 // 当前案例材料
 const currentMaterial = computed(() => {
@@ -291,7 +393,7 @@ const loadData = async () => {
     currentMaterialIndex.value = 0;
     currentQuestionIndex.value = 0;
     showAnswer.value = false;
-    showHandwrite.value = false;
+    showHandwrite.value = true;
     handwriteInput.value = '';
   } catch (error) {
     ElMessage.error('加载案例失败');
@@ -310,6 +412,7 @@ const prevQuestion = () => {
     // 同一案例的上一小题
     currentQuestionIndex.value--;
     showAnswer.value = false;
+    showHandwrite.value = true;
     handwriteInput.value = '';
   }
 };
@@ -320,6 +423,7 @@ const nextQuestion = () => {
     // 同一案例的下一小题
     currentQuestionIndex.value++;
     showAnswer.value = false;
+    showHandwrite.value = true;
     handwriteInput.value = '';
   } else {
     // 当前案例已是最后一个小题，进入下一大题
@@ -333,6 +437,7 @@ const nextMaterial = () => {
     currentMaterialIndex.value++;
     currentQuestionIndex.value = 0;
     showAnswer.value = false;
+    showHandwrite.value = true;
     handwriteInput.value = '';
   } else {
     // 已经是最后一题，重新加载题目（按照配置重新随机获取）
@@ -383,6 +488,192 @@ const deleteCurrentMaterial = async () => {
 onMounted(() => {
   loadData();
 });
+
+// 监听小题变化，清空 AI 状态
+watch(currentCaseKey, () => {
+  aiDrawerVisible.value = false;
+  aiLoading.value = false;
+  aiError.value = '';
+  aiProviderName.value = '';
+  aiChatMessages.value = [];
+  aiUserInput.value = '';
+  aiUnsubscribers.forEach(fn => fn());
+  aiUnsubscribers = [];
+});
+
+// 滚动到底部
+const scrollToBottom = () => {
+  setTimeout(() => {
+    if (aiChatContentRef.value) {
+      aiChatContentRef.value.scrollTop = aiChatContentRef.value.scrollHeight;
+    }
+  }, 50);
+};
+
+// 构建案例题展示文本
+const buildCaseQuestionText = (): string => {
+  if (!currentMaterial.value || !currentCaseQuestion.value) return '';
+
+  let text = `【案例材料】\n${currentMaterial.value.title}\n\n${currentMaterial.value.content}`;
+  text += `\n\n【第 ${currentCaseQuestion.value.question_number} 小题】\n${currentCaseQuestion.value.title}`;
+
+  return text;
+};
+
+// 打开 AI 讲解抽屉
+const openAIChatDrawer = async () => {
+  if (!currentMaterial.value || !currentCaseQuestion.value) return;
+  aiDrawerVisible.value = true;
+
+  const key = currentCaseKey.value;
+
+  // 如果已经有对话记录，恢复并滚动到底部
+  if (caseAIContexts.value[key] && caseAIContexts.value[key].length > 0) {
+    aiChatMessages.value = caseAIContexts.value[key].map(m => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content
+    }));
+    scrollToBottom();
+    return;
+  }
+
+  // 首次打开：先显示题目作为用户消息，再调用 AI
+  aiChatMessages.value.push({
+    role: 'user',
+    content: buildCaseQuestionText()
+  });
+  scrollToBottom();
+
+  await callCaseAIExplain(false);
+};
+
+// 关闭 AI 讲解抽屉
+const closeAIChatDrawer = () => {
+  aiDrawerVisible.value = false;
+};
+
+// 发送 AI 对话消息（追问）
+const sendAIChatMessage = async () => {
+  if (!aiUserInput.value.trim() || aiLoading.value) return;
+
+  const userMessage = aiUserInput.value.trim();
+  aiUserInput.value = '';
+
+  // 添加用户消息到对话列表
+  aiChatMessages.value.push({
+    role: 'user',
+    content: userMessage
+  });
+  scrollToBottom();
+
+  await callCaseAIExplain(true, userMessage);
+};
+
+// 调用 AI 讲解（支持首次和追问）
+const callCaseAIExplain = async (isFollowUp = false, userMessage = '') => {
+  if (!currentMaterial.value || !currentCaseQuestion.value) return;
+
+  aiLoading.value = true;
+  aiError.value = '';
+  aiProviderName.value = '';
+
+  // 清理之前的监听器
+  aiUnsubscribers.forEach(fn => fn());
+  aiUnsubscribers = [];
+
+  let assistantContent = '';
+  let currentProvider = '';
+
+  // 设置厂商切换监听
+  const unsubProviderSwitch = window.electronAPI.onAIProviderSwitch((provider: string) => {
+    currentProvider = provider === 'modelspace' ? 'ModelSpace' : provider === 'deepseek' ? 'DeepSeek' : provider;
+    aiProviderName.value = currentProvider;
+    const lastMsg = aiChatMessages.value[aiChatMessages.value.length - 1];
+    if (lastMsg && lastMsg.role === 'assistant') {
+      lastMsg.provider = currentProvider;
+    }
+  });
+  aiUnsubscribers.push(unsubProviderSwitch);
+
+  // 设置流式监听
+  const unsubChunk = window.electronAPI.onAIStreamChunk((content: string) => {
+    assistantContent += content;
+    const lastMsg = aiChatMessages.value[aiChatMessages.value.length - 1];
+    if (lastMsg && lastMsg.role === 'assistant') {
+      lastMsg.content = assistantContent;
+      if (currentProvider && !lastMsg.provider) {
+        lastMsg.provider = currentProvider;
+      }
+    } else {
+      aiChatMessages.value.push({
+        role: 'assistant',
+        content: assistantContent,
+        provider: currentProvider || undefined
+      });
+    }
+    scrollToBottom();
+  });
+  aiUnsubscribers.push(unsubChunk);
+
+  const unsubDone = window.electronAPI.onAIStreamDone(() => {
+    aiLoading.value = false;
+    aiProviderName.value = '';
+    // 保存对话上下文
+    const key = currentCaseKey.value;
+    caseAIContexts.value[key] = aiChatMessages.value.map(m => ({
+      role: m.role,
+      content: m.content
+    }));
+  });
+  aiUnsubscribers.push(unsubDone);
+
+  const unsubError = window.electronAPI.onAIStreamError((error: string) => {
+    aiLoading.value = false;
+    aiProviderName.value = '';
+    aiError.value = error;
+  });
+  aiUnsubscribers.push(unsubError);
+
+  try {
+    const providerOrder = getProviderOrder();
+    currentProvider = providerOrder[0] === 'modelspace' ? 'ModelSpace' : providerOrder[0] === 'deepseek' ? 'DeepSeek' : providerOrder[0];
+    aiProviderName.value = currentProvider;
+
+    const result = await window.electronAPI.explainCaseQuestion({
+      materialTitle: currentMaterial.value.title,
+      materialContent: currentMaterial.value.content,
+      questionNumber: currentCaseQuestion.value.question_number,
+      questionTitle: currentCaseQuestion.value.title,
+      answer: currentCaseQuestion.value.answer || '',
+      isFollowUp,
+      userMessage,
+      providerOrder,
+    });
+
+    if (!result.success && result.error) {
+      aiLoading.value = false;
+      aiProviderName.value = '';
+      aiError.value = result.error;
+    }
+  } catch (err: any) {
+    aiLoading.value = false;
+    aiProviderName.value = '';
+    aiError.value = err.message || '调用失败';
+  }
+};
+
+// 获取厂商优先级
+const getProviderOrder = (): string[] => {
+  try {
+    const settings = JSON.parse(localStorage.getItem('apiSettings') || '{}');
+    if (settings.providerOrder && Array.isArray(settings.providerOrder)) {
+      return settings.providerOrder;
+    }
+  } catch {
+    // ignore
+  }
+  return ['modelspace', 'deepseek'];
+};
 </script>
 
 <style scoped>
@@ -844,5 +1135,237 @@ onMounted(() => {
   font-size: 14px;
   padding: 4px 12px;
   border-radius: 8px;
+}
+
+/* AI 讲解按钮 */
+.ai-explain-section {
+  margin: 16px 0;
+}
+
+.ai-explain-btn {
+  background-color: #4a7c59;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-size: 15px;
+  transition: all 0.2s ease;
+}
+
+.ai-explain-btn:hover {
+  background-color: #3d6b4a;
+  transform: translateY(-1px);
+}
+
+/* AI 讲解抽屉样式 */
+.ai-drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.ai-drawer-overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.ai-drawer {
+  position: fixed;
+  top: 0;
+  right: -500px;
+  width: 500px;
+  height: 100vh;
+  background: #fff;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+  z-index: 1001;
+  transition: right 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.ai-drawer.show {
+  right: 0;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e8e4df;
+  flex-shrink: 0;
+}
+
+.drawer-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.drawer-close {
+  font-size: 20px;
+  color: #9a9590;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.drawer-close:hover {
+  color: #1a1a1a;
+}
+
+.drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.chat-message {
+  display: flex;
+  align-items: flex-start;
+}
+
+.chat-message.user {
+  justify-content: flex-end;
+}
+
+.chat-message.assistant {
+  justify-content: flex-start;
+}
+
+.message-bubble {
+  padding: 5px 0px;
+  border-radius: 1px;
+  font-size: 18px;
+  line-height: 1.8;
+  color: #1a1a1a;
+}
+
+.chat-message.user .message-bubble {
+  background: #f0f0f0;
+  padding: 18px 19px;
+  border-radius: 12px;
+  max-width: 80%;
+}
+
+.chat-message.assistant .message-bubble {
+  max-width: 100%;
+}
+
+.message-provider {
+  font-size: 12px;
+  color: #9a9590;
+  margin-bottom: 4px;
+}
+
+.user-message-text {
+  font-size: 18px;
+  line-height: 1.8;
+  color: #1a1a1a;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ai-markdown {
+  font-size: 18px;
+  line-height: 1.8;
+  color: #1a1a1a;
+}
+
+.loading-bubble {
+  padding: 12px 16px;
+}
+
+.error-bubble {
+  background: #fef0f0;
+  color: #f56c6c;
+  padding: 12px 16px;
+  border-radius: 8px;
+}
+
+/* 输入框区域 */
+.ai-chat-input-area {
+  padding: 16px 20px;
+  border-top: 1px solid #e8e4df;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.input-box {
+  background: #f5f3f0;
+  border-radius: 16px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-chat-input :deep(.el-textarea__inner) {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  resize: none;
+  padding: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #1a1a1a;
+}
+
+.ai-chat-input :deep(.el-textarea__inner:focus) {
+  box-shadow: none;
+}
+
+.ai-chat-input :deep(.el-textarea__inner::placeholder) {
+  color: #9a9590;
+}
+
+.input-toolbar-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.ai-send-icon-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 8px;
+  background: #1a1a1a;
+  border: none;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-send-icon-btn:hover {
+  background: #333;
+}
+
+.ai-send-icon-btn.is-disabled {
+  background: #ccc;
+  opacity: 0.6;
+}
+
+.ai-send-icon-btn .el-icon {
+  font-size: 16px;
 }
 </style>

@@ -137,6 +137,35 @@ ${questionData.options || '（判断题/简答题，无选项）'}
 ]`,
   }),
 
+  // 案例题小题解析（材料+小题）
+  explainCaseQuestion: (materialTitle: string, materialContent: string, questionNumber: number, questionTitle: string, answer: string) => ({
+    system: `你是一位资深的信息系统项目管理师案例题辅导专家，擅长分析案例材料并给出清晰的解题思路。
+你的讲解风格：
+1. 先分析案例背景和关键信息
+2. 针对问题给出结构化的答案
+3. 结合项目管理知识体系进行讲解
+4. 提供答题技巧和注意事项
+5. 使用简洁清晰的语言，避免过于学术化的表达`,
+    user: `请详细讲解以下这道案例题：
+
+【案例材料标题】${materialTitle}
+
+【案例材料内容】
+${materialContent}
+
+【第 ${questionNumber} 小题】
+${questionTitle}
+
+【参考答案】
+${answer || '暂无参考答案'}
+
+请按照以下结构进行讲解：
+1. 案例背景分析（关键信息提取）
+2. 问题拆解（考查的知识点）
+3. 详细解答（结合材料分析）
+4. 答题技巧与注意事项`,
+  }),
+
   // 案例题解析
   explainCase: (material: string, question: string, answer: string) => ({
     system: `你是一位资深的信息系统项目管理师案例题辅导专家，擅长分析案例并给出清晰的解题思路。
