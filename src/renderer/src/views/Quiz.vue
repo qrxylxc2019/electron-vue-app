@@ -221,7 +221,7 @@
           <h2>AI讲解</h2>
           <el-icon class="drawer-close" @click="closeAIChatDrawer"><Close /></el-icon>
         </div>
-        <div class="drawer-content ai-chat-content" ref="aiChatContentRef">
+        <div class="drawer-content ai-chat-content" ref="aiChatContentRef" @scroll="handleAIChatScroll">
           <!-- 对话列表 -->
           <div class="chat-messages" ref="aiChatMessagesRef">
             <div
@@ -491,6 +491,10 @@ const aiChatContentRef = ref<HTMLDivElement | null>(null);
 const aiChatMessagesRef = ref<HTMLDivElement | null>(null);
 let aiUnsubscribers: (() => void)[] = [];
 
+// AI 聊天区域滚动状态
+const isUserScrolling = ref(false);
+let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
+
 // 复制按钮状态
 const copySuccess = ref(false);
 let copyTimer: ReturnType<typeof setTimeout> | null = null;
@@ -507,10 +511,30 @@ const aiSimilarDeletedOptions = ref<Set<string>>(new Set());
 const showHandwrite = ref(false);
 const handwriteInputs = ref<Record<number, string>>({});
 
-// 滚动到对话底部
+// 检测是否在底部（允许 10px 误差）
+const isAtBottom = () => {
+  if (!aiChatContentRef.value) return true;
+  const el = aiChatContentRef.value;
+  return el.scrollTop + el.clientHeight >= el.scrollHeight - 10;
+};
+
+// 处理用户滚动事件
+const handleAIChatScroll = () => {
+  if (!aiChatContentRef.value) return;
+  isUserScrolling.value = true;
+  if (scrollTimeout) clearTimeout(scrollTimeout);
+  scrollTimeout = setTimeout(() => {
+    // 如果用户滚动到了底部，恢复自动定位
+    if (isAtBottom()) {
+      isUserScrolling.value = false;
+    }
+  }, 150);
+};
+
+// 滚动到对话底部（仅在用户未手动滚动或在底部时）
 const scrollToBottom = async () => {
   await nextTick();
-  if (aiChatContentRef.value) {
+  if (aiChatContentRef.value && !isUserScrolling.value) {
     aiChatContentRef.value.scrollTop = aiChatContentRef.value.scrollHeight;
   }
 };
