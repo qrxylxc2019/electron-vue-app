@@ -260,7 +260,7 @@
                   @click="generateAISimilarQuestions"
                 >
                   <el-icon><Collection /></el-icon>
-                  {{ aiSimilarQuestions.length > 0 ? '再来5道同类题' : '同类题（20道）' }}
+                  {{ aiSimilarQuestions.length > 0 ? '再来5道同类题' : '同类题（5道）' }}
                 </el-button>
                 <!-- 同类题卡片 -->
                 <div v-if="aiSimilarQuestions.length > 0" class="ai-similar-card">
