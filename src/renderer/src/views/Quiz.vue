@@ -147,13 +147,19 @@
               </div>
             </div>
 
-            <!-- AI 讲解按钮和同类题按钮 -->
-            <div class="ai-explain-section">
+            <!-- AI 讲解按钮和同类题按钮 - 非高项论文科目显示 -->
+            <div v-if="directoryName !== '高项论文'" class="ai-explain-section">
               <el-button
                 class="next-question-btn"
                 @click="nextQuestion"
               >
                 下一题 <el-icon><ArrowRight /></el-icon>
+              </el-button>
+              <el-button
+                class="delete-question-btn"
+                @click="deleteCurrentQuestion"
+              >
+                <el-icon><Delete /></el-icon> 删除题目
               </el-button>
               <el-button
                 class="ai-explain-btn"
@@ -180,26 +186,38 @@
           </el-card>
         </div>
 
-        <!-- 右侧：操作按钮 -->
+        <!-- 右侧：操作按钮 - 高项论文科目所有按钮都在右侧 -->
         <div class="quiz-right">
           <div class="right-actions">
-            
-            <el-button
-              class="delete-question-btn"
-              @click="deleteCurrentQuestion"
-            >
-              <el-icon><Delete /></el-icon> 删除题目
-            </el-button>
-            <el-button
-              v-if="directoryName === '高项论文'"
-              class="handwrite-btn"
-              :class="{ 'active': showHandwrite }"
-              @click="toggleHandwrite"
-            >
-              <el-icon><EditPen /></el-icon>
-              {{ showHandwrite ? '隐藏手写' : '显示手写' }}
-            </el-button>
-            
+            <template v-if="directoryName === '高项论文'">
+              <el-button
+                class="next-question-btn"
+                @click="nextQuestion"
+              >
+                下一题 <el-icon><ArrowRight /></el-icon>
+              </el-button>
+              <el-button
+                class="delete-question-btn"
+                @click="deleteCurrentQuestion"
+              >
+                <el-icon><Delete /></el-icon> 删除题目
+              </el-button>
+              <el-button
+                class="handwrite-btn"
+                :class="{ 'active': showHandwrite }"
+                @click="toggleHandwrite"
+              >
+                <el-icon><EditPen /></el-icon>
+                {{ showHandwrite ? '隐藏手写' : '显示手写' }}
+              </el-button>
+              <el-button
+                class="ai-explain-btn"
+                @click="openAIChatDrawer"
+              >
+                <el-icon><Cpu /></el-icon>
+                AI讲解
+              </el-button>
+            </template>
           </div>
         </div>
       </div>
@@ -1851,7 +1869,8 @@ onMounted(() => {
   transition: all 0.2s ease;
   height: auto;
   min-height: 56px;
-  width: 100%;
+  
+  margin-left: 0;
 }
 
 .delete-question-btn:hover {
@@ -2211,6 +2230,7 @@ onMounted(() => {
   transition: all 0.2s ease;
   min-height: 52px;
   height: auto;
+  margin-left: 0;
 }
 
 .ai-explain-btn:hover {
