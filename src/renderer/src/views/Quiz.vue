@@ -150,19 +150,20 @@
             <!-- AI 讲解按钮和同类题按钮 - 非高项论文科目显示 -->
             <div v-if="directoryName !== '高项论文'" class="ai-explain-section">
               <el-button
-                class="next-question-btn"
-                @click="nextQuestion"
-              >
-                下一题 <el-icon><ArrowRight /></el-icon>
-              </el-button>
-              
-              <el-button
                 class="ai-explain-btn"
                 @click="openAIChatDrawer"
               >
                 <el-icon><Cpu /></el-icon>
                 AI讲解
               </el-button>
+              <el-button
+                class="next-question-btn"
+                @click="nextQuestion"
+              >
+                下一题 <el-icon><ArrowRight /></el-icon>
+              </el-button>
+              
+              
               <el-button
                 class="similar-btn"
                 @click="openSimilarDrawer"

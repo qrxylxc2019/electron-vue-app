@@ -40,56 +40,47 @@ function getDbPath(): string {
   log(`getDbPath: __dirname=${__dirname}`);
   log(`getDbPath: app.getAppPath()=${app.getAppPath()}`);
 
-  if (isDev) {
-    // 开发环境：直接使用项目目录下的数据库
-    const projectRoot = path.join(__dirname, '..', '..');
-    const dbPath = path.join(projectRoot, 'out', 'data', 'qingrui.db');
-    log(`Dev projectRoot: ${projectRoot}`);
-    log(`Dev dbPath: ${dbPath}`);
-    log(`Dev projectRoot exists: ${fs.existsSync(projectRoot)}`);
-    log(`Dev out/data exists: ${fs.existsSync(path.join(projectRoot, 'out', 'data'))}`);
-    return dbPath;
-  } else {
-    // 打包环境：使用用户数据目录
-    const userDataPath = app.getPath('userData');
-    const dbDir = path.join(userDataPath, 'data');
-    if (!fs.existsSync(dbDir)) {
-      fs.mkdirSync(dbDir, { recursive: true });
-      log(`Created dbDir: ${dbDir}`);
-    }
-    const dbPath = path.join(dbDir, 'qingrui.db');
-    log(`Prod dbPath: ${dbPath}`);
-    return dbPath;
+  // 统一使用项目目录下的数据库，开发和生产环境都用同一个
+  const projectRoot = isDev
+    ? path.join(__dirname, '..', '..')
+    : path.join(process.resourcesPath, '..', '..');
+  const dbDir = path.join(projectRoot, 'out', 'data');
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+    log(`Created dbDir: ${dbDir}`);
   }
+  const dbPath = path.join(dbDir, 'qingrui.db');
+  log(`Unified dbPath: ${dbPath}`);
+  return dbPath;
 }
 
-// 从打包资源中复制初始数据库到用户数据目录
+// 从打包资源中复制初始数据库（仅在数据库不存在时复制）
 function copyDbFromResources() {
   const isDev = !app.isPackaged;
   log(`copyDbFromResources: isDev=${isDev}`);
 
+  // 如果数据库已存在，跳过复制
+  const dbPath = getDbPath();
+  if (fs.existsSync(dbPath)) {
+    log('Database already exists, skipping copy');
+    return;
+  }
+
   // 开发环境不需要复制
   if (isDev) {
+    log('Dev mode: no database to copy');
     return;
   }
 
-  const dbPath = getDbPath();
-
-  // 如果用户数据目录已存在数据库，跳过复制
-  if (fs.existsSync(dbPath)) {
-    log('User database already exists, skipping copy');
-    return;
-  }
-
+  // 打包环境：从 resources 复制初始数据库
   try {
-    // 打包后的资源路径 - 使用 extraResources 路径
     const resourceDbPath = path.join(process.resourcesPath, 'data', 'qingrui.db');
     log(`Resource DB path: ${resourceDbPath}`);
     log(`Resource DB exists: ${fs.existsSync(resourceDbPath)}`);
 
     if (fs.existsSync(resourceDbPath)) {
       fs.copyFileSync(resourceDbPath, dbPath);
-      log('Database copied from resources to user data');
+      log('Database copied from resources');
     } else {
       log('Resource database not found, will create new database');
     }
