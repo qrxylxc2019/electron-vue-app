@@ -155,12 +155,7 @@
               >
                 下一题 <el-icon><ArrowRight /></el-icon>
               </el-button>
-              <el-button
-                class="delete-question-btn"
-                @click="deleteCurrentQuestion"
-              >
-                <el-icon><Delete /></el-icon> 删除题目
-              </el-button>
+              
               <el-button
                 class="ai-explain-btn"
                 @click="openAIChatDrawer"
@@ -175,6 +170,12 @@
                 <el-icon><Collection /></el-icon>
                 同类题
                 <el-tag v-if="similarCount > 0" type="danger" size="small" class="similar-count">{{ similarCount }}</el-tag>
+              </el-button>
+              <el-button
+                class="delete-question-btn"
+                @click="deleteCurrentQuestion"
+              >
+                <el-icon><Delete /></el-icon> 删除题目
               </el-button>
             </div>
 
@@ -2818,6 +2819,7 @@ word-break: break-word;
   min-height: 52px;
   height: auto;
   position: relative;
+   margin-left: 0;
 }
 
 .similar-btn:hover {
