@@ -424,7 +424,7 @@ const loadSavedToken = () => {
   }
 };
 
-// 测试 DeepSeek 本地版 Token
+// 测试 Deep Seek 本地版 Token
 const testDeepseekLocalToken = async () => {
   if (!deepseekLocalToken.value.trim()) {
     ElMessage.warning('请输入 Token');
@@ -446,6 +446,31 @@ const testDeepseekLocalToken = async () => {
   } catch (e: any) {
     deepseekLocalStatus.value = 'error';
     ElMessage.error(e.message || '连接失败');
+  } finally {
+    deepseekLocalTesting.value = false;
+  }
+};
+
+// 自动测试 DeepSeek 本地版 Token（软件打开时自动连接）
+const autoTestDeepseekLocalToken = async () => {
+  const savedToken = localStorage.getItem(DEEPSEEK_LOCAL_TOKEN_KEY);
+  if (!savedToken) return;
+
+  deepseekLocalToken.value = savedToken;
+  deepseekLocalTesting.value = true;
+  deepseekLocalStatus.value = 'idle';
+  try {
+    const result = await window.electronAPI.testDeepseekLocalToken(savedToken);
+    if (result.success) {
+      deepseekLocalStatus.value = 'success';
+      ElMessage.success('DeepSeek 本地版连接成功');
+    } else {
+      deepseekLocalStatus.value = 'error';
+      ElMessage.error(result.error || 'DeepSeek 本地版连接失败');
+    }
+  } catch (e: any) {
+    deepseekLocalStatus.value = 'error';
+    ElMessage.error(e.message || 'DeepSeek 本地版连接失败');
   } finally {
     deepseekLocalTesting.value = false;
   }
@@ -642,12 +667,14 @@ const addDirectory = async () => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
   loadDirectories();
   checkFullscreen();
   loadSettingsFromStorage();
   loadApiSettings();
   loadSavedToken();
+  // 如果有保存的 DeepSeek 本地 Token，自动测试连接
+  await autoTestDeepseekLocalToken();
 });
 </script>
 
