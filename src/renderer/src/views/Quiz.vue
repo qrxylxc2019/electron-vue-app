@@ -150,6 +150,12 @@
             <!-- AI 讲解按钮和同类题按钮 -->
             <div class="ai-explain-section">
               <el-button
+                class="next-question-btn"
+                @click="nextQuestion"
+              >
+                下一题 <el-icon><ArrowRight /></el-icon>
+              </el-button>
+              <el-button
                 class="ai-explain-btn"
                 @click="openAIChatDrawer"
               >
@@ -193,12 +199,7 @@
               <el-icon><EditPen /></el-icon>
               {{ showHandwrite ? '隐藏手写' : '显示手写' }}
             </el-button>
-            <el-button
-              class="next-question-btn"
-              @click="nextQuestion"
-            >
-              下一题 <el-icon><ArrowRight /></el-icon>
-            </el-button>
+            
           </div>
         </div>
       </div>
@@ -1828,7 +1829,6 @@ onMounted(() => {
   transition: all 0.2s ease;
   height: auto;
   min-height: 56px;
-  width: 100%;
   margin-left:0;
 }
 
