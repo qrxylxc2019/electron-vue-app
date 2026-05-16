@@ -9,10 +9,34 @@
         <el-progress :percentage="progressPercent" :show-text="false" />
       </div>
 
-      <!-- 左右布局主体 -->
-      <div class="quiz-main">
-        <!-- 左侧：题目内容 -->
-        <div class="quiz-left">
+    <!-- 左右布局主体 -->
+    <div class="quiz-main">
+      <!-- 高项论文模式：左侧显示文章列表 -->
+      <div v-if="directoryName === '高项论文'" class="article-list-panel">
+        <el-card class="article-list-card">
+          <template #header>
+            <div class="article-list-header">
+              <span>文章列表</span>
+              <el-tag type="info">{{ articles.length }} 篇</el-tag>
+            </div>
+          </template>
+          <div class="article-list">
+            <div
+              v-for="(article, idx) in articles"
+              :key="article.id"
+              class="article-list-item"
+              :class="{ 'active': currentIndex === idx }"
+              @click="jumpToArticle(idx)"
+            >
+              <span class="article-number">{{ idx + 1 }}</span>
+              <span class="article-title">{{ article.title || '无标题' }}</span>
+            </div>
+          </div>
+        </el-card>
+      </div>
+
+      <!-- 左侧：题目内容 -->
+      <div class="quiz-left">
           <el-card class="question-card">
             <template #header>
               <div class="question-header">
@@ -990,6 +1014,13 @@ const prevQuestion = () => {
   }
 };
 
+// 跳转到指定文章（高项论文模式）
+const jumpToArticle = (index: number) => {
+  if (index < 0 || index >= articles.value.length) return;
+  currentIndex.value = index;
+  resetQuestionState();
+};
+
 // 下一题
 const nextQuestion = () => {
   const total = isArticleMode.value ? articles.value.length : questions.value.length;
@@ -1771,6 +1802,101 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* 高项论文文章列表 */
+.article-list-panel {
+  width: 280px;
+  flex-shrink: 0;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  -ms-overflow-style: auto;
+}
+
+.article-list-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.article-list-panel::-webkit-scrollbar-thumb {
+  background-color: #c4a882;
+  border-radius: 3px;
+}
+
+.article-list-card {
+  border-radius: 16px;
+  border: 1px solid #e8e4df;
+  background: #fff;
+  box-shadow: none;
+}
+
+.article-list-card :deep(.el-card__header) {
+  border-bottom: 1px solid #f0ece7;
+  padding: 16px 20px;
+}
+
+.article-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.article-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.article-list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 16px;
+  color: #4a4540;
+}
+
+.article-list-item:hover {
+  background: #f5f3f0;
+}
+
+.article-list-item.active {
+  background: #f0ece7;
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.article-number {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e8e4df;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b6560;
+  flex-shrink: 0;
+}
+
+.article-list-item.active .article-number {
+  background: #c4a882;
+  color: #fff;
+}
+
+.article-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .right-actions {
