@@ -19,6 +19,7 @@ const electronAPI = {
   addCaseMaterial: (material: any) => ipcRenderer.invoke('db:addCaseMaterial', material),
   addCaseQuestion: (question: any) => ipcRenderer.invoke('db:addCaseQuestion', question),
   deleteCaseMaterial: (id: number) => ipcRenderer.invoke('db:deleteCaseMaterial', id),
+  updateCaseMaterial: (id: number, content: string) => ipcRenderer.invoke('db:updateCaseMaterial', id, content),
 
   // 窗口相关
   toggleFullscreen: () => ipcRenderer.invoke('window:toggleFullscreen'),

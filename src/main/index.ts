@@ -645,6 +645,19 @@ function setupIpc() {
       return false;
     }
   });
+
+  // 更新案例材料内容
+  ipcMain.handle('db:updateCaseMaterial', (_event, id: number, content: string) => {
+    if (!db) return false;
+    try {
+      const stmt = db.prepare('UPDATE case_materials SET content = ? WHERE id = ?');
+      const result = stmt.run(content, id);
+      return result.changes > 0;
+    } catch (err) {
+      console.error('updateCaseMaterial error:', err);
+      return false;
+    }
+  });
 }
 
 function createWindow() {

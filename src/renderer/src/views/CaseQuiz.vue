@@ -20,6 +20,25 @@
                 <div class="header-actions">
                   <span class="material-title">{{ currentMaterial.title }}</span>
                   <el-button
+                    v-if="!isEditingMaterial"
+                    class="edit-btn"
+                    size="small"
+                    @click="startEditMaterial"
+                    title="编辑材料"
+                  >
+                    <el-icon :size="18"><Edit /></el-icon>
+                  </el-button>
+                  <el-button
+                    v-if="isEditingMaterial"
+                    class="save-btn"
+                    size="small"
+                    type="primary"
+                    @click="saveMaterialContent"
+                    title="保存"
+                  >
+                    <el-icon :size="18"><CircleCheck /></el-icon>
+                  </el-button>
+                  <el-button
                     class="copy-btn"
                     size="small"
                     @click="copyCaseContent"
@@ -33,7 +52,19 @@
                 </div>
               </div>
             </template>
-            <div class="material-content markdown-body" v-html="renderMarkdown(currentMaterial.content)"></div>
+            <div
+              v-if="!isEditingMaterial"
+              class="material-content markdown-body"
+              v-html="renderMarkdown(currentMaterial.content)"
+            ></div>
+            <div
+              v-else
+              ref="materialEditorRef"
+              class="material-editor"
+              contenteditable="true"
+              v-html="editingMaterialContent"
+              @paste="handleEditorPaste"
+            ></div>
           </el-card>
         </div>
 
@@ -214,7 +245,7 @@ import type { CaseMaterial, CaseQuestion } from '../types';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { marked } from 'marked';
-import { EditPen, DocumentCopy, Check, Cpu, Close, Loading, Promotion, View, Hide, Delete, ArrowRight } from '@element-plus/icons-vue';
+import { EditPen, DocumentCopy, Check, Cpu, Close, Loading, Promotion, View, Hide, Delete, ArrowRight, Edit, CircleCheck } from '@element-plus/icons-vue';
 
 const props = defineProps<{
   directoryId: string;
@@ -237,6 +268,11 @@ const handwriteInputs = ref<Record<number, string>>({});
 // 复制按钮状态
 const copySuccess = ref(false);
 let copyTimer: ReturnType<typeof setTimeout> | null = null;
+
+// 材料编辑状态
+const isEditingMaterial = ref(false);
+const materialEditorRef = ref<HTMLDivElement | null>(null);
+const editingMaterialContent = ref('');
 
 // AI 讲解相关状态
 const aiDrawerVisible = ref(false);
@@ -386,6 +422,83 @@ const toggleAnswer = (index: number) => {
   showAnswers.value[index] = !showAnswers.value[index];
 };
 
+// 开始编辑材料
+const startEditMaterial = () => {
+  if (!currentMaterial.value) return;
+  // 将当前材料内容转为 HTML（markdown 已渲染的内容需要重新用纯文本）
+  editingMaterialContent.value = currentMaterial.value.content
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>');
+  isEditingMaterial.value = true;
+};
+
+// 处理编辑器粘贴事件（图片转 base64）
+const handleEditorPaste = (e: ClipboardEvent) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+
+  let hasImage = false;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item.type.indexOf('image') !== -1) {
+      hasImage = true;
+      e.preventDefault();
+      const blob = item.getAsFile();
+      if (!blob) continue;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target?.result as string;
+        if (base64 && materialEditorRef.value) {
+          const imgHtml = `<img src="${base64}" style="max-width:100%;" />`;
+          document.execCommand('insertHTML', false, imgHtml);
+        }
+      };
+      reader.readAsDataURL(blob);
+    }
+  }
+};
+
+// 提取编辑器中的 base64 图片并保存
+const saveMaterialContent = async () => {
+  if (!currentMaterial.value || !materialEditorRef.value) return;
+
+  const editor = materialEditorRef.value;
+  // 将 <br> 转回换行符，用于存储
+  let html = editor.innerHTML;
+
+  // 将 <br>, <br/> 转为 \n
+  html = html.replace(/<br\s*\/?>/gi, '\n');
+  // 将 <div>...<\/div> 转为 \n...（处理粘贴的富文本）
+  html = html.replace(/<div>/gi, '\n').replace(/<\/div>/gi, '');
+  // 将 <p>...<\/p> 转为 \n...
+  html = html.replace(/<p>/gi, '\n').replace(/<\/p>/gi, '');
+  // 清理其他标签但保留 img
+  html = html.replace(/<(?!img\s|\/img)[^>]+>/gi, '');
+  // 解码 HTML 实体
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = html;
+  let content = textarea.value;
+  // 清理多余的换行
+  content = content.replace(/\n{3,}/g, '\n\n').trim();
+
+  try {
+    const success = await window.electronAPI.updateCaseMaterial(currentMaterial.value.id, content);
+    if (success) {
+      // 更新本地数据
+      currentMaterial.value.content = content;
+      isEditingMaterial.value = false;
+      ElMessage.success('材料已保存');
+    } else {
+      ElMessage.error('保存失败');
+    }
+  } catch (error) {
+    console.error('保存材料失败:', error);
+    ElMessage.error('保存失败');
+  }
+};
+
 // 下一大题
 const nextMaterial = () => {
   if (currentMaterialIndex.value < materials.value.length - 1) {
@@ -442,7 +555,7 @@ onMounted(() => {
   loadData();
 });
 
-// 监听当前材料变化，清空 AI 状态
+// 监听当前材料变化，清空 AI 状态和编辑状态
 watch(currentMaterial, () => {
   aiDrawerVisible.value = false;
   aiLoading.value = false;
@@ -452,6 +565,9 @@ watch(currentMaterial, () => {
   aiUserInput.value = '';
   aiUnsubscribers.forEach(fn => fn());
   aiUnsubscribers = [];
+  // 切换材料时退出编辑模式
+  isEditingMaterial.value = false;
+  editingMaterialContent.value = '';
 });
 
 // 滚动到底部
@@ -843,6 +959,56 @@ const getProviderOrder = (): string[] => {
 .copy-btn:hover {
   color: #1a1a1a;
   background: #f5f3f0;
+}
+
+.edit-btn {
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: #9a9590;
+  font-size: 18px;
+}
+
+.edit-btn:hover {
+  color: #409eff;
+  background: #f5f3f0;
+}
+
+.save-btn {
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: #409eff;
+  font-size: 18px;
+}
+
+.save-btn:hover {
+  color: #67c23a;
+  background: #f5f3f0;
+}
+
+.material-editor {
+  font-size: 22px;
+  color: #4a4540;
+  line-height: 1.8;
+  padding: 8px 0;
+  min-height: 200px;
+  border: 2px solid #c4a882;
+  border-radius: 12px;
+  padding: 16px;
+  background: #fdfbf8;
+  outline: none;
+}
+
+.material-editor:focus {
+  border-color: #a08060;
+  box-shadow: 0 0 0 2px rgba(196, 168, 130, 0.2);
+}
+
+.material-editor img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 8px 0;
 }
 
 .material-title {
