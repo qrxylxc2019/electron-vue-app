@@ -118,6 +118,15 @@
                     :placeholder="`第 ${index + 1} 段手写内容...`"
                     class="handwrite-input"
                   />
+                  <el-button
+                    class="clear-handwrite-btn"
+                    size="small"
+                    text
+                    @click="handwriteInputs[index] = ''"
+                  >
+                    <el-icon><Delete /></el-icon>
+                    清空
+                  </el-button>
                 </div>
               </div>
             </div>
@@ -1935,6 +1944,24 @@ onMounted(() => {
   background: #fdfbf8;
   border: 1.5px solid #e8e4df;
   resize: vertical;
+}
+
+.clear-handwrite-btn {
+  margin-top: 12px;
+  color: #fff;
+  background-color: #F56C6C;
+  border: none;
+  border-radius: 12px;
+  padding: 16px 32px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 52px;
+  margin-left: 0;
+}
+
+.clear-handwrite-btn:hover {
+  background-color: #f78989;
 }
 
 .case-handwrite {

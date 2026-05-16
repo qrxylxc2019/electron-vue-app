@@ -60,6 +60,7 @@
                   class="handwrite-input"
                   resize="none"
                 />
+                
               </div>
 
               <!-- AI 讲解和答案按钮 -->
@@ -77,6 +78,15 @@
                 >
                   <el-icon><View v-if="!showAnswer" /><Hide v-else /></el-icon>
                   {{ showAnswer ? '隐藏答案' : '显示答案' }}
+                </el-button>
+                <el-button
+                  class="clear-handwrite-btn"
+                  size="small"
+                  text
+                  @click="handwriteInput = ''"
+                >
+                  <el-icon><Delete /></el-icon>
+                  清空
                 </el-button>
               </div>
 
@@ -1077,6 +1087,22 @@ const getProviderOrder = (): string[] => {
 .handwrite-input :deep(.el-textarea__inner:focus) {
   border-color: #a08060;
   box-shadow: 0 0 0 2px rgba(196, 168, 130, 0.2);
+}
+
+.clear-handwrite-btn {
+  color: #fff;
+  background-color: #F56C6C;
+  border: none;
+  border-radius: 12px;
+  padding: 18px 24px;
+  font-size: 18px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 56px;
+}
+
+.clear-handwrite-btn:hover {
+  background-color: #f78989;
 }
 
 .bottom-nav {
