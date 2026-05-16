@@ -425,12 +425,23 @@ const toggleAnswer = (index: number) => {
 // 开始编辑材料
 const startEditMaterial = () => {
   if (!currentMaterial.value) return;
-  // 将当前材料内容转为 HTML（markdown 已渲染的内容需要重新用纯文本）
-  editingMaterialContent.value = currentMaterial.value.content
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\n/g, '<br>');
+  // 将当前材料内容转为 HTML：保留已有的 <img> 标签，其他文本转义后换行转 <br>
+  const content = currentMaterial.value.content;
+  // 先拆分出 <img ...> 标签和普通文本
+  const parts = content.split(/(<img\s+[^>]+>)/gi);
+  const htmlParts = parts.map((part) => {
+    if (/^<img\s/i.test(part)) {
+      // 保留 img 标签原样
+      return part;
+    }
+    // 普通文本：转义 HTML 特殊字符，换行转 <br>
+    return part
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br>');
+  });
+  editingMaterialContent.value = htmlParts.join('');
   isEditingMaterial.value = true;
 };
 
