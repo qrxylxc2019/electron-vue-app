@@ -638,7 +638,7 @@ const handleAIChatScroll = () => {
   }, 150);
 };
 
-// 滚动到对话底部（仅在用户未手动滚动或在底部时）
+// 滚动到对话底部（仅在用户未手动滚动时）
 const scrollToBottom = async () => {
   await nextTick();
   if (aiChatContentRef.value && !isUserScrolling.value) {
@@ -1137,6 +1137,8 @@ const sendAIChatMessage = async () => {
     role: 'user',
     content: userMessage
   });
+  // 用户发送新问题时，重置滚动状态并滚动到底部
+  isUserScrolling.value = false;
   scrollToBottom();
 
   await callAIExplain(true, userMessage);
