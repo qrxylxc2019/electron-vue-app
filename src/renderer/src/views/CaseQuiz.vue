@@ -672,14 +672,14 @@ const callCaseAIExplain = async (isFollowUp = false, userMessage = '') => {
 // 获取厂商优先级
 const getProviderOrder = (): string[] => {
   try {
-    const settings = JSON.parse(localStorage.getItem('apiSettings') || '{}');
-    if (settings.providerOrder && Array.isArray(settings.providerOrder)) {
-      return settings.providerOrder;
+    const stored = localStorage.getItem('apiProviderOrder');
+    if (stored) {
+      return JSON.parse(stored);
     }
   } catch {
     // ignore
   }
-  return ['modelspace', 'deepseek'];
+  return ['deepseekLocal', 'modelspace', 'deepseek'];
 };
 </script>
 
