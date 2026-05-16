@@ -63,15 +63,7 @@
                   class="handwrite-input"
                   resize="none"
                 />
-                <el-button
-                  class="clear-handwrite-btn"
-                  size="small"
-                  text
-                  @click="handwriteInputs[idx] = ''"
-                >
-                  <el-icon><Delete /></el-icon>
-                  清空
-                </el-button>
+                
               </div>
 
               <!-- AI 讲解和答案按钮 -->
@@ -89,6 +81,15 @@
                 >
                   <el-icon><View v-if="!showAnswers[idx]" /><Hide v-else /></el-icon>
                   {{ showAnswers[idx] ? '隐藏答案' : '显示答案' }}
+                </el-button>
+                <el-button
+                  class="clear-handwrite-btn"
+                  size="small"
+                  text
+                  @click="handwriteInputs[idx] = ''"
+                >
+                  <el-icon><Delete /></el-icon>
+                  清空
                 </el-button>
               </div>
 
