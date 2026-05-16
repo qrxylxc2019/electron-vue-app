@@ -225,12 +225,7 @@
         <div class="quiz-right">
           <div class="right-actions">
             <template v-if="directoryName === '高项论文'">
-              <el-button
-                class="next-question-btn"
-                @click="nextQuestion"
-              >
-                下一题 <el-icon><ArrowRight /></el-icon>
-              </el-button>
+              
               <el-button
                 class="delete-question-btn"
                 @click="deleteCurrentQuestion"
@@ -251,6 +246,12 @@
               >
                 <el-icon><Cpu /></el-icon>
                 AI讲解
+              </el-button>
+              <el-button
+                class="next-question-btn"
+                @click="nextQuestion"
+              >
+                下一题 <el-icon><ArrowRight /></el-icon>
               </el-button>
             </template>
           </div>
