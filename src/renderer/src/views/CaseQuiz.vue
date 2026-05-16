@@ -1047,6 +1047,13 @@ const getProviderOrder = (): string[] => {
   background-color: #f78989;
 }
 
+.all-questions-display {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
 .all-questions-list {
   display: flex;
   flex-wrap: wrap;
