@@ -37,88 +37,72 @@
           </el-card>
         </div>
 
-        <!-- 中间：小题内容 + 导航 -->
+        <!-- 中间：所有小题内容 -->
         <div class="case-center">
-          <div class="question-section" v-if="currentCaseQuestion">
-            <el-card class="question-card">
+          <div v-if="caseQuestions.length > 0" class="all-questions-display">
+            <el-card
+              v-for="(q, idx) in caseQuestions"
+              :key="q.id"
+              class="question-card"
+            >
               <template #header>
                 <div class="question-header">
-                  <el-tag type="warning">第 {{ currentCaseQuestion.question_number }} 小题</el-tag>
-                  <span class="question-count">{{ currentQuestionIndex + 1 }} / {{ caseQuestions.length }}</span>
+                  <el-tag type="warning">第 {{ q.question_number }} 小题</el-tag>
                 </div>
               </template>
 
-              <div class="question-title markdown-body" v-html="renderMarkdown(currentCaseQuestion.title)"></div>
+              <div class="question-title markdown-body" v-html="renderMarkdown(q.title)"></div>
 
               <!-- 手写输入区域 -->
               <div v-if="showHandwrite" class="handwrite-area">
                 <el-input
-                  v-model="handwriteInput"
+                  v-model="handwriteInputs[idx]"
                   type="textarea"
                   :rows="6"
-                  placeholder="在此手写作答..."
+                  :placeholder="`第 ${q.question_number} 小题手写作答...`"
                   class="handwrite-input"
                   resize="none"
                 />
-                
-              </div>
-
-              <!-- AI 讲解和答案按钮 -->
-              <div class="action-buttons">
-                <el-button
-                  class="ai-explain-btn"
-                  @click="openAIChatDrawer"
-                >
-                  <el-icon><Cpu /></el-icon>
-                  AI讲解
-                </el-button>
-                <el-button
-                  class="toggle-answer-btn"
-                  @click="showAnswer = !showAnswer"
-                >
-                  <el-icon><View v-if="!showAnswer" /><Hide v-else /></el-icon>
-                  {{ showAnswer ? '隐藏答案' : '显示答案' }}
-                </el-button>
                 <el-button
                   class="clear-handwrite-btn"
                   size="small"
                   text
-                  @click="handwriteInput = ''"
+                  @click="handwriteInputs[idx] = ''"
                 >
                   <el-icon><Delete /></el-icon>
                   清空
                 </el-button>
               </div>
 
+              <!-- AI 讲解和答案按钮 -->
+              <div class="action-buttons">
+                <el-button
+                  class="ai-explain-btn"
+                  @click="openAIChatDrawerForQuestion(q)"
+                >
+                  <el-icon><Cpu /></el-icon>
+                  AI讲解
+                </el-button>
+                <el-button
+                  class="toggle-answer-btn"
+                  @click="toggleAnswer(idx)"
+                >
+                  <el-icon><View v-if="!showAnswers[idx]" /><Hide v-else /></el-icon>
+                  {{ showAnswers[idx] ? '隐藏答案' : '显示答案' }}
+                </el-button>
+              </div>
+
               <!-- 答案区域 -->
-              <div v-if="showAnswer && currentCaseQuestion.answer" class="answer-content">
+              <div v-if="showAnswers[idx] && q.answer" class="answer-content">
                 <el-divider />
                 <div class="answer-label">参考答案：</div>
-                <div class="answer-text markdown-body" v-html="renderMarkdown(currentCaseQuestion.answer)"></div>
+                <div class="answer-text markdown-body" v-html="renderMarkdown(q.answer)"></div>
               </div>
             </el-card>
           </div>
 
           <!-- 无小题提示 -->
           <el-empty v-else description="该案例暂无小题" />
-
-          <!-- 小题导航 -->
-          <div class="bottom-nav">
-            <el-button
-              class="nav-btn prev-btn"
-              @click="prevQuestion"
-              :disabled="currentQuestionIndex === 0"
-            >
-              <el-icon><ArrowLeft /></el-icon> 上一小题
-            </el-button>
-
-            <el-button
-              class="nav-btn next-btn"
-              @click="nextQuestion"
-            >
-              下一小题 <el-icon><ArrowRight /></el-icon>
-            </el-button>
-          </div>
         </div>
 
         <!-- 右侧：大题操作按钮 -->
@@ -229,7 +213,7 @@ import type { CaseMaterial, CaseQuestion } from '../types';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { marked } from 'marked';
-import { EditPen, DocumentCopy, Check, Cpu, Close, Loading, Promotion, View, Hide, Delete, ArrowLeft, ArrowRight } from '@element-plus/icons-vue';
+import { EditPen, DocumentCopy, Check, Cpu, Close, Loading, Promotion, View, Hide, Delete, ArrowRight } from '@element-plus/icons-vue';
 
 const props = defineProps<{
   directoryId: string;
@@ -243,13 +227,11 @@ const caseQuestionsMap = ref<Record<number, CaseQuestion[]>>({});
 
 // 当前案例索引
 const currentMaterialIndex = ref(0);
-// 当前小题索引
-const currentQuestionIndex = ref(0);
-// 是否显示答案
-const showAnswer = ref(false);
-// 手写输入相关状态（默认显示）
+// 是否显示答案（按小题索引存储）
+const showAnswers = ref<Record<number, boolean>>({});
+// 手写输入相关状态（默认显示，按小题索引存储）
 const showHandwrite = ref(true);
-const handwriteInput = ref('');
+const handwriteInputs = ref<Record<number, string>>({});
 
 // 复制按钮状态
 const copySuccess = ref(false);
@@ -269,11 +251,8 @@ let aiUnsubscribers: (() => void)[] = [];
 // 案例题 AI 讲解上下文（按 materialId_questionNumber 存储）
 const caseAIContexts = ref<Record<string, Array<{role: string; content: string}>>>({});
 
-// 当前案例题的唯一标识
-const currentCaseKey = computed(() => {
-  if (!currentMaterial.value || !currentCaseQuestion.value) return '';
-  return `${currentMaterial.value.id}_${currentCaseQuestion.value.question_number}`;
-});
+// 当前 AI 讲解的小题
+const currentAIQuestion = ref<CaseQuestion | null>(null);
 
 // 当前案例材料
 const currentMaterial = computed(() => {
@@ -286,21 +265,10 @@ const caseQuestions = computed(() => {
   return caseQuestionsMap.value[currentMaterial.value.id] || [];
 });
 
-// 当前小题
-const currentCaseQuestion = computed(() => {
-  return caseQuestions.value[currentQuestionIndex.value] || null;
-});
-
 // 案例进度百分比
 const materialProgressPercent = computed(() => {
   if (materials.value.length === 0) return 0;
   return ((currentMaterialIndex.value + 1) / materials.value.length) * 100;
-});
-
-// 是否是当前案例的最后一个小题
-const isLastQuestion = computed(() => {
-  if (caseQuestions.value.length === 0) return true;
-  return currentQuestionIndex.value === caseQuestions.value.length - 1;
 });
 
 // Markdown 渲染
@@ -398,10 +366,9 @@ const loadData = async () => {
 
     // 重置状态
     currentMaterialIndex.value = 0;
-    currentQuestionIndex.value = 0;
-    showAnswer.value = false;
+    showAnswers.value = {};
     showHandwrite.value = true;
-    handwriteInput.value = '';
+    handwriteInputs.value = {};
   } catch (error) {
     ElMessage.error('加载案例失败');
     console.error(error);
@@ -413,39 +380,18 @@ const goBack = () => {
   router.push({ name: 'Home' });
 };
 
-// 上一题（仅在同案例的小题间切换，不跨案例）
-const prevQuestion = () => {
-  if (currentQuestionIndex.value > 0) {
-    // 同一案例的上一小题
-    currentQuestionIndex.value--;
-    showAnswer.value = false;
-    showHandwrite.value = true;
-    handwriteInput.value = '';
-  }
-};
-
-// 下一题（同案例的小题间切换，当前案例最后一个小题后进入下一大题）
-const nextQuestion = () => {
-  if (currentQuestionIndex.value < caseQuestions.value.length - 1) {
-    // 同一案例的下一小题
-    currentQuestionIndex.value++;
-    showAnswer.value = false;
-    showHandwrite.value = true;
-    handwriteInput.value = '';
-  } else {
-    // 当前案例已是最后一个小题，进入下一大题
-    nextMaterial();
-  }
+// 切换指定小题的答案显示
+const toggleAnswer = (index: number) => {
+  showAnswers.value[index] = !showAnswers.value[index];
 };
 
 // 下一大题
 const nextMaterial = () => {
   if (currentMaterialIndex.value < materials.value.length - 1) {
     currentMaterialIndex.value++;
-    currentQuestionIndex.value = 0;
-    showAnswer.value = false;
+    showAnswers.value = {};
     showHandwrite.value = true;
-    handwriteInput.value = '';
+    handwriteInputs.value = {};
   } else {
     // 已经是最后一题，重新加载题目（按照配置重新随机获取）
     ElMessage.success('本轮题目已完成，即将重新开始');
@@ -480,9 +426,8 @@ const deleteCurrentMaterial = async () => {
       if (currentMaterialIndex.value >= materials.value.length) {
         currentMaterialIndex.value = materials.value.length - 1;
       }
-      currentQuestionIndex.value = 0;
-      showAnswer.value = false;
-      handwriteInput.value = '';
+      showAnswers.value = {};
+      handwriteInputs.value = {};
     } else {
       ElMessage.error('删除失败');
     }
@@ -517,22 +462,13 @@ const scrollToBottom = () => {
   }, 50);
 };
 
-// 构建案例题展示文本
-const buildCaseQuestionText = (): string => {
-  if (!currentMaterial.value || !currentCaseQuestion.value) return '';
 
-  let text = `【案例材料】\n${currentMaterial.value.title}\n\n${currentMaterial.value.content}`;
-  text += `\n\n【第 ${currentCaseQuestion.value.question_number} 小题】\n${currentCaseQuestion.value.title}`;
-
-  return text;
-};
-
-// 打开 AI 讲解抽屉
-const openAIChatDrawer = async () => {
-  if (!currentMaterial.value || !currentCaseQuestion.value) return;
+// 打开 AI 讲解抽屉（针对指定小题）
+const openAIChatDrawerForQuestion = async (q: CaseQuestion) => {
+  if (!currentMaterial.value) return;
   aiDrawerVisible.value = true;
 
-  const key = currentCaseKey.value;
+  const key = `${currentMaterial.value.id}_${q.question_number}`;
 
   // 如果已经有对话记录，恢复并滚动到底部
   if (caseAIContexts.value[key] && caseAIContexts.value[key].length > 0) {
@@ -545,13 +481,16 @@ const openAIChatDrawer = async () => {
   }
 
   // 首次打开：先显示题目作为用户消息，再调用 AI
+  let text = `【案例材料】\n${currentMaterial.value.title}\n\n${currentMaterial.value.content}`;
+  text += `\n\n【第 ${q.question_number} 小题】\n${q.title}`;
+
   aiChatMessages.value.push({
     role: 'user',
-    content: buildCaseQuestionText()
+    content: text
   });
   scrollToBottom();
 
-  await callCaseAIExplain(false);
+  await callCaseAIExplain(false, '', q);
 };
 
 // 关闭 AI 讲解抽屉
@@ -577,8 +516,10 @@ const sendAIChatMessage = async () => {
 };
 
 // 调用 AI 讲解（支持首次和追问）
-const callCaseAIExplain = async (isFollowUp = false, userMessage = '') => {
-  if (!currentMaterial.value || !currentCaseQuestion.value) return;
+const callCaseAIExplain = async (isFollowUp = false, userMessage = '', question?: CaseQuestion) => {
+  if (!currentMaterial.value) return;
+  const q = question || currentAIQuestion.value;
+  if (!q) return;
 
   aiLoading.value = true;
   aiError.value = '';
@@ -626,7 +567,7 @@ const callCaseAIExplain = async (isFollowUp = false, userMessage = '') => {
     aiLoading.value = false;
     aiProviderName.value = '';
     // 保存对话上下文
-    const key = currentCaseKey.value;
+    const key = `${currentMaterial.value!.id}_${q.question_number}`;
     caseAIContexts.value[key] = aiChatMessages.value.map(m => ({
       role: m.role,
       content: m.content
@@ -649,9 +590,9 @@ const callCaseAIExplain = async (isFollowUp = false, userMessage = '') => {
     const result = await window.electronAPI.explainCaseQuestion({
       materialTitle: currentMaterial.value.title,
       materialContent: currentMaterial.value.content,
-      questionNumber: currentCaseQuestion.value.question_number,
-      questionTitle: currentCaseQuestion.value.title,
-      answer: currentCaseQuestion.value.answer || '',
+      questionNumber: q.question_number,
+      questionTitle: q.title,
+      answer: q.answer || '',
       isFollowUp,
       userMessage,
       providerOrder,
@@ -1105,49 +1046,21 @@ const getProviderOrder = (): string[] => {
   background-color: #f78989;
 }
 
-.bottom-nav {
+.all-questions-list {
   display: flex;
-  justify-content: center;
-  gap: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
   padding: 16px 0;
   flex-shrink: 0;
 }
 
-.nav-btn {
-  border-radius: 12px;
-  padding: 18px 36px;
-  font-size: 18px;
+.question-item {
+  cursor: pointer;
   transition: all 0.2s ease;
-  height: auto;
-  min-height: 56px;
 }
 
-.prev-btn {
-  background-color: transparent;
-  color: #1a1a1a;
-  border: 1.5px solid #e8e4df;
-}
-
-.prev-btn:hover:not(:disabled) {
-  border-color: #c4a882;
-  background-color: #fdfbf8;
-}
-
-.next-btn {
-  background-color: #1a1a1a;
-  color: #fff;
-  border: none;
-}
-
-.next-btn:hover:not(:disabled) {
-  background-color: #333;
-}
-
-.nav-btn:disabled {
-  background-color: #c0c4cc;
-  border-color: #c0c4cc;
-  color: #fff;
-  cursor: not-allowed;
+.question-item:hover {
+  transform: translateY(-2px);
 }
 
 :deep(.el-tag) {
