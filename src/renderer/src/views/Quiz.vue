@@ -350,7 +350,9 @@
               @keydown.enter.prevent="sendAIChatMessage"
             />
             <div class="input-toolbar-bottom">
+              <!-- 技能按钮 / 取消技能按钮 -->
               <el-button
+                v-if="!currentSkill"
                 class="skill-btn"
                 size="small"
                 text
@@ -358,6 +360,17 @@
               >
                 <el-icon><MagicStick /></el-icon>
                 技能
+              </el-button>
+              <el-button
+                v-else
+                class="skill-btn cancel-skill-btn"
+                size="small"
+                text
+                type="danger"
+                @click="cancelSkill"
+              >
+                <el-icon><CircleClose /></el-icon>
+                取消技能
               </el-button>
               <!-- 技能列表弹出层 -->
               <div v-if="showSkillList" class="skill-popover">
@@ -567,6 +580,13 @@ const handleSkillClick = (skill: typeof skillList[0]) => {
     const inputEl = document.querySelector('.ai-chat-input textarea') as HTMLTextAreaElement;
     if (inputEl) inputEl.focus();
   }, 100);
+};
+
+// 取消技能
+const cancelSkill = () => {
+  currentSkill.value = '';
+  aiInputPlaceholder.value = '对这道题还有疑问？继续向 AI 提问...';
+  aiUserInput.value = '';
 };
 
 // AI 聊天区域滚动状态
@@ -2420,6 +2440,15 @@ font-size: 13px;
 background: #e8e4df;
 color: #1a1a1a;
 border-radius: 6px;
+}
+
+.cancel-skill-btn {
+color: #f56c6c;
+}
+
+.cancel-skill-btn:hover {
+background: #fde2e2;
+color: #c45656;
 }
 
 .skill-popover {
