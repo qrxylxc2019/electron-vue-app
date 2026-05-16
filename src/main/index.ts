@@ -43,7 +43,7 @@ function getDbPath(): string {
   // 统一使用项目目录下的数据库，开发和生产环境都用同一个
   const projectRoot = isDev
     ? path.join(__dirname, '..', '..')
-    : path.join(process.resourcesPath, '..', '..');
+    : path.join(process.resourcesPath, '..', '..', '..');
   const dbDir = path.join(projectRoot, 'out', 'data');
   if (!fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
