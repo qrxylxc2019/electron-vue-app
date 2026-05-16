@@ -11,22 +11,22 @@
 
     <!-- 左右布局主体 -->
     <div class="quiz-main">
-      <!-- 高项论文模式：左侧显示文章列表 -->
+      <!-- 高项论文模式：左侧显示所有文章列表 -->
       <div v-if="directoryName === '高项论文'" class="article-list-panel">
         <el-card class="article-list-card">
           <template #header>
             <div class="article-list-header">
               <span>文章列表</span>
-              <el-tag type="info">{{ articles.length }} 篇</el-tag>
+              <el-tag type="info">{{ allArticles.length }} 篇</el-tag>
             </div>
           </template>
           <div class="article-list">
             <div
-              v-for="(article, idx) in articles"
+              v-for="(article, idx) in allArticles"
               :key="article.id"
               class="article-list-item"
-              :class="{ 'active': currentIndex === idx }"
-              @click="jumpToArticle(idx)"
+              :class="{ 'active': currentQuestion?.id === article.id }"
+              @click="jumpToArticleById(article.id)"
             >
               <span class="article-number">{{ idx + 1 }}</span>
               <span class="article-title">{{ article.title || '无标题' }}</span>
@@ -566,6 +566,7 @@ const directoryName = ref('');
 const isArticleMode = ref(false);
 const questions = ref<Question[]>([]);
 const articles = ref<Article[]>([]);
+const allArticles = ref<Article[]>([]); // 高项论文模式下所有原始文章数据（用于左侧列表）
 const currentIndex = ref(0);
 const selectedAnswer = ref<string>('');
 const selectedAnswers = ref<Set<string>>(new Set()); // 多选题选中的答案
@@ -780,18 +781,21 @@ const loadData = async () => {
         ElMessage.warning('该科目暂无文章');
         return;
       }
+      // 保存所有原始文章数据用于左侧列表显示
+      allArticles.value = [...arts];
+
       // 处理出题设置参数
       const mode = route.query.mode as string;
       const count = parseInt(route.query.count as string) || arts.length;
       const repeat = parseInt(route.query.repeat as string) || 1;
-      
+
       // 先随机打乱
       arts = shuffleArray([...arts]);
-      
+
       if (mode === 'random' && count < arts.length) {
         arts = arts.slice(0, count);
       }
-      
+
       if (repeat > 1) {
         const baseArticles = [...arts];
         const repeated: Article[] = [];
@@ -800,7 +804,7 @@ const loadData = async () => {
         }
         arts = repeated;
       }
-      
+
       articles.value = arts;
       questions.value = []; // 清空题目
     } else {
@@ -1019,6 +1023,25 @@ const jumpToArticle = (index: number) => {
   if (index < 0 || index >= articles.value.length) return;
   currentIndex.value = index;
   resetQuestionState();
+};
+
+// 根据文章 ID 跳转（左侧列表点击用）
+const jumpToArticleById = (id: number) => {
+  // 在当前的 articles（重复出题数组）中查找该文章
+  const idx = articles.value.findIndex(a => a.id === id);
+  if (idx !== -1) {
+    // 如果当前出题数组中有，直接跳转
+    currentIndex.value = idx;
+    resetQuestionState();
+  } else {
+    // 如果当前出题数组中没有（被随机抽掉了），临时插入到当前位置
+    const article = allArticles.value.find(a => a.id === id);
+    if (article) {
+      articles.value.splice(currentIndex.value + 1, 0, article);
+      currentIndex.value++;
+      resetQuestionState();
+    }
+  }
 };
 
 // 下一题
