@@ -441,8 +441,8 @@ onMounted(() => {
   loadData();
 });
 
-// 监听小题变化，清空 AI 状态
-watch(currentCaseKey, () => {
+// 监听当前材料变化，清空 AI 状态
+watch(currentMaterial, () => {
   aiDrawerVisible.value = false;
   aiLoading.value = false;
   aiError.value = '';
