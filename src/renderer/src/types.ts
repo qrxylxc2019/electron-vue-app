@@ -116,6 +116,8 @@ declare global {
       onAIStreamError: (callback: (error: string) => void) => () => void;
       onAIProviderSwitch: (callback: (provider: string) => void) => () => void;
       updateAIExplanation: (id: number, aiExplanation: string) => Promise<boolean>;
+      // AI 提取关键词
+      extractKeywords: (data: { paragraph: string; providerOrder?: string[] }) => Promise<{ success: boolean; keywords?: string; error?: string }>;
       // 同类题
       getSimilarQuestions: (pid: number) => Promise<Question[]>;
       addSimilarQuestions: (questions: any[]) => Promise<Question[]>;

@@ -203,15 +203,33 @@
                     :placeholder="`第 ${index + 1} 段手写内容...`"
                     class="handwrite-input"
                   />
-                  <el-button
-                    class="clear-handwrite-btn"
-                    size="small"
-                    text
-                    @click="handwriteInputs[index] = ''"
-                  >
-                    <el-icon><Delete /></el-icon>
-                    清空
-                  </el-button>
+                  <!-- 关键词显示区域 -->
+                  <div v-if="paragraphKeywords[index]" class="keywords-display">
+                    <el-icon><Collection /></el-icon>
+                    <span class="keywords-label">记忆关键词：</span>
+                    <span class="keywords-content">{{ paragraphKeywords[index] }}</span>
+                  </div>
+                  <div class="handwrite-actions">
+                    <el-button
+                      class="ai-keywords-btn"
+                      size="small"
+                      text
+                      :loading="keywordsLoading[index]"
+                      @click="extractParagraphKeywords(index)"
+                    >
+                      <el-icon><Cpu /></el-icon>
+                      AI关键词
+                    </el-button>
+                    <el-button
+                      class="clear-handwrite-btn"
+                      size="small"
+                      text
+                      @click="handwriteInputs[index] = ''"
+                    >
+                      <el-icon><Delete /></el-icon>
+                      清空
+                    </el-button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -758,6 +776,10 @@ const aiSimilarDeletedOptions = ref<Set<string>>(new Set());
 // 手写输入相关状态（默认显示）
 const showHandwrite = ref(true);
 const handwriteInputs = ref<Record<number, string>>({});
+
+// 段落关键词状态
+const paragraphKeywords = ref<Record<number, string>>({});
+const keywordsLoading = ref<Record<number, boolean>>({});
 
 // 检测是否在底部（允许 10px 误差）
 const isAtBottom = () => {
@@ -1331,6 +1353,36 @@ const getHandwriteInput = (index: number) => {
 // 更新手写输入内容
 const updateHandwriteInput = (index: number, value: string) => {
   handwriteInputs.value[index] = value;
+};
+
+// AI 提取段落关键词
+const extractParagraphKeywords = async (index: number) => {
+  const paragraph = writeParagraphs.value[index];
+  if (!paragraph || !paragraph.trim()) {
+    ElMessage.warning('段落内容为空，无法提取关键词');
+    return;
+  }
+
+  keywordsLoading.value[index] = true;
+  try {
+    const providerOrder = getProviderOrder();
+    const result = await window.electronAPI.extractKeywords({
+      paragraph: paragraph.trim(),
+      providerOrder,
+    });
+
+    if (result.success && result.keywords) {
+      paragraphKeywords.value[index] = result.keywords;
+      ElMessage.success('关键词提取成功');
+    } else {
+      ElMessage.error(result.error || '提取失败');
+    }
+  } catch (error) {
+    ElMessage.error('提取关键词失败');
+    console.error(error);
+  } finally {
+    keywordsLoading.value[index] = false;
+  }
 };
 
 // 文章标题编辑相关方法
@@ -3834,5 +3886,50 @@ word-break: break-word;
 .add-article-btn:hover {
   background: #85ce61;
   border-color: #85ce61;
+}
+
+/* 关键词显示区域 */
+.keywords-display {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  background: #f0f9eb;
+  border: 1px solid #b3e19d;
+  border-radius: 10px;
+  margin: 8px 0;
+  font-size: 14px;
+  color: #67c23a;
+}
+
+.keywords-display .el-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.keywords-label {
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.keywords-content {
+  color: #1a1a1a;
+  font-weight: 500;
+}
+
+/* 手写区域按钮布局 */
+.handwrite-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.ai-keywords-btn {
+  color: #409eff;
+}
+
+.ai-keywords-btn:hover {
+  color: #66b1ff;
+  background: #ecf5ff;
 }
 </style>

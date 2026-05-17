@@ -62,6 +62,9 @@ const electronAPI = {
   // 案例题 AI 讲解
   explainCaseQuestion: (data: any) => ipcRenderer.invoke('ai:explainCaseQuestion', data),
 
+  // AI 提取关键词
+  extractKeywords: (data: any) => ipcRenderer.invoke('ai:extractKeywords', data),
+
   // API 设置
   getApiSettings: () => ipcRenderer.invoke('db:getApiSettings'),
   saveApiSettings: (settings: any) => ipcRenderer.invoke('db:saveApiSettings', settings),

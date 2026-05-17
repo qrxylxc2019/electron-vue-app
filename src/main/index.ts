@@ -1297,6 +1297,67 @@ ipcMain.handle('db:saveApiSettings', () => {
   return true;
 });
 
+// AI 提取段落关键词
+ipcMain.handle('ai:extractKeywords', async (_event, data: any) => {
+  const providerOrder = (data.providerOrder as string[]) || ['deepseekLocal', 'modelspace', 'deepseek'];
+  const paragraph = data.paragraph as string;
+
+  if (!paragraph || !paragraph.trim()) {
+    return { success: false, error: '段落内容不能为空' };
+  }
+
+  const prompt = PROMPTS.extractKeywords(paragraph);
+
+  const result = await callAIWithFallback(providerOrder, async (provider) => {
+    log(`[AI ExtractKeywords] 使用厂商: ${provider}`);
+
+    // 支持 DeepSeek 本地版
+    if (provider === 'deepseekLocal') {
+      const dsClient = getDeepSeekClient();
+      if (!dsClient) {
+        throw new Error('DeepSeek 本地版客户端未初始化，请先设置 Token');
+      }
+
+      const dsMessages: { role: 'user' | 'assistant'; content: string }[] = [
+        { role: 'user', content: `${prompt.system}\n\n${prompt.user}` }
+      ];
+
+      let content = '';
+      for await (const chunk of dsClient.chatStream(dsMessages, 'deepseek-chat')) {
+        if (chunk.type === 'text' && chunk.content) {
+          content += chunk.content;
+        } else if (chunk.type === 'error') {
+          throw new Error(chunk.content || 'DeepSeek 聊天失败');
+        }
+      }
+      return content.trim();
+    }
+
+    const client = getOpenAIClient(provider);
+    const model = getCurrentModel(provider);
+
+    const response = await client.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: prompt.system },
+        { role: 'user', content: prompt.user },
+      ],
+      stream: false,
+      temperature: 0.5,
+      max_tokens: 256,
+    });
+
+    return (response.choices[0]?.message?.content || '').trim();
+  });
+
+  if (!result.success) {
+    console.error('AI extract keywords error:', result.error);
+    return { success: false, error: result.error };
+  }
+
+  return { success: true, keywords: result.data };
+});
+
 // DeepSeek 本地版 Token 测试
 ipcMain.handle('deepseekLocal:testToken', async (_event, token: string) => {
   try {
