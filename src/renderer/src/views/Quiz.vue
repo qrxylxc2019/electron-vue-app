@@ -607,15 +607,15 @@ const API_ORDER_KEY = 'apiProviderOrder';
 
 // 获取本地缓存的厂商排序
 function getProviderOrder(): string[] {
-  try {
-    const stored = localStorage.getItem(API_ORDER_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (e) {
-    console.error('读取厂商排序失败:', e);
-  }
-  return ['modelspace', 'deepseek'];
+try {
+const stored = localStorage.getItem(API_ORDER_KEY);
+if (stored) {
+return JSON.parse(stored);
+}
+} catch (e) {
+console.error('读取厂商排序失败:', e);
+}
+return ['deepseekLocal', 'modelspace', 'deepseek'];
 }
 
 const props = defineProps<{
