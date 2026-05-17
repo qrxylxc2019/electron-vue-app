@@ -846,6 +846,7 @@ const saveQuestionAnswer = async (id: number) => {
 const openAIChatDrawerForQuestion = async (q: CaseQuestion) => {
   if (!currentMaterial.value) return;
   aiDrawerVisible.value = true;
+  currentAIQuestion.value = q;
 
   const key = `${currentMaterial.value.id}_${q.question_number}`;
 
@@ -1630,9 +1631,10 @@ const getProviderOrder = (): string[] => {
 .drawer-content {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
+  background: #f8f7f5;
 }
 
 .chat-messages {
@@ -1709,10 +1711,13 @@ const getProviderOrder = (): string[] => {
 
 /* 输入框区域 */
 .ai-chat-input-area {
-  padding: 16px 20px;
+  padding: 16px 0px;
   border-top: 1px solid #e8e4df;
   background: #fff;
   flex-shrink: 0;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .input-box {
