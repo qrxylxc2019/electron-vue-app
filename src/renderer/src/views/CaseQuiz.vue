@@ -59,7 +59,7 @@
             ></div>
             <div
               v-else
-              ref="materialEditorRef"
+              ref="materialContentEditorRef"
               class="material-editor"
               contenteditable="true"
               v-html="editingMaterialContent"
@@ -443,7 +443,7 @@ let copyTimer: ReturnType<typeof setTimeout> | null = null;
 
 // 材料编辑状态
 const isEditingMaterial = ref(false);
-const materialEditorRef = ref<HTMLDivElement | null>(null);
+const materialContentEditorRef = ref<HTMLDivElement | null>(null);
 const editingMaterialContent = ref('');
 
 // 小题编辑状态
@@ -670,10 +670,10 @@ const handleEditorPaste = (e: ClipboardEvent) => {
       const reader = new FileReader();
       reader.onload = (event) => {
         const base64 = event.target?.result as string;
-        if (base64 && materialEditorRef.value) {
-          const imgHtml = `<img src="${base64}" style="max-width:100%;" />`;
-          document.execCommand('insertHTML', false, imgHtml);
-        }
+      if (base64 && materialContentEditorRef.value) {
+        const imgHtml = `<img src="${base64}" style="max-width:100%;" />`;
+        document.execCommand('insertHTML', false, imgHtml);
+      }
       };
       reader.readAsDataURL(blob);
     }
@@ -682,9 +682,9 @@ const handleEditorPaste = (e: ClipboardEvent) => {
 
 // 提取编辑器中的 base64 图片并保存
 const saveMaterialContent = async () => {
-  if (!currentMaterial.value || !materialEditorRef.value) return;
+  if (!currentMaterial.value || !materialContentEditorRef.value) return;
 
-  const editor = materialEditorRef.value;
+  const editor = materialContentEditorRef.value;
   // 将 <br> 转回换行符，用于存储
   let html = editor.innerHTML;
 
