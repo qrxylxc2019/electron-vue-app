@@ -103,7 +103,6 @@
                   @click="startEditQuestionTitle(q.id, q.title)"
                 >
                   <el-icon :size="14"><EditPen /></el-icon>
-                  编辑题目
                 </el-button>
                 <el-button
                   v-else
@@ -114,7 +113,6 @@
                   @click="saveQuestionTitle(q.id)"
                 >
                   <el-icon :size="14"><CircleCheck /></el-icon>
-                  保存题目
                 </el-button>
               </div>
 
