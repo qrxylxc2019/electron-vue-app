@@ -245,7 +245,7 @@
       v-model="addMaterialDialogVisible"
       title="新增案例题目"
       width="1100px"
-      :close-on-click-modal="false"
+      :close-on-click-modal="true"
       destroy-on-close
       class="add-material-dialog"
     >
@@ -2168,8 +2168,8 @@ const getProviderOrder = (): string[] => {
   overflow: hidden;
 }
 
-:deep(.add-material-dialog .el-dialog__body) {
-  padding: 0;
+:deep(.add-material-dialog) {
+  padding: 0!important;
   background: #faf9f7;
 }
 
