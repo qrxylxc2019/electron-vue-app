@@ -809,7 +809,9 @@ const scrollToBottom = async () => {
 
 // Markdown 渲染
 const renderMarkdown = (content: string) => {
-  return marked.parse(content || '', { async: false }) as string;
+  const trimmed = (content || '').trim();
+  console.log("content=", trimmed);
+  return marked.parse(trimmed, { async: false }) as string;
 };
 
 // 当前题目/文章
