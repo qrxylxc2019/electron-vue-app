@@ -105,6 +105,7 @@ declare global {
       addCaseMaterial: (material: Partial<CaseMaterial>) => Promise<CaseMaterial | null>;
       addCaseQuestion: (question: Partial<CaseQuestion>) => Promise<CaseQuestion | null>;
       deleteCaseMaterial: (id: number) => Promise<boolean>;
+      updateCaseQuestion: (id: number, title: string, answer?: string) => Promise<boolean>;
       updateArticle: (id: number, content: string, title?: string) => Promise<boolean>;
       // AI 讲解
       explainQuestion: (questionData: AIQuestionData) => Promise<{ success: boolean; error?: string }>;

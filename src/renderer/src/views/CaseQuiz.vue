@@ -82,7 +82,41 @@
                 </div>
               </template>
 
-              <div class="question-title markdown-body" v-html="renderMarkdown(q.title)"></div>
+              <!-- 小题题目显示/编辑 -->
+              <div v-if="!isEditingQuestionTitle(q.id)" class="question-title markdown-body" v-html="renderMarkdown(q.title)"></div>
+              <div
+                v-else
+                :ref="el => setQuestionEditorRef(el, q.id)"
+                class="question-editor"
+                contenteditable="true"
+                v-html="getQuestionEditHtml(q.title)"
+                @paste="handleQuestionPaste($event, q.id)"
+              ></div>
+
+              <!-- 题目编辑按钮 -->
+              <div class="question-edit-actions">
+                <el-button
+                  v-if="!isEditingQuestionTitle(q.id)"
+                  class="edit-question-btn"
+                  size="small"
+                  text
+                  @click="startEditQuestionTitle(q.id, q.title)"
+                >
+                  <el-icon :size="14"><EditPen /></el-icon>
+                  编辑题目
+                </el-button>
+                <el-button
+                  v-else
+                  class="save-question-btn"
+                  size="small"
+                  type="primary"
+                  text
+                  @click="saveQuestionTitle(q.id)"
+                >
+                  <el-icon :size="14"><CircleCheck /></el-icon>
+                  保存题目
+                </el-button>
+              </div>
 
               <!-- 手写输入区域 -->
               <div v-if="showHandwrite" class="handwrite-area">
@@ -128,7 +162,42 @@
               <div v-if="showAnswers[idx] && q.answer" class="answer-content">
                 <el-divider />
                 <div class="answer-label">参考答案：</div>
-                <div class="answer-text markdown-body" v-html="renderMarkdown(q.answer)"></div>
+                <div
+                  v-if="!isEditingQuestionAnswer(q.id)"
+                  class="answer-text markdown-body"
+                  v-html="renderMarkdown(q.answer)"
+                ></div>
+                <div
+                  v-else
+                  :ref="el => setAnswerEditorRef(el, q.id)"
+                  class="answer-editor"
+                  contenteditable="true"
+                  v-html="getAnswerEditHtml(q.answer)"
+                  @paste="handleAnswerPaste($event, q.id)"
+                ></div>
+                <div class="answer-edit-actions">
+                  <el-button
+                    v-if="!isEditingQuestionAnswer(q.id)"
+                    class="edit-answer-btn"
+                    size="small"
+                    text
+                    @click="startEditQuestionAnswer(q.id, q.answer)"
+                  >
+                    <el-icon :size="14"><EditPen /></el-icon>
+                    编辑答案
+                  </el-button>
+                  <el-button
+                    v-else
+                    class="save-answer-btn"
+                    size="small"
+                    type="primary"
+                    text
+                    @click="saveQuestionAnswer(q.id)"
+                  >
+                    <el-icon :size="14"><CircleCheck /></el-icon>
+                    保存答案
+                  </el-button>
+                </div>
               </div>
             </el-card>
           </div>
@@ -274,6 +343,12 @@ const isEditingMaterial = ref(false);
 const materialEditorRef = ref<HTMLDivElement | null>(null);
 const editingMaterialContent = ref('');
 
+// 小题编辑状态
+const editingQuestionTitleId = ref<number | null>(null);
+const editingQuestionAnswerId = ref<number | null>(null);
+const questionEditorRefs = ref<Record<number, HTMLDivElement>>({});
+const answerEditorRefs = ref<Record<number, HTMLDivElement>>({});
+
 // AI 讲解相关状态
 const aiDrawerVisible = ref(false);
 const aiLoading = ref(false);
@@ -338,7 +413,7 @@ const copyCaseContent = async () => {
     copyTimer = setTimeout(() => {
       copySuccess.value = false;
     }, 2000);
-    ElMessage.success('材料与题目已复制到剪贴板');
+    ElMessage.success('材料与题目已复制剪贴板');
   } catch (e) {
     console.error('复制失败:', e);
     ElMessage.error('复制失败');
@@ -517,9 +592,11 @@ const nextMaterial = () => {
     showAnswers.value = {};
     showHandwrite.value = true;
     handwriteInputs.value = {};
+    // 退出小题编辑模式
+    editingQuestionTitleId.value = null;
+    editingQuestionAnswerId.value = null;
   } else {
-    // 已经是最后一题，重新加载题目（按照配置重新随机获取）
-    ElMessage.success('本轮题目已完成，即将重新开始');
+    ElMessage.success('本次题目已完成，即将重新开始');
     loadData();
   }
 };
@@ -579,6 +656,9 @@ watch(currentMaterial, () => {
   // 切换材料时退出编辑模式
   isEditingMaterial.value = false;
   editingMaterialContent.value = '';
+  // 切换材料时退出小题编辑模式
+  editingQuestionTitleId.value = null;
+  editingQuestionAnswerId.value = null;
 });
 
 // 滚动到底部
@@ -590,6 +670,179 @@ const scrollToBottom = () => {
   }, 50);
 };
 
+
+// 小题题目编辑相关方法
+const isEditingQuestionTitle = (id: number) => {
+  return editingQuestionTitleId.value === id;
+};
+
+const isEditingQuestionAnswer = (id: number) => {
+  return editingQuestionAnswerId.value === id;
+};
+
+const setQuestionEditorRef = (el: any, id: number) => {
+  if (el) {
+    questionEditorRefs.value[id] = el;
+  }
+};
+
+const setAnswerEditorRef = (el: any, id: number) => {
+  if (el) {
+    answerEditorRefs.value[id] = el;
+  }
+};
+
+const getQuestionEditHtml = (title: string) => {
+  if (!title) return '';
+  const parts = title.split(/(<img\s+[^>]+>)/gi);
+  const htmlParts = parts.map((part) => {
+    if (/^<img\s/i.test(part)) {
+      return part;
+    }
+    return part
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br>');
+  });
+  return htmlParts.join('');
+};
+
+const getAnswerEditHtml = (answer: string | null) => {
+  if (!answer) return '';
+  const parts = answer.split(/(<img\s+[^>]+>)/gi);
+  const htmlParts = parts.map((part) => {
+    if (/^<img\s/i.test(part)) {
+      return part;
+    }
+    return part
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br>');
+  });
+  return htmlParts.join('');
+};
+
+const startEditQuestionTitle = (id: number, title: string) => {
+  editingQuestionTitleId.value = id;
+};
+
+const startEditQuestionAnswer = (id: number, answer: string | null) => {
+  editingQuestionAnswerId.value = id;
+};
+
+const handleQuestionPaste = (e: ClipboardEvent, id: number) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item.type.indexOf('image') !== -1) {
+      e.preventDefault();
+      const blob = item.getAsFile();
+      if (!blob) continue;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target?.result as string;
+        if (base64) {
+          const imgHtml = `<img src="${base64}" style="max-width:100%;" />`;
+          document.execCommand('insertHTML', false, imgHtml);
+        }
+      };
+      reader.readAsDataURL(blob);
+    }
+  }
+};
+
+const handleAnswerPaste = (e: ClipboardEvent, id: number) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item.type.indexOf('image') !== -1) {
+      e.preventDefault();
+      const blob = item.getAsFile();
+      if (!blob) continue;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target?.result as string;
+        if (base64) {
+          const imgHtml = `<img src="${base64}" style="max-width:100%;" />`;
+          document.execCommand('insertHTML', false, imgHtml);
+        }
+      };
+      reader.readAsDataURL(blob);
+    }
+  }
+};
+
+const saveQuestionTitle = async (id: number) => {
+  const editor = questionEditorRefs.value[id];
+  if (!editor) return;
+
+  let html = editor.innerHTML;
+  html = html.replace(/<br\s*\/?>/gi, '\n');
+  html = html.replace(/<div>/gi, '\n').replace(/<\/div>/gi, '');
+  html = html.replace(/<p>/gi, '\n').replace(/<\/p>/gi, '');
+  html = html.replace(/<(?!img\s|\/img)[^>]+>/gi, '');
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = html;
+  let newTitle = textarea.value;
+  newTitle = newTitle.replace(/\n{3,}/g, '\n\n').trim();
+
+  // 查找小题
+  const question = caseQuestions.value.find(q => q.id === id);
+  if (!question) return;
+
+  try {
+    const success = await window.electronAPI.updateCaseQuestion(id, newTitle, question.answer || undefined);
+    if (success) {
+      question.title = newTitle;
+      editingQuestionTitleId.value = null;
+      ElMessage.success('题目已保存');
+    } else {
+      ElMessage.error('保存失败');
+    }
+  } catch (error) {
+    ElMessage.error('保存失败');
+    console.error(error);
+  }
+};
+
+const saveQuestionAnswer = async (id: number) => {
+  const editor = answerEditorRefs.value[id];
+  if (!editor) return;
+
+  let html = editor.innerHTML;
+  html = html.replace(/<br\s*\/?>/gi, '\n');
+  html = html.replace(/<div>/gi, '\n').replace(/<\/div>/gi, '');
+  html = html.replace(/<p>/gi, '\n').replace(/<\/p>/gi, '');
+  html = html.replace(/<(?!img\s|\/img)[^>]+>/gi, '');
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = html;
+  let newAnswer = textarea.value;
+  newAnswer = newAnswer.replace(/\n{3,}/g, '\n\n').trim();
+
+  // 查找小题
+  const question = caseQuestions.value.find(q => q.id === id);
+  if (!question) return;
+
+  try {
+    const success = await window.electronAPI.updateCaseQuestion(id, question.title, newAnswer);
+    if (success) {
+      question.answer = newAnswer;
+      editingQuestionAnswerId.value = null;
+      ElMessage.success('答案已保存');
+    } else {
+      ElMessage.error('保存失败');
+    }
+  } catch (error) {
+    ElMessage.error('保存失败');
+    console.error(error);
+  }
+};
 
 // 打开 AI 讲解抽屉（针对指定小题）
 const openAIChatDrawerForQuestion = async (q: CaseQuestion) => {
@@ -1187,6 +1440,41 @@ const getProviderOrder = (): string[] => {
   background: #f5f7f0;
   padding: 16px;
   border-radius: 10px;
+}
+
+.question-edit-actions,
+.answer-edit-actions {
+  margin: 8px 0;
+  display: flex;
+  gap: 8px;
+}
+
+.question-editor,
+.answer-editor {
+  padding: 16px;
+  border: 2px solid #c4a882;
+  border-radius: 14px;
+  background: #fff;
+  min-height: 80px;
+  outline: none;
+  font-size: 18px;
+  line-height: 1.6;
+  color: #1a1a1a;
+}
+
+.question-editor img,
+.answer-editor img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 8px 0;
+}
+
+.edit-question-btn,
+.save-question-btn,
+.edit-answer-btn,
+.save-answer-btn {
+  padding: 6px 12px;
+  min-height: 32px;
 }
 
 .handwrite-area {

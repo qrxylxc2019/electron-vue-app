@@ -659,6 +659,25 @@ function setupIpc() {
     }
   });
 
+  // 更新案例小题内容
+  ipcMain.handle('db:updateCaseQuestion', (_event, id: number, title: string, answer?: string) => {
+    if (!db) return false;
+    try {
+      if (answer !== undefined) {
+        const stmt = db.prepare('UPDATE case_questions SET title = ?, answer = ? WHERE id = ?');
+        const result = stmt.run(title, answer, id);
+        return result.changes > 0;
+      } else {
+        const stmt = db.prepare('UPDATE case_questions SET title = ? WHERE id = ?');
+        const result = stmt.run(title, id);
+        return result.changes > 0;
+      }
+    } catch (err) {
+      console.error('updateCaseQuestion error:', err);
+      return false;
+    }
+  });
+
   // 更新文章内容
   ipcMain.handle('db:updateArticle', (_event, id: number, content: string, title?: string) => {
     if (!db) return false;
