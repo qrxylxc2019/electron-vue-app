@@ -598,7 +598,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, onUnmounted, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { marked } from 'marked';
 import type { Question, Article, QuestionType, OptionWithState } from '../types';
 import { Cpu, Collection, Delete, ArrowRight, Loading, Warning, CircleCheck, CircleClose, Close, Promotion, EditPen, DocumentCopy, Check } from '@element-plus/icons-vue';
@@ -975,6 +975,21 @@ const deleteCurrentQuestion = async () => {
 
   const isArticle = isArticleMode.value;
   const itemName = isArticle ? '文章' : '题目';
+
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除当前${itemName}吗？此操作不可恢复。`,
+      '删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    );
+  } catch {
+    // 用户取消
+    return;
+  }
 
   try {
     const id = currentQuestion.value.id;
