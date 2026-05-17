@@ -476,7 +476,13 @@ const loadData = async () => {
 
     // 重置状态
     currentMaterialIndex.value = 0;
-    showAnswers.value = {};
+    // 默认显示所有小题的答案
+    const firstMatQuestions = caseQuestionsMap.value[mats[0]?.id] || [];
+    const defaultShowAnswers: Record<number, boolean> = {};
+    firstMatQuestions.forEach((_: any, idx: number) => {
+      defaultShowAnswers[idx] = true;
+    });
+    showAnswers.value = defaultShowAnswers;
     showHandwrite.value = true;
     handwriteInputs.value = {};
   } catch (error) {
@@ -587,7 +593,13 @@ const saveMaterialContent = async () => {
 const nextMaterial = () => {
   if (currentMaterialIndex.value < materials.value.length - 1) {
     currentMaterialIndex.value++;
-    showAnswers.value = {};
+    // 默认显示新材料的答案
+    const questions = caseQuestionsMap.value[materials.value[currentMaterialIndex.value]?.id] || [];
+    const defaultShowAnswers: Record<number, boolean> = {};
+    questions.forEach((_: any, idx: number) => {
+      defaultShowAnswers[idx] = true;
+    });
+    showAnswers.value = defaultShowAnswers;
     showHandwrite.value = true;
     handwriteInputs.value = {};
     // 退出小题编辑模式
@@ -626,7 +638,13 @@ const deleteCurrentMaterial = async () => {
       if (currentMaterialIndex.value >= materials.value.length) {
         currentMaterialIndex.value = materials.value.length - 1;
       }
-      showAnswers.value = {};
+      // 默认显示答案
+      const delQuestions = caseQuestionsMap.value[materials.value[currentMaterialIndex.value]?.id] || [];
+      const delDefaultShowAnswers: Record<number, boolean> = {};
+      delQuestions.forEach((_: any, idx: number) => {
+        delDefaultShowAnswers[idx] = true;
+      });
+      showAnswers.value = delDefaultShowAnswers;
       handwriteInputs.value = {};
     } else {
       ElMessage.error('删除失败');
