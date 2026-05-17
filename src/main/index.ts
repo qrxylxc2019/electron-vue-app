@@ -658,6 +658,25 @@ function setupIpc() {
       return false;
     }
   });
+
+  // 更新文章内容
+  ipcMain.handle('db:updateArticle', (_event, id: number, content: string, title?: string) => {
+    if (!db) return false;
+    try {
+      if (title !== undefined) {
+        const stmt = db.prepare('UPDATE articles SET content = ?, title = ? WHERE id = ?');
+        const result = stmt.run(content, title, id);
+        return result.changes > 0;
+      } else {
+        const stmt = db.prepare('UPDATE articles SET content = ? WHERE id = ?');
+        const result = stmt.run(content, id);
+        return result.changes > 0;
+      }
+    } catch (err) {
+      console.error('updateArticle error:', err);
+      return false;
+    }
+  });
 }
 
 function createWindow() {

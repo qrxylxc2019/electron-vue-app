@@ -28,8 +28,35 @@
               :class="{ 'active': currentQuestion?.id === article.id }"
               @click="jumpToArticleById(article.id)"
             >
-              <span class="article-number">{{ idx + 1 }}</span>
-              <span class="article-title">{{ article.title || '无标题' }}</span>
+              <span v-if="!isEditingArticleTitle(article.id)" class="article-title">{{ article.title || '无标题' }}</span>
+              <el-input
+                v-else
+                :ref="el => setArticleTitleInputRef(el, article.id)"
+                v-model="editingArticleTitles[article.id]"
+                size="small"
+                class="article-title-input"
+                @blur="saveArticleTitle(article.id)"
+                @keydown.enter="saveArticleTitle(article.id)"
+              />
+              <el-button
+                v-if="!isEditingArticleTitle(article.id)"
+                class="edit-title-btn"
+                size="small"
+                text
+                @click.stop="startEditArticleTitle(article.id, article.title)"
+              >
+                <el-icon :size="14"><EditPen /></el-icon>
+              </el-button>
+              <el-button
+                v-else
+                class="save-title-btn"
+                size="small"
+                type="primary"
+                text
+                @click.stop="saveArticleTitle(article.id)"
+              >
+                <el-icon :size="14"><CircleCheck /></el-icon>
+              </el-button>
             </div>
           </div>
         </el-card>
@@ -124,14 +151,48 @@
                     class="paragraph-item"
                     :class="{ 'hidden': hiddenParagraphs.has(index) }"
                   >
-                    <p class="paragraph-text markdown-body" v-html="renderMarkdown(paragraph)"></p>
+                    <!-- 显示模式 -->
+                    <div v-if="!isEditingParagraph(index)">
+                      <p class="paragraph-text markdown-body" v-html="renderMarkdown(paragraph)"></p>
+                    </div>
+                    <!-- 编辑模式 -->
+                    <div
+                      v-else
+                      :ref="el => setParagraphEditorRef(el, index)"
+                      class="paragraph-editor"
+                      contenteditable="true"
+                      v-html="getParagraphEditHtml(index)"
+                      @paste="handleParagraphPaste($event, index)"
+                    ></div>
                   </div>
-                  <el-button
-                    class="toggle-btn"
-                    @click="toggleParagraph(index)"
-                  >
-                    {{ hiddenParagraphs.has(index) ? '显示' : '隐藏' }}
-                  </el-button>
+                  <div class="paragraph-actions">
+                    <el-button
+                      v-if="!isEditingParagraph(index)"
+                      class="edit-btn"
+                      size="small"
+                      @click="startEditParagraph(index)"
+                      title="编辑段落"
+                    >
+                      <el-icon :size="16"><EditPen /></el-icon>
+                    </el-button>
+                    <el-button
+                      v-if="isEditingParagraph(index)"
+                      class="save-btn"
+                      size="small"
+                      type="primary"
+                      @click="saveParagraph(index)"
+                      title="保存段落"
+                    >
+                      <el-icon :size="16"><CircleCheck /></el-icon>
+                    </el-button>
+                    <el-button
+                      class="toggle-btn"
+                      size="small"
+                      @click="toggleParagraph(index)"
+                    >
+                      {{ hiddenParagraphs.has(index) ? '显示' : '隐藏' }}
+                    </el-button>
+                  </div>
                 </div>
                     <!-- 高项论文手写输入区 -->
                 <div v-if="showHandwrite && directoryName === '高项论文'" class="handwrite-area">
@@ -637,6 +698,16 @@ const aiSimilarQuestions = ref<Question[]>([]);
 const aiSimilarLoading = ref(false);
 const aiSimilarCurrentIndex = ref(0);
 const aiSelectedSimilarAnswer = ref('');
+
+// 段落编辑状态
+const editingParagraphIndex = ref<number | null>(null);
+const paragraphEditorRefs = ref<Record<number, HTMLDivElement>>({});
+const paragraphEditContents = ref<Record<number, string>>({});
+
+// 文章标题编辑状态
+const editingArticleTitleId = ref<number | null>(null);
+const editingArticleTitles = ref<Record<number, string>>({});
+const articleTitleInputRefs = ref<Record<number, any>>({});
 const aiShowSimilarAnswer = ref(false);
 const aiSimilarDeletedOptions = ref<Set<string>>(new Set());
 
@@ -994,6 +1065,115 @@ const toggleParagraph = (index: number) => {
   }
 };
 
+// 段落编辑相关方法
+const isEditingParagraph = (index: number) => {
+  return editingParagraphIndex.value === index;
+};
+
+const setParagraphEditorRef = (el: any, index: number) => {
+  if (el) {
+    paragraphEditorRefs.value[index] = el;
+  }
+};
+
+const getParagraphEditHtml = (index: number) => {
+  const paragraph = writeParagraphs.value[index];
+  if (!paragraph) return '';
+  // 将文本中的换行转为 <br>，保留已有的 <img> 标签
+  const parts = paragraph.split(/(<img\s+[^>]+>)/gi);
+  const htmlParts = parts.map((part) => {
+    if (/^<img\s/i.test(part)) {
+      return part;
+    }
+    return part
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br>');
+  });
+  return htmlParts.join('');
+};
+
+const startEditParagraph = (index: number) => {
+  editingParagraphIndex.value = index;
+};
+
+const handleParagraphPaste = (e: ClipboardEvent, index: number) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item.type.indexOf('image') !== -1) {
+      e.preventDefault();
+      const blob = item.getAsFile();
+      if (!blob) continue;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target?.result as string;
+        if (base64) {
+          const imgHtml = `<img src="${base64}" style="max-width:100%;" />`;
+          document.execCommand('insertHTML', false, imgHtml);
+        }
+      };
+      reader.readAsDataURL(blob);
+    }
+  }
+};
+
+const saveParagraph = async (index: number) => {
+  if (!currentQuestion.value) return;
+  const editor = paragraphEditorRefs.value[index];
+  if (!editor) return;
+
+  // 获取编辑器内容
+  let html = editor.innerHTML;
+  // 将 <br> 转回换行符
+  html = html.replace(/<br\s*\/?>/gi, '\n');
+  html = html.replace(/<div>/gi, '\n').replace(/<\/div>/gi, '');
+  html = html.replace(/<p>/gi, '\n').replace(/<\/p>/gi, '');
+  // 清理其他标签但保留 img
+  html = html.replace(/<(?!img\s|\/img)[^>]+>/gi, '');
+  // 解码 HTML 实体
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = html;
+  let newParagraph = textarea.value;
+  // 清理多余换行
+  newParagraph = newParagraph.replace(/\n{3,}/g, '\n\n').trim();
+
+  // 更新文章内容
+  const article = articles.value[currentIndex.value];
+  if (!article) return;
+
+  // 获取当前所有段落
+  const currentContent = article.content;
+  const paragraphs = currentContent.split(/\n+/).filter((p: string) => p.trim());
+  
+  // 替换指定段落
+  if (index >= 0 && index < paragraphs.length) {
+    paragraphs[index] = newParagraph;
+    const newContent = paragraphs.join('\n\n');
+    
+    try {
+      const success = await window.electronAPI.updateArticle(article.id, newContent);
+      if (success) {
+        article.content = newContent;
+        // 更新当前显示的文章内容
+        if (currentQuestion.value) {
+          currentQuestion.value.option_a = newContent;
+        }
+        editingParagraphIndex.value = null;
+        ElMessage.success('段落已保存');
+      } else {
+        ElMessage.error('保存失败');
+      }
+    } catch (error) {
+      ElMessage.error('保存失败');
+      console.error(error);
+    }
+  }
+};
+
 // 切换手写输入显示/隐藏
 const toggleHandwrite = () => {
   showHandwrite.value = !showHandwrite.value;
@@ -1009,7 +1189,67 @@ const updateHandwriteInput = (index: number, value: string) => {
   handwriteInputs.value[index] = value;
 };
 
+// 文章标题编辑相关方法
+const isEditingArticleTitle = (id: number) => {
+  return editingArticleTitleId.value === id;
+};
 
+const setArticleTitleInputRef = (el: any, id: number) => {
+  if (el) {
+    articleTitleInputRefs.value[id] = el;
+  }
+};
+
+const startEditArticleTitle = (id: number, title: string) => {
+  editingArticleTitleId.value = id;
+  editingArticleTitles.value[id] = title || '';
+  // 自动聚焦输入框
+  nextTick(() => {
+    const inputRef = articleTitleInputRefs.value[id];
+    if (inputRef && inputRef.focus) {
+      inputRef.focus();
+    }
+  });
+};
+
+const saveArticleTitle = async (id: number) => {
+  const newTitle = editingArticleTitles.value[id];
+  if (newTitle === undefined) return;
+
+  // 查找文章
+  const article = allArticles.value.find(a => a.id === id);
+  if (!article) return;
+
+  // 如果标题没有变化，直接退出编辑
+  if (article.title === newTitle) {
+    editingArticleTitleId.value = null;
+    return;
+  }
+
+  try {
+    const success = await window.electronAPI.updateArticle(id, article.content, newTitle);
+    if (success) {
+      // 更新 allArticles 中的标题
+      article.title = newTitle;
+      // 更新 articles 中的标题（如果存在）
+      const articleInList = articles.value.find(a => a.id === id);
+      if (articleInList) {
+        articleInList.title = newTitle;
+      }
+      // 更新当前显示的标题
+      if (currentQuestion.value && currentQuestion.value.id === id) {
+        currentQuestion.value.title = newTitle;
+      }
+      editingArticleTitleId.value = null;
+      ElMessage.success('标题已保存');
+    } else {
+      ElMessage.error('保存失败');
+    }
+  } catch (error) {
+    ElMessage.error('保存失败');
+    console.error(error);
+  }
+};
 
 // 上一题
 const prevQuestion = () => {
@@ -1066,6 +1306,9 @@ const resetQuestionState = () => {
   // 清空高项论文手写输入，但保持显示
   handwriteInputs.value = {};
   showHandwrite.value = true;
+  // 退出段落编辑模式
+  editingParagraphIndex.value = null;
+  paragraphEditorRefs.value = {};
 };
 
 // 监听题目变化，清空删除状态和 AI 状态
@@ -1097,6 +1340,9 @@ watch(currentQuestion, async (newQuestion, oldQuestion) => {
   aiSelectedSimilarAnswer.value = '';
   aiShowSimilarAnswer.value = false;
   aiSimilarDeletedOptions.value.clear();
+  // 退出段落编辑模式
+  editingParagraphIndex.value = null;
+  paragraphEditorRefs.value = {};
 
   // 查询当前题目的同类题数据
   if (newQuestion && newQuestion.id) {
@@ -1923,6 +2169,22 @@ onMounted(() => {
   white-space: nowrap;
 }
 
+.article-title-input {
+  flex: 1;
+}
+
+.article-title-input :deep(.el-input__inner) {
+  font-size: 14px;
+  padding: 4px 8px;
+}
+
+.edit-title-btn,
+.save-title-btn {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  min-height: 28px;
+}
+
 .right-actions {
   display: flex;
   flex-direction: column;
@@ -2404,13 +2666,47 @@ onMounted(() => {
   transition: all 0.25s ease;
 }
 
-.toggle-btn {
+.paragraph-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   flex-shrink: 0;
   align-self: center;
-  min-height: 56px;
-  padding: 16px 20px;
-  font-size: 16px;
-  border-radius: 12px;
+}
+
+.toggle-btn {
+  min-height: 40px;
+  padding: 8px 16px;
+  font-size: 14px;
+  border-radius: 8px;
+  margin-left: 0;
+}
+
+.edit-btn,
+.save-btn {
+  min-height: 40px;
+  padding: 8px 16px;
+  font-size: 14px;
+  border-radius: 8px;
+}
+
+.paragraph-editor {
+  flex: 1;
+  padding: 16px;
+  border: 2px solid #c4a882;
+  border-radius: 14px;
+  background: #fff;
+  min-height: 120px;
+  outline: none;
+  font-size: 18px;
+  line-height: 1.8;
+  color: #1a1a1a;
+}
+
+.paragraph-editor img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 8px 0;
 }
 
 /* AI 讲解按钮 */
