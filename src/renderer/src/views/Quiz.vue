@@ -305,18 +305,17 @@
           <div class="right-actions">
             <template v-if="directoryName === '高项论文'">
               <el-button
+                class="delete-question-btn"
+                @click="deleteCurrentQuestion"
+              >
+                <el-icon><Delete /></el-icon> 删除题目
+              </el-button>
+              <el-button
                 class="add-article-btn"
                 type="primary"
                 @click="openAddArticleDialog"
               >
                 <el-icon><Plus /></el-icon> 新增论文
-              </el-button>
-              
-              <el-button
-                class="delete-question-btn"
-                @click="deleteCurrentQuestion"
-              >
-                <el-icon><Delete /></el-icon> 删除题目
               </el-button>
               <el-button
                 class="handwrite-btn"
@@ -891,11 +890,41 @@ const judgeOptions = computed<OptionWithState[]>(() => {
   ];
 });
 
-// 文章题段落列表（按换行符分段）
+// 文章题段落列表（按换行符分段，支持富文本 HTML 分段）
 const writeParagraphs = computed<string[]>(() => {
   if (!currentQuestion.value || currentQuestion.value.question_type !== 'write') return [];
-  // 按 option_a 存储文章内容，按换行分段
+  // 按 option_a 存储文章内容
   const content = currentQuestion.value.option_a || currentQuestion.value.title || '';
+  if (!content.trim()) return [];
+
+  // 如果内容是富文本 HTML（包含 <div>、<p> 等块级标签），按块级标签分段
+  if (/<(div|p)\b/i.test(content)) {
+    const paragraphs: string[] = [];
+    // 先按 <div> 分段
+    const divParts = content.split(/<div\b[^>]*>/i);
+    for (const part of divParts) {
+      // 去掉 </div> 标签
+      const cleanPart = part.replace(/<\/div>/gi, '').trim();
+      if (cleanPart) {
+        paragraphs.push(cleanPart);
+      }
+    }
+    // 如果没有 div 分段成功，尝试按 <p> 分段
+    if (paragraphs.length === 0) {
+      const pParts = content.split(/<p\b[^>]*>/i);
+      for (const part of pParts) {
+        const cleanPart = part.replace(/<\/p>/gi, '').trim();
+        if (cleanPart) {
+          paragraphs.push(cleanPart);
+        }
+      }
+    }
+    if (paragraphs.length > 0) {
+      return paragraphs;
+    }
+  }
+
+  // 默认按换行符分段
   return content.split(/\n+/).filter(p => p.trim());
 });
 
@@ -1307,18 +1336,39 @@ const saveParagraph = async (index: number) => {
     newParagraph = newParagraph.replace(/\n{3,}/g, '\n\n').trim();
   }
 
-  // 更新文章内容
-  const article = articles.value[currentIndex.value];
-  if (!article) return;
+// 更新文章内容
+const article = articles.value[currentIndex.value];
+if (!article) return;
 
-  // 获取当前所有段落
-  const currentContent = article.content;
-  const paragraphs = currentContent.split(/\n+/).filter((p: string) => p.trim());
-  
-  // 替换指定段落
-  if (index >= 0 && index < paragraphs.length) {
-    paragraphs[index] = newParagraph;
-    const newContent = paragraphs.join('\n\n');
+// 获取当前所有段落
+const currentContent = article.content;
+let paragraphs: string[];
+// 如果内容是富文本 HTML，按 div/p 分段
+if (/<(div|p)\b/i.test(currentContent)) {
+  paragraphs = [];
+  const divParts = currentContent.split(/<div\b[^>]*>/i);
+  for (const part of divParts) {
+    const cleanPart = part.replace(/<\/div>/gi, '').trim();
+    if (cleanPart) paragraphs.push(cleanPart);
+  }
+  if (paragraphs.length === 0) {
+    const pParts = currentContent.split(/<p\b[^>]*>/i);
+    for (const part of pParts) {
+      const cleanPart = part.replace(/<\/p>/gi, '').trim();
+      if (cleanPart) paragraphs.push(cleanPart);
+    }
+  }
+} else {
+  paragraphs = currentContent.split(/\n+/).filter((p: string) => p.trim());
+}
+
+// 替换指定段落
+if (index >= 0 && index < paragraphs.length) {
+paragraphs[index] = newParagraph;
+// 如果原内容是富文本，用 div 包裹拼接；否则用换行拼接
+const newContent = /<(div|p)\b/i.test(currentContent)
+  ? paragraphs.map(p => `<div>${p}</div>`).join('')
+  : paragraphs.join('\n\n');
     
     try {
       const success = await window.electronAPI.updateArticle(article.id, newContent);
