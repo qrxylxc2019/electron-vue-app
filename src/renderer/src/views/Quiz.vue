@@ -2529,7 +2529,7 @@ onMounted(() => {
 }
 
 .next-question-btn {
-  background-color: #1a1a1a;
+  background-color: #8b9a6d;
   color: #fff;
   border: none;
   border-radius: 12px;
@@ -2542,7 +2542,7 @@ onMounted(() => {
 }
 
 .next-question-btn:hover:not(:disabled) {
-  background-color: #333;
+  background-color: #8b9a6d;
 }
 
 .next-question-btn:disabled {
@@ -2551,21 +2551,20 @@ onMounted(() => {
 }
 
 .delete-question-btn {
-  background-color: #F56C6C;
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  padding: 18px 20px;
-  font-size: 16px;
-  transition: all 0.2s ease;
-  height: auto;
-  min-height: 56px;
-  
-  margin-left: 0;
+background-color: #8b9a6d;
+color: #fff;
+border: none;
+border-radius: 12px;
+padding: 18px 20px;
+font-size: 16px;
+transition: all 0.2s ease;
+height: auto;
+min-height: 56px;
+margin-left: 0;
 }
 
 .delete-question-btn:hover {
-  background-color: #f78989;
+background-color: #8b9a6d;
 }
 
 .handwrite-btn {
@@ -2963,7 +2962,7 @@ onMounted(() => {
 }
 
 .ai-explain-btn {
-  background-color: #1a1a1a;
+  background-color: #8b9a6d;
   color: #fff;
   border: none;
   border-radius: 12px;
@@ -2976,7 +2975,7 @@ onMounted(() => {
 }
 
 .ai-explain-btn:hover {
-  background-color: #333;
+  background-color: #8b9a6d;
 }
 
 /* AI 讲解抽屉 */
@@ -3919,23 +3918,21 @@ word-break: break-word;
 }
 
 .add-article-btn {
-  background: #67c23a;
-  border-color: #67c23a;
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  padding: 18px 20px;
-  font-size: 16px;
-  transition: all 0.2s ease;
-  height: auto;
-  min-height: 56px;
-  width: 100%;
-  margin-left: 0;
+background-color: #8b9a6d;
+color: #fff;
+border: none;
+border-radius: 12px;
+padding: 18px 20px;
+font-size: 16px;
+transition: all 0.2s ease;
+height: auto;
+min-height: 56px;
+width: 100%;
+margin-left: 0;
 }
 
 .add-article-btn:hover {
-  background: #85ce61;
-  border-color: #85ce61;
+background-color: #8b9a6d;
 }
 
 /* 关键词显示区域 */
