@@ -1295,6 +1295,7 @@ const getProviderOrder = (): string[] => {
   height: auto;
   min-height: 56px;
   width: 100%;
+  margin-left:0;
 }
 
 .delete-material-btn:hover {
