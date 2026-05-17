@@ -2162,9 +2162,14 @@ const getProviderOrder = (): string[] => {
   border-radius: 12px;
 }
 
-/* 弹窗整体样式统一 */
+/* 弹窗整体样式统一 - 去除白底padding */
+:deep(.add-material-dialog) {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
 :deep(.add-material-dialog .el-dialog__body) {
-  padding: 24px;
+  padding: 0;
   background: #faf9f7;
 }
 
@@ -2204,6 +2209,10 @@ const getProviderOrder = (): string[] => {
   border-color: #333;
 }
 
+.add-material-form {
+  padding: 20px 24px;
+}
+
 .add-material-form .form-item label {
   display: block;
   font-weight: 600;
@@ -2212,13 +2221,32 @@ const getProviderOrder = (): string[] => {
   font-size: 15px;
 }
 
+/* 标题输入框样式统一 */
 .add-material-form .el-input__wrapper {
-  border-radius: 10px;
-  padding: 4px 12px;
+  background: #fff;
+  border: 1px solid #e8e4df;
+  border-radius: 12px;
+  box-shadow: none;
+  padding: 8px 16px;
+  transition: all 0.2s ease;
+}
+
+.add-material-form .el-input__wrapper:hover {
+  border-color: #c4a882;
+}
+
+.add-material-form .el-input__wrapper.is-focus {
+  border-color: #c4a882;
+  box-shadow: 0 0 0 2px rgba(196, 168, 130, 0.2);
 }
 
 .add-material-form .el-input__inner {
-  height: 40px;
-  font-size: 15px;
+  height: 44px;
+  font-size: 16px;
+  color: #1a1a1a;
+}
+
+.add-material-form .el-input__inner::placeholder {
+  color: #9a9590;
 }
 </style>
