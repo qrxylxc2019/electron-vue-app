@@ -767,24 +767,44 @@ function setupIpc() {
     }
   });
 
-  // 更新文章内容
-  ipcMain.handle('db:updateArticle', (_event, id: number, content: string, title?: string) => {
-    if (!db) return false;
-    try {
-      if (title !== undefined) {
-        const stmt = db.prepare('UPDATE articles SET content = ?, title = ? WHERE id = ?');
-        const result = stmt.run(content, title, id);
-        return result.changes > 0;
-      } else {
-        const stmt = db.prepare('UPDATE articles SET content = ? WHERE id = ?');
-        const result = stmt.run(content, id);
-        return result.changes > 0;
-      }
-    } catch (err) {
-      console.error('updateArticle error:', err);
-      return false;
+// 更新文章内容
+ipcMain.handle('db:updateArticle', (_event, id: number, content: string, title?: string) => {
+  if (!db) return false;
+  try {
+    if (title !== undefined) {
+      const stmt = db.prepare('UPDATE articles SET content = ?, title = ? WHERE id = ?');
+      const result = stmt.run(content, title, id);
+      return result.changes > 0;
+    } else {
+      const stmt = db.prepare('UPDATE articles SET content = ? WHERE id = ?');
+      const result = stmt.run(content, id);
+      return result.changes > 0;
     }
-  });
+  } catch (err) {
+    console.error('updateArticle error:', err);
+    return false;
+  }
+});
+
+// 新增文章
+ipcMain.handle('db:addArticle', (_event, article: any) => {
+  if (!db) return null;
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO articles (directory_id, title, content)
+      VALUES (?, ?, ?)
+    `);
+    const result = stmt.run(
+      article.directory_id,
+      article.title,
+      article.content
+    );
+    return { id: result.lastInsertRowid, ...article };
+  } catch (err) {
+    console.error('addArticle error:', err);
+    return null;
+  }
+});
 }
 
 function createWindow() {

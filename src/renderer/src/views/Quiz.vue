@@ -286,6 +286,13 @@
         <div class="quiz-right">
           <div class="right-actions">
             <template v-if="directoryName === '高项论文'">
+              <el-button
+                class="add-article-btn"
+                type="primary"
+                @click="openAddArticleDialog"
+              >
+                <el-icon><Plus /></el-icon> 新增论文
+              </el-button>
               
               <el-button
                 class="delete-question-btn"
@@ -593,6 +600,37 @@
       </div>
     </div>
   </div>
+
+  <!-- 新增论文弹窗 -->
+  <el-dialog
+    v-model="addArticleDialogVisible"
+    title="新增论文"
+    width="900px"
+    :close-on-click-modal="true"
+    destroy-on-close
+    class="add-article-dialog"
+  >
+    <div class="add-article-form">
+      <div class="form-item">
+        <label>论文标题：</label>
+        <el-input v-model="newArticleTitle" placeholder="请输入论文标题" />
+      </div>
+      <div class="form-item">
+        <label>论文内容：</label>
+        <div
+          ref="addArticleEditorRef"
+          class="article-editor"
+          contenteditable="true"
+          v-html="newArticleContent"
+          @paste="handleAddArticlePaste"
+        ></div>
+      </div>
+    </div>
+    <template #footer>
+      <el-button @click="addArticleDialogVisible = false">取消</el-button>
+      <el-button type="primary" @click="saveNewArticle">保存</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
@@ -653,6 +691,12 @@ let aiUnsubscribers: (() => void)[] = [];
 const showSkillList = ref(false);
 const currentSkill = ref<string>('');
 const aiInputPlaceholder = ref('对这道题还有疑问？继续向 AI 提问...');
+
+// 新增论文弹窗状态
+const addArticleDialogVisible = ref(false);
+const newArticleTitle = ref('');
+const newArticleContent = ref('');
+const addArticleEditorRef = ref<HTMLDivElement | null>(null);
 
 // 技能列表
 const skillList = [
@@ -1029,6 +1073,79 @@ const deleteCurrentQuestion = async () => {
     }
   } catch (error) {
     ElMessage.error('删除失败');
+    console.error(error);
+  }
+};
+
+// 打开新增论文弹窗
+const openAddArticleDialog = () => {
+  addArticleDialogVisible.value = true;
+  newArticleTitle.value = '';
+  newArticleContent.value = '';
+};
+
+// 新增论文弹窗粘贴图片处理
+const handleAddArticlePaste = async (event: ClipboardEvent) => {
+  const items = event.clipboardData?.items;
+  if (!items) return;
+
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      event.preventDefault();
+      const blob = item.getAsFile();
+      if (!blob) continue;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64 = e.target?.result as string;
+        if (base64 && addArticleEditorRef.value) {
+          const imgHtml = `<img src="${base64}" style="max-width:100%;" />`;
+          document.execCommand('insertHTML', false, imgHtml);
+        }
+      };
+      reader.readAsDataURL(blob);
+    }
+  }
+};
+
+// 保存新论文
+const saveNewArticle = async () => {
+  if (!newArticleTitle.value.trim()) {
+    ElMessage.warning('请输入论文标题');
+    return;
+  }
+
+  const editorContent = addArticleEditorRef.value?.innerHTML || '';
+  if (!editorContent.trim()) {
+    ElMessage.warning('请输入论文内容');
+    return;
+  }
+
+  try {
+    const dirId = parseInt(props.directoryId);
+    const result = await window.electronAPI.addArticle({
+      directory_id: dirId,
+      title: newArticleTitle.value.trim(),
+      content: editorContent,
+    });
+
+    if (!result) {
+      ElMessage.error('保存失败');
+      return;
+    }
+
+    ElMessage.success('论文保存成功');
+    addArticleDialogVisible.value = false;
+
+    // 刷新数据
+    await loadData();
+    // 跳转到新添加的论文
+    const newIndex = articles.value.findIndex(a => a.id === result.id);
+    if (newIndex >= 0) {
+      currentIndex.value = newIndex;
+    }
+  } catch (error) {
+    ElMessage.error('保存失败');
     console.error(error);
   }
 };
@@ -2643,7 +2760,6 @@ onMounted(() => {
 .paragraph-block {
   display: flex;
   flex-direction: column;
-  gap: 10px;
 }
 
 .paragraph-row {
@@ -2654,7 +2770,7 @@ onMounted(() => {
 
 .paragraph-item {
   flex: 1;
-  padding: 20px 24px;
+  padding: 10px 15px;
   border: 1.5px solid #e8e4df;
   border-radius: 14px;
   background: #fff;
@@ -2713,7 +2829,7 @@ onMounted(() => {
   background: #fff;
   min-height: 120px;
   outline: none;
-  font-size: 18px;
+  font-size: 22px;
   line-height: 1.8;
   color: #1a1a1a;
 }
@@ -3560,5 +3676,151 @@ word-break: break-word;
 
 .option-row .option-item:hover {
   background: #f0ece7;
+}
+
+/* 新增论文弹窗样式 */
+.add-article-form {
+  padding: 20px 24px;
+}
+
+.add-article-form .form-item {
+  margin-bottom: 20px;
+}
+
+.add-article-form .form-item label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #1a1a1a;
+  font-size: 15px;
+}
+
+.add-article-form .el-input__wrapper {
+  background: #fff;
+  border: 1px solid #e8e4df;
+  border-radius: 12px;
+  box-shadow: none;
+  padding: 8px 16px;
+  transition: all 0.2s ease;
+}
+
+.add-article-form .el-input__wrapper:hover {
+  border-color: #c4a882;
+}
+
+.add-article-form .el-input__wrapper.is-focus {
+  border-color: #c4a882;
+  box-shadow: 0 0 0 2px rgba(196, 168, 130, 0.2);
+}
+
+.add-article-form .el-input__inner {
+  height: 44px;
+  font-size: 16px;
+  color: #1a1a1a;
+}
+
+.add-article-form .el-input__inner::placeholder {
+  color: #9a9590;
+}
+
+.article-editor {
+  min-height: 480px;
+  max-height: 520px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e8e4df;
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 16px;
+  line-height: 1.8;
+  color: #1a1a1a;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.article-editor:focus {
+  border-color: #c4a882;
+  box-shadow: 0 0 0 2px rgba(196, 168, 130, 0.2);
+}
+
+.article-editor::-webkit-scrollbar {
+  width: 6px;
+}
+
+.article-editor::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.article-editor::-webkit-scrollbar-thumb {
+  background: #c4c4c4;
+  border-radius: 3px;
+}
+
+.article-editor::-webkit-scrollbar-thumb:hover {
+  background: #a0a0a0;
+}
+
+/* 弹窗整体样式统一 */
+:deep(.add-article-dialog) {
+  border-radius: 16px;
+  overflow: hidden;
+  padding: 0 !important;
+  background: #faf9f7;
+}
+
+:deep(.add-article-dialog .el-dialog__header) {
+  background: #faf9f7;
+  border-bottom: 1px solid #e8e4df;
+  padding: 20px 24px;
+  margin-right: 0;
+}
+
+:deep(.add-article-dialog .el-dialog__title) {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+:deep(.add-article-dialog .el-dialog__footer) {
+  background: #faf9f7;
+  border-top: 1px solid #e8e4df;
+  padding: 16px 24px;
+}
+
+:deep(.add-article-dialog .el-dialog__footer .el-button) {
+  min-height: 44px;
+  padding: 12px 24px;
+  font-size: 15px;
+  border-radius: 10px;
+}
+
+:deep(.add-article-dialog .el-dialog__footer .el-button--primary) {
+  background: #1a1a1a;
+  border-color: #1a1a1a;
+}
+
+:deep(.add-article-dialog .el-dialog__footer .el-button--primary:hover) {
+  background: #333;
+  border-color: #333;
+}
+
+.add-article-btn {
+  background: #67c23a;
+  border-color: #67c23a;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 18px 20px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 56px;
+  width: 100%;
+  margin-left: 0;
+}
+
+.add-article-btn:hover {
+  background: #85ce61;
+  border-color: #85ce61;
 }
 </style>

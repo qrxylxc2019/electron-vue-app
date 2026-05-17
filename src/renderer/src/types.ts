@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿// 类型声明
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿// 类型声明
 export interface Directory {
   id: number;
   name: string;
@@ -99,6 +99,7 @@ declare global {
       addQuestion: (question: Partial<Question>) => Promise<Question | null>;
       deleteQuestion: (id: number) => Promise<boolean>;
       deleteArticle: (id: number) => Promise<boolean>;
+      addArticle: (article: { directory_id: number; title: string; content: string }) => Promise<{ id: number; directory_id: number; title: string; content: string } | null>;
       // 案例相关
       getCaseMaterials: (directoryId: number) => Promise<CaseMaterial[]>;
       getCaseQuestions: (materialId: number) => Promise<CaseQuestion[]>;
