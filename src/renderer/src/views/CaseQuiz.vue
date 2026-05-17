@@ -244,27 +244,64 @@
     <el-dialog
       v-model="addMaterialDialogVisible"
       title="新增案例题目"
-      width="900px"
+      width="1100px"
       :close-on-click-modal="false"
       destroy-on-close
+      class="add-material-dialog"
     >
       <div class="add-material-form">
         <div class="form-item">
           <label>案例标题：</label>
           <el-input v-model="newMaterialTitle" placeholder="请输入案例标题" />
         </div>
-        <div class="form-item">
-          <label>内容（按格式填写）：</label>
-          <div class="format-hint">
-            <el-tag size="small" type="info">格式：【材料】...【/材料】【小题】【问题】...【/问题】【答案】...【/答案】【/小题】</el-tag>
+        <div class="form-item editor-row">
+          <div class="editor-left">
+            <label>内容（按格式填写）：</label>
+            <div
+              ref="addMaterialEditorRef"
+              class="material-editor add-material-editor"
+              contenteditable="true"
+              v-html="newMaterialContent"
+              @paste="handleAddMaterialPaste"
+            ></div>
           </div>
-          <div
-            ref="addMaterialEditorRef"
-            class="material-editor add-material-editor"
-            contenteditable="true"
-            v-html="newMaterialContent"
-            @paste="handleAddMaterialPaste"
-          ></div>
+          <div class="editor-right">
+            <div class="format-tip-card">
+              <h4>填写格式说明</h4>
+              <div class="format-content">
+                <pre>【材料】
+案例材料内容...
+【/材料】
+
+【小题】
+【问题】
+小题题目...
+【/问题】
+【答案】
+参考答案...
+【/答案】
+【/小题】
+
+【小题】
+【问题】
+小题题目...
+【/问题】
+【答案】
+参考答案...
+【/答案】
+【/小题】</pre>
+              </div>
+              <el-button
+                class="copy-format-btn"
+                type="primary"
+                size="small"
+                @click="copyFormatTemplate"
+              >
+                <el-icon><DocumentCopy /></el-icon>
+                复制格式
+              </el-button>
+            </div>
+          </div>
         </div>
       </div>
       <template #footer>
@@ -706,7 +743,7 @@ const deleteCurrentMaterial = async () => {
 // 打开新增题目弹窗
 const openAddMaterialDialog = () => {
   addMaterialDialogVisible.value = true;
-  newMaterialTitle.value = '';
+  newMaterialTitle.value = '高项案例';
   newMaterialContent.value = '';
 };
 
@@ -731,6 +768,37 @@ const handleAddMaterialPaste = async (event: ClipboardEvent) => {
       };
       reader.readAsDataURL(blob);
     }
+  }
+};
+
+// 复制格式模板
+const copyFormatTemplate = async () => {
+  const template = `【材料】
+案例材料内容...
+【/材料】
+
+【小题】
+【问题】
+小题题目...
+【/问题】
+【答案】
+参考答案...
+【/答案】
+【/小题】
+
+【小题】
+【问题】
+小题题目...
+【/问题】
+【答案】
+参考答案...
+【/答案】
+【/小题】`;
+  try {
+    await navigator.clipboard.writeText(template);
+    ElMessage.success('格式已复制到剪贴板');
+  } catch (e) {
+    ElMessage.error('复制失败');
   }
 };
 
@@ -2001,12 +2069,72 @@ const getProviderOrder = (): string[] => {
 }
 
 .add-material-editor {
-  min-height: 300px;
-  max-height: 400px;
+  min-height: 400px;
+  max-height: 500px;
   overflow-y: auto;
 }
 
 .format-hint {
   margin-bottom: 8px;
+}
+
+/* 左右布局 */
+.editor-row {
+  display: flex;
+  gap: 20px;
+}
+
+.editor-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.editor-right {
+  width: 320px;
+  flex-shrink: 0;
+}
+
+.format-tip-card {
+  background: #f8f7f5;
+  border: 1px solid #e8e4df;
+  border-radius: 12px;
+  padding: 16px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.format-tip-card h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: #1a1a1a;
+}
+
+.format-content {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+
+.format-content pre {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.8;
+  color: #555;
+  background: #fff;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #e8e4df;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.copy-format-btn {
+  width: 100%;
+}
+
+/* 弹窗高度调整 */
+:deep(.add-material-dialog .el-dialog__body) {
+  padding: 20px;
 }
 </style>
