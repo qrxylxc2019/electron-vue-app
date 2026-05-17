@@ -256,7 +256,6 @@
         </div>
         <div class="form-item editor-row">
           <div class="editor-left">
-            <label>内容（按格式填写）：</label>
             <div
               ref="addMaterialEditorRef"
               class="material-editor add-material-editor"
@@ -2069,29 +2068,52 @@ const getProviderOrder = (): string[] => {
 }
 
 .add-material-editor {
-  min-height: 400px;
-  max-height: 500px;
+  min-height: 480px;
+  max-height: 520px;
   overflow-y: auto;
 }
 
-.format-hint {
-  margin-bottom: 8px;
+/* 滚动条样式 */
+.add-material-editor::-webkit-scrollbar,
+.format-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.add-material-editor::-webkit-scrollbar-track,
+.format-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.add-material-editor::-webkit-scrollbar-thumb,
+.format-content::-webkit-scrollbar-thumb {
+  background: #c4c4c4;
+  border-radius: 3px;
+}
+
+.add-material-editor::-webkit-scrollbar-thumb:hover,
+.format-content::-webkit-scrollbar-thumb:hover {
+  background: #a0a0a0;
 }
 
 /* 左右布局 */
 .editor-row {
   display: flex;
   gap: 20px;
+  align-items: stretch;
 }
 
 .editor-left {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .editor-right {
   width: 320px;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .format-tip-card {
@@ -2099,21 +2121,25 @@ const getProviderOrder = (): string[] => {
   border: 1px solid #e8e4df;
   border-radius: 12px;
   padding: 16px;
-  height: 100%;
+  flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 480px;
+  max-height: 520px;
 }
 
 .format-tip-card h4 {
   margin: 0 0 12px 0;
   font-size: 16px;
   color: #1a1a1a;
+  flex-shrink: 0;
 }
 
 .format-content {
   flex: 1;
   overflow-y: auto;
   margin-bottom: 12px;
+  min-height: 0;
 }
 
 .format-content pre {
@@ -2131,6 +2157,7 @@ const getProviderOrder = (): string[] => {
 
 .copy-format-btn {
   width: 100%;
+  flex-shrink: 0;
 }
 
 /* 弹窗高度调整 */
