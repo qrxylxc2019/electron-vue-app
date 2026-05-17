@@ -249,9 +249,9 @@ const quizSettings = ref({
 });
 
 const API_PROVIDERS = [
+  { key: 'deepseekLocal', name: 'DeepSeek本地版' },
   { key: 'modelspace', name: 'ModelSpace' },
   { key: 'deepseek', name: 'DeepSeek' },
-  { key: 'deepseekLocal', name: 'DeepSeek本地版' },
 ];
 
 const apiProviderOrder = ref([...API_PROVIDERS]);
@@ -259,7 +259,7 @@ const apiProviderOrder = ref([...API_PROVIDERS]);
 const activeSettingsTab = ref('mode');
 
 // DeepSeek 本地版设置
-const deepseekLocalToken = ref('');
+const deepseekLocalToken = ref('vudA7MkMfED1EKfTHoMs9Dlby6/P0DK2kTCeAsg03bxlbvlQTMNs1BtnutKsseiC');
 const deepseekLocalTesting = ref(false);
 const deepseekLocalStatus = ref<'idle' | 'success' | 'error'>('idle');
 const DEEPSEEK_LOCAL_TOKEN_KEY = 'deepseekLocalToken';
