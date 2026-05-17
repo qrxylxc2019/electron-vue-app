@@ -632,6 +632,91 @@ function setupIpc() {
     }
   });
 
+  // 新增案例材料及小题（解析格式内容）
+  ipcMain.handle('db:addCaseMaterialWithQuestions', (_event, data: any) => {
+    if (!db) return { success: false, error: '数据库未初始化' };
+    try {
+      const directoryId = data.directory_id as number;
+      const title = data.title as string;
+      let content = data.content as string;
+
+      // 解析内容：提取【材料】...【/材料】和【小题】...【/小题】
+      let materialContent = '';
+      const questions: Array<{ title: string; answer: string }> = [];
+
+      // 提取材料内容
+      const materialMatch = content.match(/【材料】(.*?)【\/材料】/s);
+      if (materialMatch) {
+        materialContent = materialMatch[1].trim();
+        // 移除材料部分，保留小题部分
+        content = content.replace(/【材料】.*?【\/材料】/s, '');
+      } else {
+        // 如果没有材料标签，将整个内容作为材料
+        materialContent = content.trim();
+      }
+
+      // 提取小题
+      const questionRegex = /【小题】(.*?)【\/小题】/gs;
+      let match;
+      while ((match = questionRegex.exec(content)) !== null) {
+        const questionBlock = match[1];
+        const titleMatch = questionBlock.match(/【问题】(.*?)【\/问题】/s);
+        const answerMatch = questionBlock.match(/【答案】(.*?)【\/答案】/s);
+        if (titleMatch && answerMatch) {
+          questions.push({
+            title: titleMatch[1].trim(),
+            answer: answerMatch[1].trim(),
+          });
+        }
+      }
+
+      // 如果没有解析到小题，但内容中有问题和答案标签，尝试直接解析
+      if (questions.length === 0) {
+        const titleMatch = content.match(/【问题】(.*?)【\/问题】/s);
+        const answerMatch = content.match(/【答案】(.*?)【\/答案】/s);
+        if (titleMatch && answerMatch) {
+          questions.push({
+            title: titleMatch[1].trim(),
+            answer: answerMatch[1].trim(),
+          });
+        }
+      }
+
+      // 开始事务
+      db.exec('BEGIN TRANSACTION');
+
+      try {
+        // 1. 保存案例材料
+        const materialStmt = db.prepare(`
+          INSERT INTO case_materials (directory_id, title, content, sort_order)
+          VALUES (?, ?, ?, ?)
+        `);
+        const materialResult = materialStmt.run(directoryId, title, materialContent, 0);
+        const materialId = materialResult.lastInsertRowid as number;
+
+        // 2. 保存小题
+        if (questions.length > 0) {
+          const questionStmt = db.prepare(`
+            INSERT INTO case_questions (material_id, question_number, title, answer, sort_order)
+            VALUES (?, ?, ?, ?, ?)
+          `);
+          for (let i = 0; i < questions.length; i++) {
+            questionStmt.run(materialId, i + 1, questions[i].title, questions[i].answer, i);
+          }
+        }
+
+        db.exec('COMMIT');
+        return { success: true, materialId };
+      } catch (err: any) {
+        db.exec('ROLLBACK');
+        throw err;
+      }
+    } catch (err: any) {
+      console.error('addCaseMaterialWithQuestions error:', err);
+      return { success: false, error: err.message || '保存失败' };
+    }
+  });
+
   // ɾ����������
   ipcMain.handle('db:deleteCaseMaterial', (_event, id: number) => {
     if (!db) return false;

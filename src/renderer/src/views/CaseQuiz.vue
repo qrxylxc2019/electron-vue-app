@@ -254,80 +254,17 @@
           <el-input v-model="newMaterialTitle" placeholder="请输入案例标题" />
         </div>
         <div class="form-item">
-          <label>案例材料：</label>
-          <div class="editor-wrapper">
-            <Toolbar
-              :editor="materialEditorRef"
-              :defaultConfig="toolbarConfig"
-              mode="default"
-              class="editor-toolbar"
-            />
-            <Editor
-              :defaultConfig="editorConfig"
-              v-model="newMaterialContent"
-              mode="default"
-              class="editor-content"
-              @onCreated="handleMaterialEditorCreated"
-            />
+          <label>内容（按格式填写）：</label>
+          <div class="format-hint">
+            <el-tag size="small" type="info">格式：【材料】...【/材料】【小题】【问题】...【/问题】【答案】...【/答案】【/小题】</el-tag>
           </div>
-        </div>
-        <div class="form-item questions-section">
-          <label>小题列表：</label>
           <div
-            v-for="(q, idx) in newQuestions"
-            :key="idx"
-            class="question-item"
-          >
-            <div class="question-header">
-              <span>第 {{ idx + 1 }} 小题</span>
-              <el-button
-                v-if="newQuestions.length > 1"
-                size="small"
-                text
-                type="danger"
-                @click="removeNewQuestion(idx)"
-              >
-                <el-icon><Delete /></el-icon>
-              </el-button>
-            </div>
-            <div class="editor-wrapper">
-              <Toolbar
-                :editor="questionEditorsRef[idx]"
-                :defaultConfig="toolbarConfig"
-                mode="default"
-                class="editor-toolbar"
-              />
-              <Editor
-                :defaultConfig="editorConfig"
-                v-model="q.title"
-                mode="default"
-                class="editor-content"
-                @onCreated="(editor: any) => handleQuestionEditorCreated(editor, idx)"
-              />
-            </div>
-            <div class="editor-wrapper">
-              <Toolbar
-                :editor="answerEditorsRef[idx]"
-                :defaultConfig="toolbarConfig"
-                mode="default"
-                class="editor-toolbar"
-              />
-              <Editor
-                :defaultConfig="editorConfig"
-                v-model="q.answer"
-                mode="default"
-                class="editor-content"
-                @onCreated="(editor: any) => handleAnswerEditorCreated(editor, idx)"
-              />
-            </div>
-          </div>
-          <el-button
-            class="add-question-btn"
-            text
-            @click="addNewQuestion"
-          >
-            <el-icon><Plus /></el-icon> 添加小题
-          </el-button>
+            ref="addMaterialEditorRef"
+            class="material-editor add-material-editor"
+            contenteditable="true"
+            v-html="newMaterialContent"
+            @paste="handleAddMaterialPaste"
+          ></div>
         </div>
       </div>
       <template #footer>
@@ -473,26 +410,7 @@ const currentAIQuestion = ref<CaseQuestion | null>(null);
 const addMaterialDialogVisible = ref(false);
 const newMaterialTitle = ref('');
 const newMaterialContent = ref('');
-const newQuestions = ref<Array<{ title: string; answer: string }>>([{ title: '', answer: '' }]);
-
-// wangeditor 相关
-const materialEditorRef = shallowRef<IDomEditor | null>(null);
-const questionEditorsRef = shallowRef<Record<number, IDomEditor>>({});
-const answerEditorsRef = shallowRef<Record<number, IDomEditor>>({});
-
-const toolbarConfig: Partial<IToolbarConfig> = {
-  excludeKeys: ['uploadVideo', 'insertVideo', 'uploadImage'],
-};
-
-const editorConfig: Partial<IEditorConfig> = {
-  placeholder: '请输入内容...',
-  MENU_CONF: {
-    uploadImage: {
-      // 禁用默认上传，使用 base64 粘贴
-      customUpload: () => {},
-    },
-  },
-};
+const addMaterialEditorRef = ref<HTMLDivElement | null>(null);
 
 // 当前案例材料
 const currentMaterial = computed(() => {
@@ -790,39 +708,30 @@ const openAddMaterialDialog = () => {
   addMaterialDialogVisible.value = true;
   newMaterialTitle.value = '';
   newMaterialContent.value = '';
-  newQuestions.value = [{ title: '', answer: '' }];
-  questionEditorsRef.value = {};
-  answerEditorsRef.value = {};
 };
 
-// 添加小题
-const addNewQuestion = () => {
-  newQuestions.value.push({ title: '', answer: '' });
-};
+// 新增题目弹窗粘贴图片处理
+const handleAddMaterialPaste = async (event: ClipboardEvent) => {
+  const items = event.clipboardData?.items;
+  if (!items) return;
 
-// 删除小题
-const removeNewQuestion = (index: number) => {
-  newQuestions.value.splice(index, 1);
-  // 清理编辑器引用
-  const newQuestionEditors = { ...questionEditorsRef.value };
-  const newAnswerEditors = { ...answerEditorsRef.value };
-  delete newQuestionEditors[index];
-  delete newAnswerEditors[index];
-  questionEditorsRef.value = newQuestionEditors;
-  answerEditorsRef.value = newAnswerEditors;
-};
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      event.preventDefault();
+      const blob = item.getAsFile();
+      if (!blob) continue;
 
-// wangeditor 创建回调
-const handleMaterialEditorCreated = (editor: IDomEditor) => {
-  materialEditorRef.value = editor;
-};
-
-const handleQuestionEditorCreated = (editor: IDomEditor, index: number) => {
-  questionEditorsRef.value = { ...questionEditorsRef.value, [index]: editor };
-};
-
-const handleAnswerEditorCreated = (editor: IDomEditor, index: number) => {
-  answerEditorsRef.value = { ...answerEditorsRef.value, [index]: editor };
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64 = e.target?.result as string;
+        if (base64 && addMaterialEditorRef.value) {
+          const imgHtml = `<img src="${base64}" style="max-width:100%;" />`;
+          document.execCommand('insertHTML', false, imgHtml);
+        }
+      };
+      reader.readAsDataURL(blob);
+    }
+  }
 };
 
 // 保存新题目
@@ -831,52 +740,27 @@ const saveNewMaterial = async () => {
     ElMessage.warning('请输入案例标题');
     return;
   }
-  if (!newMaterialContent.value.trim()) {
-    ElMessage.warning('请输入案例材料');
-    return;
-  }
 
-  // 验证小题
-  for (let i = 0; i < newQuestions.value.length; i++) {
-    const q = newQuestions.value[i];
-    if (!q.title.trim()) {
-      ElMessage.warning(`第 ${i + 1} 小题的题目不能为空`);
-      return;
-    }
-    if (!q.answer.trim()) {
-      ElMessage.warning(`第 ${i + 1} 小题的答案不能为空`);
-      return;
-    }
+  // 从编辑器获取内容
+  const editorContent = addMaterialEditorRef.value?.innerHTML || '';
+  if (!editorContent.trim()) {
+    ElMessage.warning('请输入案例内容');
+    return;
   }
 
   try {
     const dirId = parseInt(props.directoryId);
 
-    // 1. 保存案例材料
-    const materialResult = await window.electronAPI.addCaseMaterial({
+    // 调用后端 API 解析并保存
+    const result = await window.electronAPI.addCaseMaterialWithQuestions({
       directory_id: dirId,
       title: newMaterialTitle.value.trim(),
-      content: newMaterialContent.value.trim(),
-      sort_order: 0,
+      content: editorContent,
     });
 
-    if (!materialResult || !materialResult.id) {
-      ElMessage.error('保存案例材料失败');
+    if (!result || !result.success) {
+      ElMessage.error(result?.error || '保存失败');
       return;
-    }
-
-    const materialId = materialResult.id as number;
-
-    // 2. 保存小题
-    for (let i = 0; i < newQuestions.value.length; i++) {
-      const q = newQuestions.value[i];
-      await window.electronAPI.addCaseQuestion({
-        material_id: materialId,
-        question_number: i + 1,
-        title: q.title.trim(),
-        answer: q.answer.trim(),
-        sort_order: i,
-      });
     }
 
     ElMessage.success('案例题目保存成功');
@@ -885,7 +769,9 @@ const saveNewMaterial = async () => {
     // 刷新数据
     await loadData();
     // 跳转到新添加的案例
-    currentMaterialIndex.value = materials.value.findIndex(m => m.id === materialId);
+    if (result.materialId) {
+      currentMaterialIndex.value = materials.value.findIndex(m => m.id === result.materialId);
+    }
     if (currentMaterialIndex.value < 0) {
       currentMaterialIndex.value = materials.value.length - 1;
     }
@@ -2093,40 +1979,6 @@ const getProviderOrder = (): string[] => {
   justify-content: center;
 }
 
-.editor-wrapper :deep(.w-e-bar-divider) {
-  height: 20px;
-  margin: 4px 6px;
-}
-
-.editor-content {
-  min-height: 150px;
-}
-
-.editor-content :deep(.w-e-text-container) {
-  min-height: 150px;
-}
-
-.questions-section .question-item {
-  border: 1px solid #e8e4df;
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 12px;
-  background: #fafafa;
-}
-
-.question-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-  font-weight: 600;
-}
-
-.add-question-btn {
-  width: 100%;
-  margin-top: 8px;
-}
-
 .add-material-btn {
   background: #67c23a;
   border-color: #67c23a;
@@ -2145,5 +1997,15 @@ const getProviderOrder = (): string[] => {
 .add-material-btn:hover {
   background: #85ce61;
   border-color: #85ce61;
+}
+
+.add-material-editor {
+  min-height: 300px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.format-hint {
+  margin-bottom: 8px;
 }
 </style>

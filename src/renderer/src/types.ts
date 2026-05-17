@@ -104,6 +104,7 @@ declare global {
       getCaseQuestions: (materialId: number) => Promise<CaseQuestion[]>;
       addCaseMaterial: (material: Partial<CaseMaterial>) => Promise<CaseMaterial | null>;
       addCaseQuestion: (question: Partial<CaseQuestion>) => Promise<CaseQuestion | null>;
+      addCaseMaterialWithQuestions: (data: { directory_id: number; title: string; content: string }) => Promise<{ success: boolean; materialId?: number; error?: string }>;
       deleteCaseMaterial: (id: number) => Promise<boolean>;
       updateCaseQuestion: (id: number, title: string, answer?: string) => Promise<boolean>;
       updateArticle: (id: number, content: string, title?: string) => Promise<boolean>;

@@ -18,6 +18,7 @@ const electronAPI = {
   getCaseQuestions: (materialId: number) => ipcRenderer.invoke('db:getCaseQuestions', materialId),
   addCaseMaterial: (material: any) => ipcRenderer.invoke('db:addCaseMaterial', material),
   addCaseQuestion: (question: any) => ipcRenderer.invoke('db:addCaseQuestion', question),
+  addCaseMaterialWithQuestions: (data: any) => ipcRenderer.invoke('db:addCaseMaterialWithQuestions', data),
   deleteCaseMaterial: (id: number) => ipcRenderer.invoke('db:deleteCaseMaterial', id),
   updateCaseMaterial: (id: number, content: string) => ipcRenderer.invoke('db:updateCaseMaterial', id, content),
   updateCaseQuestion: (id: number, title: string, answer?: string) => ipcRenderer.invoke('db:updateCaseQuestion', id, title, answer),
