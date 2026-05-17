@@ -438,6 +438,10 @@ function setupIpc() {
   ipcMain.handle('db:deleteQuestion', (_event, id: number) => {
     if (!db) return false;
     try {
+      // 先删除关联的同类题（子题）
+      const deleteSimilar = db.prepare('DELETE FROM questions WHERE pid = ?');
+      deleteSimilar.run(id);
+      // 再删除题目本身
       const stmt = db.prepare('DELETE FROM questions WHERE id = ?');
       const result = stmt.run(id);
       return result.changes > 0;
