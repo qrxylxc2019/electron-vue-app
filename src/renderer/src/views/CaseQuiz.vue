@@ -2060,13 +2060,49 @@ const getProviderOrder = (): string[] => {
   border: 1px solid #e8e4df;
   border-radius: 8px;
   overflow: hidden;
+  z-index: 100;
 }
 
-.editor-toolbar {
-  border-bottom: 1px solid #e8e4df;
+.editor-wrapper :deep(.w-e-toolbar) {
+  flex-wrap: wrap;
+}
+
+.editor-wrapper :deep(.w-e-bar) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 4px 8px;
+}
+
+.editor-wrapper :deep(.w-e-bar-item) {
+  margin: 2px;
+  padding: 4px 6px;
+  min-width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.editor-wrapper :deep(.w-e-bar-item button) {
+  padding: 0;
+  min-width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.editor-wrapper :deep(.w-e-bar-divider) {
+  height: 20px;
+  margin: 4px 6px;
 }
 
 .editor-content {
+  min-height: 150px;
+}
+
+.editor-content :deep(.w-e-text-container) {
   min-height: 150px;
 }
 
@@ -2094,6 +2130,16 @@ const getProviderOrder = (): string[] => {
 .add-material-btn {
   background: #67c23a;
   border-color: #67c23a;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 18px 20px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 56px;
+  width: 100%;
+  margin-left: 0;
 }
 
 .add-material-btn:hover {
