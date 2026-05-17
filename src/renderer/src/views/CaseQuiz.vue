@@ -68,9 +68,9 @@
           </el-card>
         </div>
 
-        <!-- 中间：所有小题内容 -->
-        <div class="case-center">
-          <div v-if="caseQuestions.length > 0" class="all-questions-display">
+<!-- 中间：所有小题内容 -->
+<div class="case-center" ref="caseCenterRef">
+<div v-if="caseQuestions.length > 0" class="all-questions-display">
             <el-card
               v-for="(q, idx) in caseQuestions"
               :key="q.id"
@@ -433,6 +433,7 @@ const aiChatMessages = ref<Array<{role: 'user' | 'assistant'; content: string; p
 const aiUserInput = ref('');
 const aiChatContentRef = ref<HTMLDivElement | null>(null);
 const aiChatMessagesRef = ref<HTMLDivElement | null>(null);
+const caseCenterRef = ref<HTMLDivElement | null>(null);
 let aiUnsubscribers: (() => void)[] = [];
 
 // 案例题 AI 讲解上下文（按 materialId_questionNumber 存储）
@@ -688,6 +689,10 @@ const nextMaterial = () => {
     // 退出小题编辑模式
     editingQuestionTitleId.value = null;
     editingQuestionAnswerId.value = null;
+    // 重置中间小题区域的滚动位置到顶部
+    if (caseCenterRef.value) {
+      caseCenterRef.value.scrollTop = 0;
+    }
   } else {
     ElMessage.success('本次题目已完成，即将重新开始');
     loadData();
