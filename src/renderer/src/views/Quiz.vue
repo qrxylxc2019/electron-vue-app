@@ -204,16 +204,15 @@
                     class="handwrite-input"
                   />
                   <!-- 关键词显示区域 -->
-                  <div v-if="paragraphKeywords[index]" class="keywords-display">
+                  <div v-if="paragraphKeywords[index]" style="display:none" class="keywords-display">
                     <el-icon><Collection /></el-icon>
                     <span class="keywords-label">记忆关键词：</span>
                     <span class="keywords-content">{{ paragraphKeywords[index] }}</span>
                   </div>
                   <div class="handwrite-actions">
                     <el-button
+                      style="display:none"
                       class="ai-keywords-btn"
-                      size="small"
-                      text
                       :loading="keywordsLoading[index]"
                       @click="extractParagraphKeywords(index)"
                     >
