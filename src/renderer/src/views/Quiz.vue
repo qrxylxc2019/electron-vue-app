@@ -1211,7 +1211,11 @@ const setParagraphEditorRef = (el: any, index: number) => {
 const getParagraphEditHtml = (index: number) => {
   const paragraph = writeParagraphs.value[index];
   if (!paragraph) return '';
-  // 将文本中的换行转为 <br>，保留已有的 <img> 标签
+  // 如果内容已经是 HTML（包含 <div>、<p>、<br>、<img> 等标签），直接返回
+  if (/<(div|p|br|img|span|strong|em|u|ol|ul|li|h[1-6])\b/i.test(paragraph)) {
+    return paragraph;
+  }
+  // 将纯文本中的换行转为 <br>，保留已有的 <img> 标签
   const parts = paragraph.split(/(<img\s+[^>]+>)/gi);
   const htmlParts = parts.map((part) => {
     if (/^<img\s/i.test(part)) {
@@ -1260,18 +1264,26 @@ const saveParagraph = async (index: number) => {
 
   // 获取编辑器内容
   let html = editor.innerHTML;
-  // 将 <br> 转回换行符
-  html = html.replace(/<br\s*\/?>/gi, '\n');
-  html = html.replace(/<div>/gi, '\n').replace(/<\/div>/gi, '');
-  html = html.replace(/<p>/gi, '\n').replace(/<\/p>/gi, '');
-  // 清理其他标签但保留 img
-  html = html.replace(/<(?!img\s|\/img)[^>]+>/gi, '');
-  // 解码 HTML 实体
-  const textarea = document.createElement('textarea');
-  textarea.innerHTML = html;
-  let newParagraph = textarea.value;
-  // 清理多余换行
-  newParagraph = newParagraph.replace(/\n{3,}/g, '\n\n').trim();
+  // 如果内容包含富文本标签（div、p 等），保留原始 HTML
+  const hasRichTags = /<(div|p|span|strong|em|u|ol|ul|li|h[1-6])\b/i.test(html);
+  let newParagraph: string;
+  if (hasRichTags) {
+    // 富文本模式：保留 HTML，仅做简单清理
+    newParagraph = html.trim();
+  } else {
+    // 纯文本模式：将 <br> 转回换行符
+    html = html.replace(/<br\s*\/?>/gi, '\n');
+    html = html.replace(/<div>/gi, '\n').replace(/<\/div>/gi, '');
+    html = html.replace(/<p>/gi, '\n').replace(/<\/p>/gi, '');
+    // 清理其他标签但保留 img
+    html = html.replace(/<(?!img\s|\/img)[^>]+>/gi, '');
+    // 解码 HTML 实体
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = html;
+    newParagraph = textarea.value;
+    // 清理多余换行
+    newParagraph = newParagraph.replace(/\n{3,}/g, '\n\n').trim();
+  }
 
   // 更新文章内容
   const article = articles.value[currentIndex.value];
