@@ -266,7 +266,6 @@
           </div>
           <div class="editor-right">
             <div class="format-tip-card">
-              <h4>填写格式说明</h4>
               <div class="format-content">
                 <pre>【材料】
 案例材料内容...
@@ -2158,10 +2157,68 @@ const getProviderOrder = (): string[] => {
 .copy-format-btn {
   width: 100%;
   flex-shrink: 0;
+  height: 48px;
+  font-size: 16px;
+  border-radius: 12px;
 }
 
-/* 弹窗高度调整 */
+/* 弹窗整体样式统一 */
 :deep(.add-material-dialog .el-dialog__body) {
-  padding: 20px;
+  padding: 24px;
+  background: #faf9f7;
+}
+
+:deep(.add-material-dialog .el-dialog__header) {
+  background: #faf9f7;
+  border-bottom: 1px solid #e8e4df;
+  padding: 20px 24px;
+  margin-right: 0;
+}
+
+:deep(.add-material-dialog .el-dialog__title) {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+:deep(.add-material-dialog .el-dialog__footer) {
+  background: #faf9f7;
+  border-top: 1px solid #e8e4df;
+  padding: 16px 24px;
+}
+
+:deep(.add-material-dialog .el-dialog__footer .el-button) {
+  min-height: 44px;
+  padding: 12px 24px;
+  font-size: 15px;
+  border-radius: 10px;
+}
+
+:deep(.add-material-dialog .el-dialog__footer .el-button--primary) {
+  background: #1a1a1a;
+  border-color: #1a1a1a;
+}
+
+:deep(.add-material-dialog .el-dialog__footer .el-button--primary:hover) {
+  background: #333;
+  border-color: #333;
+}
+
+.add-material-form .form-item label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #1a1a1a;
+  font-size: 15px;
+}
+
+.add-material-form .el-input__wrapper {
+  border-radius: 10px;
+  padding: 4px 12px;
+}
+
+.add-material-form .el-input__inner {
+  height: 40px;
+  font-size: 15px;
 }
 </style>
