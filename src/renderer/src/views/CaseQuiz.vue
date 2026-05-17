@@ -208,6 +208,13 @@
         <div class="case-right">
           <div class="right-actions">
             <el-button
+              class="add-material-btn"
+              type="primary"
+              @click="openAddMaterialDialog"
+            >
+              <el-icon><Plus /></el-icon> 新增题目
+            </el-button>
+            <el-button
               class="delete-material-btn"
               @click="deleteCurrentMaterial"
             >
@@ -232,6 +239,102 @@
     </div>
 
     <el-empty v-else description="暂无案例题目" />
+
+    <!-- 新增题目弹窗 -->
+    <el-dialog
+      v-model="addMaterialDialogVisible"
+      title="新增案例题目"
+      width="900px"
+      :close-on-click-modal="false"
+      destroy-on-close
+    >
+      <div class="add-material-form">
+        <div class="form-item">
+          <label>案例标题：</label>
+          <el-input v-model="newMaterialTitle" placeholder="请输入案例标题" />
+        </div>
+        <div class="form-item">
+          <label>案例材料：</label>
+          <div class="editor-wrapper">
+            <Toolbar
+              :editor="materialEditorRef"
+              :defaultConfig="toolbarConfig"
+              mode="default"
+              class="editor-toolbar"
+            />
+            <Editor
+              :defaultConfig="editorConfig"
+              v-model="newMaterialContent"
+              mode="default"
+              class="editor-content"
+              @onCreated="handleMaterialEditorCreated"
+            />
+          </div>
+        </div>
+        <div class="form-item questions-section">
+          <label>小题列表：</label>
+          <div
+            v-for="(q, idx) in newQuestions"
+            :key="idx"
+            class="question-item"
+          >
+            <div class="question-header">
+              <span>第 {{ idx + 1 }} 小题</span>
+              <el-button
+                v-if="newQuestions.length > 1"
+                size="small"
+                text
+                type="danger"
+                @click="removeNewQuestion(idx)"
+              >
+                <el-icon><Delete /></el-icon>
+              </el-button>
+            </div>
+            <div class="editor-wrapper">
+              <Toolbar
+                :editor="questionEditorsRef[idx]"
+                :defaultConfig="toolbarConfig"
+                mode="default"
+                class="editor-toolbar"
+              />
+              <Editor
+                :defaultConfig="editorConfig"
+                v-model="q.title"
+                mode="default"
+                class="editor-content"
+                @onCreated="(editor: any) => handleQuestionEditorCreated(editor, idx)"
+              />
+            </div>
+            <div class="editor-wrapper">
+              <Toolbar
+                :editor="answerEditorsRef[idx]"
+                :defaultConfig="toolbarConfig"
+                mode="default"
+                class="editor-toolbar"
+              />
+              <Editor
+                :defaultConfig="editorConfig"
+                v-model="q.answer"
+                mode="default"
+                class="editor-content"
+                @onCreated="(editor: any) => handleAnswerEditorCreated(editor, idx)"
+              />
+            </div>
+          </div>
+          <el-button
+            class="add-question-btn"
+            text
+            @click="addNewQuestion"
+          >
+            <el-icon><Plus /></el-icon> 添加小题
+          </el-button>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="addMaterialDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="saveNewMaterial">保存</el-button>
+      </template>
+    </el-dialog>
 
     <!-- AI 讲解抽屉 -->
     <div
@@ -307,12 +410,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, shallowRef } from 'vue';
 import type { CaseMaterial, CaseQuestion } from '../types';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { marked } from 'marked';
-import { EditPen, DocumentCopy, Check, Cpu, Close, Loading, Promotion, View, Hide, Delete, ArrowRight, Edit, CircleCheck } from '@element-plus/icons-vue';
+import { EditPen, DocumentCopy, Check, Cpu, Close, Loading, Promotion, View, Hide, Delete, ArrowRight, Edit, CircleCheck, Plus } from '@element-plus/icons-vue';
+import { Editor, Toolbar } from '@wangeditor/editor-for-vue';
+import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/editor';
 
 const props = defineProps<{
   directoryId: string;
@@ -363,6 +468,31 @@ const caseAIContexts = ref<Record<string, Array<{role: string; content: string}>
 
 // 当前 AI 讲解的小题
 const currentAIQuestion = ref<CaseQuestion | null>(null);
+
+// 新增题目弹窗状态
+const addMaterialDialogVisible = ref(false);
+const newMaterialTitle = ref('');
+const newMaterialContent = ref('');
+const newQuestions = ref<Array<{ title: string; answer: string }>>([{ title: '', answer: '' }]);
+
+// wangeditor 相关
+const materialEditorRef = shallowRef<IDomEditor | null>(null);
+const questionEditorsRef = shallowRef<Record<number, IDomEditor>>({});
+const answerEditorsRef = shallowRef<Record<number, IDomEditor>>({});
+
+const toolbarConfig: Partial<IToolbarConfig> = {
+  excludeKeys: ['uploadVideo', 'insertVideo', 'uploadImage'],
+};
+
+const editorConfig: Partial<IEditorConfig> = {
+  placeholder: '请输入内容...',
+  MENU_CONF: {
+    uploadImage: {
+      // 禁用默认上传，使用 base64 粘贴
+      customUpload: () => {},
+    },
+  },
+};
 
 // 当前案例材料
 const currentMaterial = computed(() => {
@@ -651,6 +781,116 @@ const deleteCurrentMaterial = async () => {
     }
   } catch (error) {
     ElMessage.error('删除失败');
+    console.error(error);
+  }
+};
+
+// 打开新增题目弹窗
+const openAddMaterialDialog = () => {
+  addMaterialDialogVisible.value = true;
+  newMaterialTitle.value = '';
+  newMaterialContent.value = '';
+  newQuestions.value = [{ title: '', answer: '' }];
+  questionEditorsRef.value = {};
+  answerEditorsRef.value = {};
+};
+
+// 添加小题
+const addNewQuestion = () => {
+  newQuestions.value.push({ title: '', answer: '' });
+};
+
+// 删除小题
+const removeNewQuestion = (index: number) => {
+  newQuestions.value.splice(index, 1);
+  // 清理编辑器引用
+  const newQuestionEditors = { ...questionEditorsRef.value };
+  const newAnswerEditors = { ...answerEditorsRef.value };
+  delete newQuestionEditors[index];
+  delete newAnswerEditors[index];
+  questionEditorsRef.value = newQuestionEditors;
+  answerEditorsRef.value = newAnswerEditors;
+};
+
+// wangeditor 创建回调
+const handleMaterialEditorCreated = (editor: IDomEditor) => {
+  materialEditorRef.value = editor;
+};
+
+const handleQuestionEditorCreated = (editor: IDomEditor, index: number) => {
+  questionEditorsRef.value = { ...questionEditorsRef.value, [index]: editor };
+};
+
+const handleAnswerEditorCreated = (editor: IDomEditor, index: number) => {
+  answerEditorsRef.value = { ...answerEditorsRef.value, [index]: editor };
+};
+
+// 保存新题目
+const saveNewMaterial = async () => {
+  if (!newMaterialTitle.value.trim()) {
+    ElMessage.warning('请输入案例标题');
+    return;
+  }
+  if (!newMaterialContent.value.trim()) {
+    ElMessage.warning('请输入案例材料');
+    return;
+  }
+
+  // 验证小题
+  for (let i = 0; i < newQuestions.value.length; i++) {
+    const q = newQuestions.value[i];
+    if (!q.title.trim()) {
+      ElMessage.warning(`第 ${i + 1} 小题的题目不能为空`);
+      return;
+    }
+    if (!q.answer.trim()) {
+      ElMessage.warning(`第 ${i + 1} 小题的答案不能为空`);
+      return;
+    }
+  }
+
+  try {
+    const dirId = parseInt(props.directoryId);
+
+    // 1. 保存案例材料
+    const materialResult = await window.electronAPI.addCaseMaterial({
+      directory_id: dirId,
+      title: newMaterialTitle.value.trim(),
+      content: newMaterialContent.value.trim(),
+      sort_order: 0,
+    });
+
+    if (!materialResult || !materialResult.id) {
+      ElMessage.error('保存案例材料失败');
+      return;
+    }
+
+    const materialId = materialResult.id as number;
+
+    // 2. 保存小题
+    for (let i = 0; i < newQuestions.value.length; i++) {
+      const q = newQuestions.value[i];
+      await window.electronAPI.addCaseQuestion({
+        material_id: materialId,
+        question_number: i + 1,
+        title: q.title.trim(),
+        answer: q.answer.trim(),
+        sort_order: i,
+      });
+    }
+
+    ElMessage.success('案例题目保存成功');
+    addMaterialDialogVisible.value = false;
+
+    // 刷新数据
+    await loadData();
+    // 跳转到新添加的案例
+    currentMaterialIndex.value = materials.value.findIndex(m => m.id === materialId);
+    if (currentMaterialIndex.value < 0) {
+      currentMaterialIndex.value = materials.value.length - 1;
+    }
+  } catch (error) {
+    ElMessage.error('保存失败');
     console.error(error);
   }
 };
@@ -1796,5 +2036,68 @@ const getProviderOrder = (): string[] => {
 
 .ai-send-icon-btn .el-icon {
   font-size: 16px;
+}
+
+/* 新增题目弹窗样式 */
+.add-material-form {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.add-material-form .form-item {
+  margin-bottom: 20px;
+}
+
+.add-material-form .form-item label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #1a1a1a;
+}
+
+.editor-wrapper {
+  border: 1px solid #e8e4df;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.editor-toolbar {
+  border-bottom: 1px solid #e8e4df;
+}
+
+.editor-content {
+  min-height: 150px;
+}
+
+.questions-section .question-item {
+  border: 1px solid #e8e4df;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #fafafa;
+}
+
+.question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.add-question-btn {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.add-material-btn {
+  background: #67c23a;
+  border-color: #67c23a;
+}
+
+.add-material-btn:hover {
+  background: #85ce61;
+  border-color: #85ce61;
 }
 </style>
