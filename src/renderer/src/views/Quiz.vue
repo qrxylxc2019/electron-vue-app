@@ -1072,19 +1072,22 @@ const deleteCurrentQuestion = async () => {
   const isArticle = isArticleMode.value;
   const itemName = isArticle ? '文章' : '题目';
 
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除当前${itemName}吗？此操作不可恢复。`,
-      '删除确认',
-      {
-        confirmButtonText: '确定删除',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }
-    );
-  } catch {
-    // 用户取消
-    return;
+  // 只有高项论文需要弹窗确认，高项科目直接删除
+  if (directoryName.value === '高项论文') {
+    try {
+      await ElMessageBox.confirm(
+        `确定要删除当前${itemName}吗？此操作不可恢复。`,
+        '删除确认',
+        {
+          confirmButtonText: '确定删除',
+          cancelButtonText: '取消',
+          type: 'warning',
+        }
+      );
+    } catch {
+      // 用户取消
+      return;
+    }
   }
 
   try {
@@ -2552,7 +2555,7 @@ onMounted(() => {
 }
 
 .delete-question-btn {
-background-color: #8b9a6d;
+background-color: #F56C6C;
 color: #fff;
 border: none;
 border-radius: 12px;
@@ -2565,7 +2568,7 @@ margin-left: 0;
 }
 
 .delete-question-btn:hover {
-background-color: #8b9a6d;
+background-color: #f78989;
 }
 
 .handwrite-btn {
