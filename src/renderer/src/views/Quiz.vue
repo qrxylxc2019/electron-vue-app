@@ -1106,6 +1106,10 @@ const deleteCurrentQuestion = async () => {
       // 从本地数组中移除所有相同id的题目（处理重复出题的情况）
       if (isArticle) {
         articles.value = articles.value.filter(a => a.id !== id);
+        // 高项论文模式：同时刷新左侧列表的 allArticles
+        if (directoryName.value === '高项论文') {
+          allArticles.value = allArticles.value.filter(a => a.id !== id);
+        }
       } else {
         questions.value = questions.value.filter(q => q.id !== id);
       }
