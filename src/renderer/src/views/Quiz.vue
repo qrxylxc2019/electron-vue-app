@@ -1690,6 +1690,9 @@ const resetQuestionState = () => {
   // 退出段落编辑模式
   editingParagraphIndex.value = null;
   paragraphEditorRefs.value = {};
+  // 退出题目编辑模式
+  isEditingQuestionTitle.value = false;
+  editingQuestionTitleContent.value = '';
 };
 
 // 监听题目变化，清空删除状态和 AI 状态
@@ -2768,6 +2771,41 @@ background-color: #f78989;
   color: #1a1a1a;
   margin-bottom: 28px;
   line-height: 1.6;
+}
+
+.question-title-editor {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 28px;
+  line-height: 1.6;
+  min-height: 120px;
+  padding: 16px;
+  border: 2px solid #409eff;
+  border-radius: 12px;
+  background: #fff;
+  outline: none;
+  overflow-y: auto;
+}
+
+.question-title-editor img {
+  max-width: 100%;
+  border-radius: 8px;
+}
+
+.question-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+  gap: 8px;
+}
+
+.edit-question-btn,
+.save-question-btn {
+  min-height: 36px;
+  padding: 6px 14px;
+  font-size: 14px;
+  border-radius: 8px;
 }
 
 .options-list {
