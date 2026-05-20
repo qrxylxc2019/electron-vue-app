@@ -97,7 +97,41 @@
               </div>
             </template>
 
-            <div class="question-title markdown-body" v-html="renderMarkdown(currentQuestion.title)"></div>
+            <!-- 题目显示/编辑 -->
+            <div v-if="!isEditingQuestionTitle" class="question-title markdown-body" v-html="renderMarkdown(currentQuestion.title)"></div>
+            <div
+              v-else
+              ref="questionTitleEditorRef"
+              class="question-title-editor"
+              contenteditable="true"
+              v-html="getQuestionTitleEditHtml()"
+              @paste="handleQuestionTitlePaste"
+            ></div>
+
+            <!-- 题目编辑按钮（仅高项科目显示） -->
+            <div v-if="directoryName === '高项'" class="question-edit-actions">
+              <el-button
+                v-if="!isEditingQuestionTitle"
+                class="edit-question-btn"
+                size="small"
+                text
+                @click="startEditQuestionTitle"
+              >
+                <el-icon :size="14"><EditPen /></el-icon>
+                编辑题目
+              </el-button>
+              <el-button
+                v-else
+                class="save-question-btn"
+                size="small"
+                type="primary"
+                text
+                @click="saveQuestionTitle"
+              >
+                <el-icon :size="14"><CircleCheck /></el-icon>
+                保存题目
+              </el-button>
+            </div>
 
             <!-- 选择题选项 -->
             <div v-if="currentQuestion.question_type === 'single' || currentQuestion.question_type === 'multiple'" class="options-list">
@@ -759,6 +793,11 @@ const aiSimilarLoading = ref(false);
 const aiSimilarCurrentIndex = ref(0);
 const aiSelectedSimilarAnswer = ref('');
 
+// 题目编辑状态（高项科目）
+const isEditingQuestionTitle = ref(false);
+const questionTitleEditorRef = ref<HTMLDivElement | null>(null);
+const editingQuestionTitleContent = ref('');
+
 // 段落编辑状态
 const editingParagraphIndex = ref<number | null>(null);
 const paragraphEditorRefs = ref<Record<number, HTMLDivElement>>({});
@@ -1253,6 +1292,94 @@ const toggleParagraph = (index: number) => {
     hiddenParagraphs.value.delete(index);
   } else {
     hiddenParagraphs.value.add(index);
+  }
+};
+
+// 题目编辑相关方法（高项科目）
+const startEditQuestionTitle = () => {
+  if (!currentQuestion.value) return;
+  const content = currentQuestion.value.title;
+  // 将内容转为 HTML：保留已有的 <img> 标签，其他文本转义后换行转 <br>
+  if (/<(div|p|br|img|span|strong|em|u|ol|ul|li|h[1-6])\b/i.test(content)) {
+    editingQuestionTitleContent.value = content;
+  } else {
+    const parts = content.split(/(<img\s+[^>]+>)/gi);
+    const htmlParts = parts.map((part: string) => {
+      if (/^<img\s/i.test(part)) return part;
+      return part
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
+    });
+    editingQuestionTitleContent.value = htmlParts.join('');
+  }
+  isEditingQuestionTitle.value = true;
+};
+
+const getQuestionTitleEditHtml = () => {
+  return editingQuestionTitleContent.value;
+};
+
+const handleQuestionTitlePaste = (e: ClipboardEvent) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item.type.indexOf('image') !== -1) {
+      e.preventDefault();
+      const blob = item.getAsFile();
+      if (!blob) continue;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target?.result as string;
+        if (base64) {
+          const imgHtml = `<img src="${base64}" style="max-width:100%;" />`;
+          document.execCommand('insertHTML', false, imgHtml);
+        }
+      };
+      reader.readAsDataURL(blob);
+    }
+  }
+};
+
+const saveQuestionTitle = async () => {
+  if (!currentQuestion.value || !questionTitleEditorRef.value) return;
+  const editor = questionTitleEditorRef.value;
+  let html = editor.innerHTML;
+
+  // 判断是否包含富文本标签
+  const hasRichTags = /<(div|p|span|strong|em|u|ol|ul|li|h[1-6])\b/i.test(html);
+  let newTitle: string;
+  if (hasRichTags) {
+    newTitle = html.trim();
+  } else {
+    html = html.replace(/<br\s*\/?>/gi, '\n');
+    html = html.replace(/<div>/gi, '\n').replace(/<\/div>/gi, '');
+    html = html.replace(/<p>/gi, '\n').replace(/<\/p>/gi, '');
+    html = html.replace(/<(?!img\s|\/img)[^>]+>/gi, '');
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = html;
+    newTitle = textarea.value.replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  try {
+    const success = await window.electronAPI.updateQuestion(currentQuestion.value.id, { title: newTitle });
+    if (success) {
+      currentQuestion.value.title = newTitle;
+      // 同步更新 questions 数组中的数据
+      const idx = questions.value.findIndex(q => q.id === currentQuestion.value!.id);
+      if (idx !== -1) {
+        questions.value[idx].title = newTitle;
+      }
+      isEditingQuestionTitle.value = false;
+      ElMessage.success('题目已保存');
+    } else {
+      ElMessage.error('保存失败');
+    }
+  } catch (error) {
+    ElMessage.error('保存失败');
+    console.error(error);
   }
 };
 

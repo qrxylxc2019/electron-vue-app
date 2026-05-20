@@ -13,6 +13,7 @@ const electronAPI = {
   deleteQuestion: (id: number) => ipcRenderer.invoke('db:deleteQuestion', id),
   deleteArticle: (id: number) => ipcRenderer.invoke('db:deleteArticle', id),
   addArticle: (article: any) => ipcRenderer.invoke('db:addArticle', article),
+  updateQuestion: (id: number, data: any) => ipcRenderer.invoke('db:updateQuestion', id, data),
 
   // 案例相关
   getCaseMaterials: (directoryId: number) => ipcRenderer.invoke('db:getCaseMaterials', directoryId),

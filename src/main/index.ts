@@ -563,6 +563,36 @@ function setupIpc() {
     }
   });
 
+  // 更新题目内容（标题、选项、答案、解析等）
+  ipcMain.handle('db:updateQuestion', (_event, id: number, data: any) => {
+    if (!db) return false;
+    try {
+      const fields: string[] = [];
+      const values: any[] = [];
+      
+      if (data.title !== undefined) { fields.push('title = ?'); values.push(data.title); }
+      if (data.option_a !== undefined) { fields.push('option_a = ?'); values.push(data.option_a); }
+      if (data.option_b !== undefined) { fields.push('option_b = ?'); values.push(data.option_b); }
+      if (data.option_c !== undefined) { fields.push('option_c = ?'); values.push(data.option_c); }
+      if (data.option_d !== undefined) { fields.push('option_d = ?'); values.push(data.option_d); }
+      if (data.option_e !== undefined) { fields.push('option_e = ?'); values.push(data.option_e); }
+      if (data.correct_answer !== undefined) { fields.push('correct_answer = ?'); values.push(data.correct_answer); }
+      if (data.explanation !== undefined) { fields.push('explanation = ?'); values.push(data.explanation); }
+      if (data.question_type !== undefined) { fields.push('question_type = ?'); values.push(data.question_type); }
+      
+      if (fields.length === 0) return false;
+      
+      values.push(id);
+      const sql = `UPDATE questions SET ${fields.join(', ')} WHERE id = ?`;
+      const stmt = db.prepare(sql);
+      const result = stmt.run(...values);
+      return result.changes > 0;
+    } catch (err) {
+      console.error('updateQuestion error:', err);
+      return false;
+    }
+  });
+
   // ��ȡĳĿ¼�µ���������
   ipcMain.handle('db:getCaseMaterials', (_event, directoryId: number) => {
     if (!db) return [];
