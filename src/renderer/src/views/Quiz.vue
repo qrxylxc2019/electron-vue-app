@@ -67,9 +67,31 @@
           <el-card class="question-card">
             <template #header>
               <div class="question-header">
-                <el-tag :type="questionTypeTag.type">
-                  {{ questionTypeTag.text }}
-                </el-tag>
+                <div class="header-left">
+                  <el-tag :type="questionTypeTag.type">
+                    {{ questionTypeTag.text }}
+                  </el-tag>
+                  <!-- 高项科目筛选按钮 -->
+                  <template v-if="directoryName === '高项'">
+                    <el-button
+                      v-if="!isFiltering"
+                      class="filter-btn"
+                      @click="openFilterDialog"
+                    >
+                      <el-icon><Filter /></el-icon>
+                      筛选
+                    </el-button>
+                    <el-button
+                      v-else
+                      class="exit-filter-btn"
+                      type="warning"
+                      @click="exitFilter"
+                    >
+                      <el-icon><Close /></el-icon>
+                      退出筛选
+                    </el-button>
+                  </template>
+                </div>
                 <div class="header-actions">
                   <el-button
                     class="copy-btn"
@@ -681,6 +703,63 @@
       <el-button type="primary" @click="saveNewArticle">保存</el-button>
     </template>
   </el-dialog>
+
+  <!-- 筛选题目弹窗 -->
+  <el-dialog
+    v-model="filterDialogVisible"
+    title="筛选题目"
+    width="700px"
+    :close-on-click-modal="true"
+    destroy-on-close
+    class="filter-dialog"
+  >
+    <div class="filter-form">
+      <el-input
+        v-model="filterKeyword"
+        placeholder="输入关键词搜索题目..."
+        clearable
+        @keydown.enter="searchFilterQuestions"
+      >
+        <template #append>
+          <el-button @click="searchFilterQuestions">
+            <el-icon><Search /></el-icon>
+            查询
+          </el-button>
+        </template>
+      </el-input>
+    </div>
+    <div class="filter-table-wrapper">
+      <el-table
+        v-if="filterQuestionList.length > 0"
+        :data="filterQuestionList"
+        height="400"
+        @selection-change="handleFilterSelectionChange"
+        ref="filterTableRef"
+      >
+        <el-table-column type="selection" width="55" />
+        <el-table-column label="题目内容" min-width="400">
+          <template #default="{ row }">
+            <div class="filter-question-title" v-html="renderMarkdown(row.title.substring(0, 100) + (row.title.length > 100 ? '...' : ''))"></div>
+          </template>
+        </el-table-column>
+        <el-table-column label="答案" width="80">
+          <template #default="{ row }">
+            <el-tag size="small">{{ row.correct_answer }}</el-tag>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-empty v-else-if="hasSearched" description="未找到匹配的题目" />
+      <el-empty v-else description="请输入关键词查询" />
+    </div>
+    <template #footer>
+      <div class="filter-footer">
+        <el-button @click="filterDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmFilter" :disabled="selectedFilterQuestions.length === 0">
+          确定 (已选 {{ selectedFilterQuestions.length }} 道)
+        </el-button>
+      </div>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
@@ -689,7 +768,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { marked } from 'marked';
 import type { Question, Article, QuestionType, OptionWithState } from '../types';
-import { Cpu, Collection, Delete, ArrowRight, Loading, Warning, CircleCheck, CircleClose, Close, Promotion, EditPen, DocumentCopy, Check } from '@element-plus/icons-vue';
+import { Cpu, Collection, Delete, ArrowRight, Loading, Warning, CircleCheck, CircleClose, Close, Promotion, EditPen, DocumentCopy, Check, Filter, Search } from '@element-plus/icons-vue';
 
 const API_ORDER_KEY = 'apiProviderOrder';
 
@@ -717,11 +796,23 @@ const isArticleMode = ref(false);
 const questions = ref<Question[]>([]);
 const articles = ref<Article[]>([]);
 const allArticles = ref<Article[]>([]); // 高项论文模式下所有原始文章数据（用于左侧列表）
+const allQuestions = ref<Question[]>([]); // 保存该科目所有原始题目（用于筛选时查询全部）
 const currentIndex = ref(0);
 const selectedAnswer = ref<string>('');
 const selectedAnswers = ref<Set<string>>(new Set()); // 多选题选中的答案
 const showAnswer = ref(false);
 const deletedOptions = ref<Set<string>>(new Set());
+
+// 筛选状态
+const isFiltering = ref(false);
+const filterDialogVisible = ref(false);
+const filterKeyword = ref('');
+const filterQuestionList = ref<Question[]>([]);
+const selectedFilterQuestions = ref<Question[]>([]);
+const hasSearched = ref(false);
+const filterTableRef = ref<any>(null);
+const originalQuestions = ref<Question[]>([]); // 保存原始题目数组，用于退出筛选时恢复
+const filteredQuestions = ref<Question[]>([]); // 筛选后的题目数组（应用重复次数后）
 
 // 文章题段落隐藏状态
 const hiddenParagraphs = ref<Set<number>>(new Set());
@@ -1042,6 +1133,7 @@ const loadData = async () => {
         qs = repeated;
       }
       
+      allQuestions.value = [...qs]; // 保存全部原始题目
       questions.value = qs;
       articles.value = []; // 清空文章
     }
@@ -1675,7 +1767,13 @@ const nextQuestion = () => {
   } else {
     // 已经是最后一题，重新加载题目（按照配置重新随机获取）
     ElMessage.success('本轮题目已完成，即将重新开始');
-    loadData();
+    if (isFiltering.value && filteredQuestions.value.length > 0) {
+      // 筛选模式下，重新在筛选后的题目中循环
+      currentIndex.value = 0;
+      resetQuestionState();
+    } else {
+      loadData();
+    }
   }
 };
 
@@ -1693,6 +1791,89 @@ const resetQuestionState = () => {
   // 退出题目编辑模式
   isEditingQuestionTitle.value = false;
   editingQuestionTitleContent.value = '';
+};
+
+// 筛选相关方法
+const openFilterDialog = () => {
+  filterDialogVisible.value = true;
+  filterKeyword.value = '';
+  filterQuestionList.value = [];
+  selectedFilterQuestions.value = [];
+  hasSearched.value = false;
+};
+
+const searchFilterQuestions = async () => {
+  const keyword = filterKeyword.value.trim();
+  if (!keyword) {
+    ElMessage.warning('请输入关键词');
+    return;
+  }
+  
+  try {
+    const dirId = parseInt(props.directoryId);
+    // 调用数据库模糊查询 API
+    const results = await window.electronAPI.searchQuestions(dirId, keyword);
+    filterQuestionList.value = results;
+    hasSearched.value = true;
+    
+    // 默认全选
+    nextTick(() => {
+      if (filterTableRef.value) {
+        filterQuestionList.value.forEach((row: Question) => {
+          filterTableRef.value.toggleRowSelection(row, true);
+        });
+      }
+    });
+  } catch (error) {
+    ElMessage.error('查询失败');
+    console.error(error);
+  }
+};
+
+const handleFilterSelectionChange = (selection: Question[]) => {
+  selectedFilterQuestions.value = selection;
+};
+
+const confirmFilter = () => {
+  if (selectedFilterQuestions.value.length === 0) {
+    ElMessage.warning('请至少选择一道题目');
+    return;
+  }
+  
+  // 保存原始题目数组（如果还没保存过）
+  if (!isFiltering.value) {
+    originalQuestions.value = [...questions.value];
+  }
+  
+  // 获取重复次数配置
+  const repeat = parseInt(route.query.repeat as string) || 1;
+  
+  // 应用重复次数
+  let baseQuestions = [...selectedFilterQuestions.value];
+  let repeated: Question[] = [];
+  for (let i = 0; i < repeat; i++) {
+    repeated.push(...shuffleArray([...baseQuestions]));
+  }
+  
+  filteredQuestions.value = repeated;
+  questions.value = repeated;
+  isFiltering.value = true;
+  filterDialogVisible.value = false;
+  currentIndex.value = 0;
+  resetQuestionState();
+  ElMessage.success(`已筛选 ${selectedFilterQuestions.value.length} 道题目，重复 ${repeat} 次，共 ${repeated.length} 道`);
+};
+
+const exitFilter = () => {
+  if (originalQuestions.value.length > 0) {
+    questions.value = [...originalQuestions.value];
+  }
+  isFiltering.value = false;
+  filteredQuestions.value = [];
+  originalQuestions.value = [];
+  currentIndex.value = 0;
+  resetQuestionState();
+  ElMessage.success('已退出筛选，恢复原始题目');
 };
 
 // 监听题目变化，清空删除状态和 AI 状态
@@ -2618,6 +2799,20 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.filter-btn,
+.exit-filter-btn {
+  min-height: 32px;
+  padding: 4px 12px;
+  font-size: 13px;
+  border-radius: 6px;
 }
 
 .header-actions {
@@ -4151,5 +4346,39 @@ background-color: #8b9a6d;
 .ai-keywords-btn:hover {
   color: #66b1ff;
   background: #ecf5ff;
+}
+
+/* 筛选弹窗样式 */
+.filter-dialog .el-dialog__body {
+  padding: 20px;
+}
+
+.filter-form {
+  margin-bottom: 16px;
+}
+
+.filter-table-wrapper {
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.filter-question-title {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1a1a1a;
+}
+
+.filter-question-title img {
+  max-width: 60px;
+  max-height: 40px;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+.filter-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 </style>

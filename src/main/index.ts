@@ -410,6 +410,22 @@ function setupIpc() {
     }
   });
 
+  // 模糊查询题目（按标题关键词）
+  ipcMain.handle('db:searchQuestions', (_event, directoryId: number, keyword: string) => {
+    if (!db) return [];
+    try {
+      const stmt = db.prepare(`
+        SELECT * FROM questions 
+        WHERE directory_id = ? AND title LIKE ? 
+        ORDER BY sort_order, id
+      `);
+      return stmt.all(directoryId, `%${keyword}%`);
+    } catch (err) {
+      console.error('searchQuestions error:', err);
+      return [];
+    }
+  });
+
   // ��ȡĳĿ¼�µ����±� article
   ipcMain.handle('db:getArticles', (_event, directoryId: number) => {
     if (!db) return [];

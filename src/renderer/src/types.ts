@@ -94,6 +94,7 @@ declare global {
       getDirectories: () => Promise<Directory[]>;
       addDirectory: (name: string, parentId?: number | null) => Promise<Directory | null>;
       getQuestions: (directoryId: number) => Promise<Question[]>;
+      searchQuestions: (directoryId: number, keyword: string) => Promise<Question[]>;
       getArticles: (directoryId: number) => Promise<Article[]>;
       getQuestion: (id: number) => Promise<Question | null>;
       addQuestion: (question: Partial<Question>) => Promise<Question | null>;
