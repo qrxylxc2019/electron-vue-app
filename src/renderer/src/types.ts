@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿// 类型声明
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿// 类型声明
 export interface Directory {
   id: number;
   name: string;
@@ -105,6 +105,7 @@ declare global {
       // 案例相关
       getCaseMaterials: (directoryId: number) => Promise<CaseMaterial[]>;
       getCaseQuestions: (materialId: number) => Promise<CaseQuestion[]>;
+      searchCaseMaterials: (directoryId: number, keyword: string) => Promise<CaseMaterial[]>;
       addCaseMaterial: (material: Partial<CaseMaterial>) => Promise<CaseMaterial | null>;
       addCaseQuestion: (question: Partial<CaseQuestion>) => Promise<CaseQuestion | null>;
       addCaseMaterialWithQuestions: (data: { directory_id: number; title: string; content: string }) => Promise<{ success: boolean; materialId?: number; error?: string }>;

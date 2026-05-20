@@ -633,6 +633,22 @@ function setupIpc() {
     }
   });
 
+  // 模糊查询案例材料（按标题关键词）
+  ipcMain.handle('db:searchCaseMaterials', (_event, directoryId: number, keyword: string) => {
+    if (!db) return [];
+    try {
+      const stmt = db.prepare(`
+        SELECT * FROM case_materials
+        WHERE directory_id = ? AND title LIKE ?
+        ORDER BY sort_order, id
+      `);
+      return stmt.all(directoryId, `%${keyword}%`);
+    } catch (err) {
+      console.error('searchCaseMaterials error:', err);
+      return [];
+    }
+  });
+
   // �����������
   ipcMain.handle('db:addCaseMaterial', (_event, material: any) => {
     if (!db) return null;

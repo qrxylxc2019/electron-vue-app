@@ -221,6 +221,22 @@
               <el-icon><Delete /></el-icon> 删除案例
             </el-button>
             <el-button
+              v-if="!isFiltering"
+              class="filter-btn"
+              @click="openFilterDialog"
+            >
+              <el-icon><Filter /></el-icon>
+              {{ '筛选' }}
+            </el-button>
+            <el-button
+              v-else
+              class="exit-filter-btn"
+              @click="exitFilter"
+            >
+              <el-icon><Close /></el-icon>
+              {{ '退出筛选' }}
+            </el-button>
+            <el-button
               class="handwrite-btn"
               @click="showHandwrite = !showHandwrite"
             >
@@ -379,6 +395,63 @@
       </div>
     </div>
   </div>
+
+  <!-- 筛选案例弹窗 -->
+  <el-dialog
+    v-model="filterDialogVisible"
+    title="筛选案例"
+    width="700px"
+    :close-on-click-modal="true"
+    destroy-on-close
+    class="filter-dialog"
+  >
+    <div class="filter-form">
+      <el-input
+        v-model="filterKeyword"
+        placeholder="输入关键词搜索案例标题..."
+        clearable
+        @keydown.enter="searchFilterQuestions"
+      >
+        <template #append>
+          <el-button @click="searchFilterQuestions">
+            <el-icon><Search /></el-icon>
+            查询
+          </el-button>
+        </template>
+      </el-input>
+    </div>
+    <div class="filter-table-wrapper">
+      <el-table
+        v-if="filterMaterialList.length > 0"
+        :data="filterMaterialList"
+        height="400"
+        @selection-change="handleFilterSelectionChange"
+        ref="filterTableRef"
+      >
+        <el-table-column type="selection" width="55" />
+        <el-table-column label="案例标题" min-width="400">
+          <template #default="{ row }">
+            <div class="filter-material-title">{{ row.title }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="小题数" width="90">
+          <template #default="{ row }">
+            <el-tag size="small">{{ (caseQuestionsMap.value[row.id] || []).length }} 道</el-tag>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-empty v-else-if="hasSearched" description="未找到匹配的案例" />
+      <el-empty v-else description="请输入关键词查询" />
+    </div>
+    <template #footer>
+      <div class="filter-footer">
+        <el-button @click="filterDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmFilter" :disabled="selectedFilterMaterials.length === 0">
+          确定 (已选 {{ selectedFilterMaterials.length }} 个)
+        </el-button>
+      </div>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
@@ -387,7 +460,7 @@ import type { CaseMaterial, CaseQuestion } from '../types';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { marked } from 'marked';
-import { EditPen, DocumentCopy, Check, Cpu, Close, Loading, Promotion, View, Hide, Delete, ArrowRight, Edit, CircleCheck, Plus } from '@element-plus/icons-vue';
+import { EditPen, DocumentCopy, Check, Cpu, Close, Loading, Promotion, View, Hide, Delete, ArrowRight, Edit, CircleCheck, Plus, Filter, Search } from '@element-plus/icons-vue';
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue';
 import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/editor';
 
@@ -441,6 +514,18 @@ const caseAIContexts = ref<Record<string, Array<{role: string; content: string}>
 
 // 当前 AI 讲解的小题
 const currentAIQuestion = ref<CaseQuestion | null>(null);
+
+// 筛选状态
+const isFiltering = ref(false);
+const filterDialogVisible = ref(false);
+const filterKeyword = ref('');
+const filterMaterialList = ref<CaseMaterial[]>([]);
+const selectedFilterMaterials = ref<CaseMaterial[]>([]);
+const hasSearched = ref(false);
+const filterTableRef = ref<any>(null);
+const originalMaterials = ref<CaseMaterial[]>([]); // 保存原始材料顺序
+const originalCaseQuestionsMap = ref<Record<number, CaseQuestion[]>>({}); // 保存原始小题
+const filteredMaterialIds = ref<Set<number>>(new Set()); // 筛选后的材料ID集合
 
 // 新增题目弹窗状态
 const addMaterialDialogVisible = ref(false);
@@ -695,7 +780,25 @@ const nextMaterial = () => {
     }
   } else {
     ElMessage.success('本次题目已完成，即将重新开始');
-    loadData();
+    if (isFiltering.value) {
+      // 筛选模式下，重新在筛选后的材料中循环
+      currentMaterialIndex.value = 0;
+      const questions = caseQuestionsMap.value[materials.value[0]?.id] || [];
+      const defaultShowAnswers: Record<number, boolean> = {};
+      questions.forEach((_: any, idx: number) => {
+        defaultShowAnswers[idx] = true;
+      });
+      showAnswers.value = defaultShowAnswers;
+      showHandwrite.value = true;
+      handwriteInputs.value = {};
+      editingQuestionTitleId.value = null;
+      editingQuestionAnswerId.value = null;
+      if (caseCenterRef.value) {
+        caseCenterRef.value.scrollTop = 0;
+      }
+    } else {
+      loadData();
+    }
   }
 };
 
@@ -748,6 +851,110 @@ const openAddMaterialDialog = () => {
   addMaterialDialogVisible.value = true;
   newMaterialTitle.value = '高项案例';
   newMaterialContent.value = '';
+};
+
+// 筛选相关方法
+const openFilterDialog = () => {
+  filterDialogVisible.value = true;
+  filterKeyword.value = '';
+  filterMaterialList.value = [];
+  selectedFilterMaterials.value = [];
+  hasSearched.value = false;
+};
+
+const searchFilterQuestions = async () => {
+  const keyword = filterKeyword.value.trim();
+  if (!keyword) {
+    ElMessage.warning('请输入关键词');
+    return;
+  }
+  
+  try {
+    const dirId = parseInt(props.directoryId);
+    const results = await window.electronAPI.searchCaseMaterials(dirId, keyword);
+    filterMaterialList.value = results;
+    hasSearched.value = true;
+    
+    // 默认全选
+    nextTick(() => {
+      if (filterTableRef.value) {
+        filterMaterialList.value.forEach((row: CaseMaterial) => {
+          filterTableRef.value.toggleRowSelection(row, true);
+        });
+      }
+    });
+  } catch (error) {
+    ElMessage.error('查询失败');
+    console.error(error);
+  }
+};
+
+const handleFilterSelectionChange = (selection: CaseMaterial[]) => {
+  selectedFilterMaterials.value = selection;
+};
+
+const confirmFilter = async () => {
+  if (selectedFilterMaterials.value.length === 0) {
+    ElMessage.warning('请至少选择一个案例');
+    return;
+  }
+  
+  // 保存原始数据（如果还没保存过）
+  if (!isFiltering.value) {
+    originalMaterials.value = [...materials.value];
+    originalCaseQuestionsMap.value = { ...caseQuestionsMap.value };
+  }
+  
+  // 获取选中的材料ID
+  const selectedIds = new Set(selectedFilterMaterials.value.map(m => m.id));
+  filteredMaterialIds.value = selectedIds;
+  
+  // 只保留选中的材料
+  const filteredMats = materials.value.filter(m => selectedIds.has(m.id));
+  
+  materials.value = filteredMats;
+  isFiltering.value = true;
+  filterDialogVisible.value = false;
+  currentMaterialIndex.value = 0;
+  
+  // 默认显示答案
+  const firstMatQuestions = caseQuestionsMap.value[filteredMats[0]?.id] || [];
+  const defaultShowAnswers: Record<number, boolean> = {};
+  firstMatQuestions.forEach((_: any, idx: number) => {
+    defaultShowAnswers[idx] = true;
+  });
+  showAnswers.value = defaultShowAnswers;
+  showHandwrite.value = true;
+  handwriteInputs.value = {};
+  editingQuestionTitleId.value = null;
+  editingQuestionAnswerId.value = null;
+  
+  ElMessage.success(`已筛选 ${selectedFilterMaterials.value.length} 个案例`);
+};
+
+const exitFilter = () => {
+  if (originalMaterials.value.length > 0) {
+    materials.value = [...originalMaterials.value];
+    caseQuestionsMap.value = { ...originalCaseQuestionsMap.value };
+  }
+  isFiltering.value = false;
+  filteredMaterialIds.value = new Set();
+  originalMaterials.value = [];
+  originalCaseQuestionsMap.value = {};
+  currentMaterialIndex.value = 0;
+  
+  const firstMatQuestions = caseQuestionsMap.value[materials.value[0]?.id] || [];
+  const defaultShowAnswers: Record<number, boolean> = {};
+  firstMatQuestions.forEach((_: any, idx: number) => {
+    defaultShowAnswers[idx] = true;
+  });
+  showAnswers.value = defaultShowAnswers;
+  showHandwrite.value = true;
+  handwriteInputs.value = {};
+  editingQuestionTitleId.value = null;
+  editingQuestionAnswerId.value = null;
+  
+  ElMessage.success('已退出筛选，恢复原始案例');
 };
 
 // 新增题目弹窗粘贴图片处理
@@ -2253,5 +2460,69 @@ const getProviderOrder = (): string[] => {
 
 .add-material-form .el-input__inner::placeholder {
   color: #9a9590;
+}
+
+/* 筛选按钮样式 - 与手写按钮统一 */
+.filter-btn {
+  background-color: #8b9a6d;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 18px 20px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 56px;
+  width: 100%;
+  margin-left: 0;
+}
+
+.filter-btn:hover {
+  background-color: #8b9a6d;
+}
+
+.exit-filter-btn {
+  background-color: #e6a23c;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 18px 20px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 56px;
+  width: 100%;
+  margin-left: 0;
+}
+
+.exit-filter-btn:hover {
+  background-color: #e6a23c;
+}
+
+/* 筛选弹窗样式 */
+.filter-dialog .el-dialog__body {
+  padding: 20px;
+}
+
+.filter-form {
+  margin-bottom: 16px;
+}
+
+.filter-table-wrapper {
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.filter-material-title {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1a1a1a;
+}
+
+.filter-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 </style>

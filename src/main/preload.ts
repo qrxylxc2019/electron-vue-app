@@ -19,6 +19,7 @@ const electronAPI = {
   // 案例相关
   getCaseMaterials: (directoryId: number) => ipcRenderer.invoke('db:getCaseMaterials', directoryId),
   getCaseQuestions: (materialId: number) => ipcRenderer.invoke('db:getCaseQuestions', materialId),
+  searchCaseMaterials: (directoryId: number, keyword: string) => ipcRenderer.invoke('db:searchCaseMaterials', directoryId, keyword),
   addCaseMaterial: (material: any) => ipcRenderer.invoke('db:addCaseMaterial', material),
   addCaseQuestion: (question: any) => ipcRenderer.invoke('db:addCaseQuestion', question),
   addCaseMaterialWithQuestions: (data: any) => ipcRenderer.invoke('db:addCaseMaterialWithQuestions', data),
