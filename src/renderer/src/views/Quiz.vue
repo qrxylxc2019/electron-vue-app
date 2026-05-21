@@ -372,13 +372,13 @@
               >
                 <el-icon><Plus /></el-icon> 新增论文
               </el-button>
-              <el-button
-                class="mode-toggle-btn"
-                @click="fullArticleDrawerVisible = true"
-              >
-                <el-icon><Document /></el-icon>
-                整篇模式
-              </el-button>
+<el-button
+              class="full-article-mode-btn"
+              @click="fullArticleDrawerVisible = true"
+            >
+              <el-icon><Document /></el-icon>
+              整篇模式
+            </el-button>
               <el-button
                 class="handwrite-btn"
                 :class="{ 'active': showHandwrite }"
@@ -4505,21 +4505,40 @@ word-break: break-word;
 }
 
 .add-article-btn {
-background-color: #8b9a6d;
-color: #fff;
-border: none;
-border-radius: 12px;
-padding: 18px 20px;
-font-size: 16px;
-transition: all 0.2s ease;
-height: auto;
-min-height: 56px;
-width: 100%;
-margin-left: 0;
+  background-color: #8b9a6d;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 18px 20px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 56px;
+  width: 100%;
+  margin-left: 0;
 }
 
 .add-article-btn:hover {
-background-color: #8b9a6d;
+  background-color: #8b9a6d;
+}
+
+/* 整篇模式按钮 - 与手写按钮统一 */
+.full-article-mode-btn {
+  background-color: #8b9a6d;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 18px 20px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 56px;
+  width: 100%;
+  margin-left: 0;
+}
+
+.full-article-mode-btn:hover {
+  background-color: #8b9a6d;
 }
 
 /* 关键词显示区域 */
