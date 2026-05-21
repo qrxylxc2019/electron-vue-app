@@ -1542,26 +1542,18 @@ const saveParagraph = async (index: number) => {
 
   // 获取编辑器内容
   let html = editor.innerHTML;
-  // 如果内容包含富文本标签（div、p 等），保留原始 HTML
-  const hasRichTags = /<(div|p|span|strong|em|u|ol|ul|li|h[1-6])\b/i.test(html);
-  let newParagraph: string;
-  if (hasRichTags) {
-    // 富文本模式：保留 HTML，仅做简单清理
-    newParagraph = html.trim();
-  } else {
-    // 纯文本模式：将 <br> 转回换行符
-    html = html.replace(/<br\s*\/?>/gi, '\n');
-    html = html.replace(/<div>/gi, '\n').replace(/<\/div>/gi, '');
-    html = html.replace(/<p>/gi, '\n').replace(/<\/p>/gi, '');
-    // 清理其他标签但保留 img
-    html = html.replace(/<(?!img\s|\/img)[^>]+>/gi, '');
-    // 解码 HTML 实体
-    const textarea = document.createElement('textarea');
-    textarea.innerHTML = html;
-    newParagraph = textarea.value;
-    // 清理多余换行
-    newParagraph = newParagraph.replace(/\n{3,}/g, '\n\n').trim();
-  }
+  // 统一转为纯文本保存：将 <br> 转回换行符
+  html = html.replace(/<br\s*\/?>/gi, '\n');
+  html = html.replace(/<div>/gi, '\n').replace(/<\/div>/gi, '');
+  html = html.replace(/<p>/gi, '\n').replace(/<\/p>/gi, '');
+  // 保留 <img> 标签，清理其他标签
+  html = html.replace(/<(?!img\s|\/img)[^>]+>/gi, '');
+  // 解码 HTML 实体
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = html;
+  let newParagraph = textarea.value;
+  // 清理多余换行
+  newParagraph = newParagraph.replace(/\n{3,}/g, '\n\n').trim();
 
 // 更新文章内容
 const article = articles.value[currentIndex.value];
@@ -1592,10 +1584,8 @@ if (/<(div|p)\b/i.test(currentContent)) {
 // 替换指定段落
 if (index >= 0 && index < paragraphs.length) {
 paragraphs[index] = newParagraph;
-// 如果原内容是富文本，用 div 包裹拼接；否则用换行拼接
-const newContent = /<(div|p)\b/i.test(currentContent)
-  ? paragraphs.map(p => `<div>${p}</div>`).join('')
-  : paragraphs.join('\n\n');
+// 统一用换行符拼接段落，不再使用富文本 div 包裹
+const newContent = paragraphs.join('\n\n');
     
     try {
       const success = await window.electronAPI.updateArticle(article.id, newContent);
