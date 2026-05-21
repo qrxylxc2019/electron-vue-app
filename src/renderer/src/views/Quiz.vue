@@ -197,96 +197,127 @@
 
             <!-- 文章题：按段落显示，带隐藏/显示按钮 -->
             <div v-else-if="currentQuestion.question_type === 'write'" class="write-content">
-              <div
-                v-for="(paragraph, index) in writeParagraphs"
-                :key="index"
-                class="paragraph-block"
-              >
-                <div class="paragraph-row">
-                  <div
-                    class="paragraph-item"
-                    :class="{ 'hidden': hiddenParagraphs.has(index) }"
-                  >
-                    <!-- 显示模式 -->
-                    <div v-if="!isEditingParagraph(index)">
-                      <p class="paragraph-text markdown-body" v-html="renderMarkdown(paragraph)"></p>
+              <!-- 整篇模式：左侧整篇内容，右侧手写输入 -->
+              <template v-if="directoryName === '高项论文' && isFullArticleMode">
+                <div class="full-article-mode">
+                  <div class="full-article-left">
+                    <div class="full-article-content markdown-body" v-html="renderMarkdown(currentQuestion.option_a || currentQuestion.title || '')"></div>
+                  </div>
+                  <div class="full-article-right" v-if="showHandwrite">
+                    <el-input
+                      v-model="handwriteInputs['full']"
+                      type="textarea"
+                      :rows="20"
+                      placeholder="整篇手写内容..."
+                      class="handwrite-input full-handwrite-input"
+                    />
+                    <div class="handwrite-actions">
+                      <el-button
+                        class="clear-handwrite-btn"
+                        size="small"
+                        text
+                        @click="handwriteInputs['full'] = ''"
+                      >
+                        <el-icon><Delete /></el-icon>
+                        清空
+                      </el-button>
                     </div>
-                    <!-- 编辑模式 -->
+                  </div>
+                </div>
+              </template>
+              <!-- 段落模式 -->
+              <template v-else>
+                <div
+                  v-for="(paragraph, index) in writeParagraphs"
+                  :key="index"
+                  class="paragraph-block"
+                >
+                  <div class="paragraph-row">
                     <div
-                      v-else
-                      :ref="el => setParagraphEditorRef(el, index)"
-                      class="paragraph-editor"
-                      contenteditable="true"
-                      v-html="getParagraphEditHtml(index)"
-                      @paste="handleParagraphPaste($event, index)"
-                    ></div>
+                      class="paragraph-item"
+                      :class="{ 'hidden': hiddenParagraphs.has(index) }"
+                    >
+                      <!-- 显示模式 -->
+                      <div v-if="!isEditingParagraph(index)">
+                        <p class="paragraph-text markdown-body" v-html="renderMarkdown(paragraph)"></p>
+                      </div>
+                      <!-- 编辑模式 -->
+                      <div
+                        v-else
+                        :ref="el => setParagraphEditorRef(el, index)"
+                        class="paragraph-editor"
+                        contenteditable="true"
+                        v-html="getParagraphEditHtml(index)"
+                        @paste="handleParagraphPaste($event, index)"
+                      ></div>
+                    </div>
+                    <div class="paragraph-actions">
+                      <el-button
+                        v-if="!isEditingParagraph(index)"
+                        class="edit-btn"
+                        size="small"
+                        @click="startEditParagraph(index)"
+                        title="编辑段落"
+                      >
+                        <el-icon :size="16"><EditPen /></el-icon>
+                      </el-button>
+                      <el-button
+                        v-if="isEditingParagraph(index)"
+                        class="save-btn"
+                        size="small"
+                        type="primary"
+                        @click="saveParagraph(index)"
+                        title="保存段落"
+                      >
+                        <el-icon :size="16"><CircleCheck /></el-icon>
+                      </el-button>
+                      <el-button
+                        class="toggle-btn"
+                        size="small"
+                        @click="toggleParagraph(index)"
+                      >
+                        {{ hiddenParagraphs.has(index) ? '显示' : '隐藏' }}
+                      </el-button>
+                    </div>
                   </div>
-                  <div class="paragraph-actions">
-                    <el-button
-                      v-if="!isEditingParagraph(index)"
-                      class="edit-btn"
-                      size="small"
-                      @click="startEditParagraph(index)"
-                      title="编辑段落"
-                    >
-                      <el-icon :size="16"><EditPen /></el-icon>
-                    </el-button>
-                    <el-button
-                      v-if="isEditingParagraph(index)"
-                      class="save-btn"
-                      size="small"
-                      type="primary"
-                      @click="saveParagraph(index)"
-                      title="保存段落"
-                    >
-                      <el-icon :size="16"><CircleCheck /></el-icon>
-                    </el-button>
-                    <el-button
-                      class="toggle-btn"
-                      size="small"
-                      @click="toggleParagraph(index)"
-                    >
-                      {{ hiddenParagraphs.has(index) ? '显示' : '隐藏' }}
-                    </el-button>
+                      <!-- 高项论文手写输入区 -->
+                  <div v-if="showHandwrite && directoryName === '高项论文'" class="handwrite-area">
+                    <el-input
+                      v-model="handwriteInputs[index]"
+                      type="textarea"
+                      :rows="6"
+                      :placeholder="`第 ${index + 1} 段手写内容...`"
+                      class="handwrite-input"
+                    />
+                    <!-- 关键词显示区域 -->
+                    <div v-if="paragraphKeywords[index]" style="display:none" class="keywords-display">
+                      <el-icon><Collection /></el-icon>
+                      <span class="keywords-label">记忆关键词：</span>
+                      <span class="keywords-content">{{ paragraphKeywords[index] }}</span>
+                    </div>
+                    <div class="handwrite-actions">
+                      <el-button
+                        style="display:none"
+                        class="ai-keywords-btn"
+                        :loading="keywordsLoading[index]"
+                        @click="extractParagraphKeywords(index)"
+                      >
+                        <el-icon><Cpu /></el-icon>
+                        AI关键词
+                      </el-button>
+                      <el-button
+                        class="clear-handwrite-btn"
+                        size="small"
+                        text
+                        @click="handwriteInputs[index] = ''"
+                      >
+                        <el-icon><Delete /></el-icon>
+                        清空
+                      </el-button>
+                    </div>
                   </div>
                 </div>
-                    <!-- 高项论文手写输入区 -->
-                <div v-if="showHandwrite && directoryName === '高项论文'" class="handwrite-area">
-                  <el-input
-                    v-model="handwriteInputs[index]"
-                    type="textarea"
-                    :rows="6"
-                    :placeholder="`第 ${index + 1} 段手写内容...`"
-                    class="handwrite-input"
-                  />
-                  <!-- 关键词显示区域 -->
-                  <div v-if="paragraphKeywords[index]" style="display:none" class="keywords-display">
-                    <el-icon><Collection /></el-icon>
-                    <span class="keywords-label">记忆关键词：</span>
-                    <span class="keywords-content">{{ paragraphKeywords[index] }}</span>
-                  </div>
-                  <div class="handwrite-actions">
-                    <el-button
-                      style="display:none"
-                      class="ai-keywords-btn"
-                      :loading="keywordsLoading[index]"
-                      @click="extractParagraphKeywords(index)"
-                    >
-                      <el-icon><Cpu /></el-icon>
-                      AI关键词
-                    </el-button>
-                    <el-button
-                      class="clear-handwrite-btn"
-                      size="small"
-                      text
-                      @click="handwriteInputs[index] = ''"
-                    >
-                      <el-icon><Delete /></el-icon>
-                      清空
-                    </el-button>
-                  </div>
-                </div>
-              </div>
+              </template>
             </div>
 
             <!-- 判断题选项 -->
@@ -371,6 +402,13 @@
                 @click="openAddArticleDialog"
               >
                 <el-icon><Plus /></el-icon> 新增论文
+              </el-button>
+              <el-button
+                class="mode-toggle-btn"
+                @click="isFullArticleMode = !isFullArticleMode"
+              >
+                <el-icon><Document /></el-icon>
+                {{ isFullArticleMode ? '段落模式' : '整篇模式' }}
               </el-button>
               <el-button
                 class="handwrite-btn"
@@ -768,7 +806,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { marked } from 'marked';
 import type { Question, Article, QuestionType, OptionWithState } from '../types';
-import { Cpu, Collection, Delete, ArrowRight, Loading, Warning, CircleCheck, CircleClose, Close, Promotion, EditPen, DocumentCopy, Check, Filter, Search } from '@element-plus/icons-vue';
+import { Cpu, Collection, Delete, ArrowRight, Loading, Warning, CircleCheck, CircleClose, Close, Promotion, EditPen, DocumentCopy, Check, Filter, Search, Document } from '@element-plus/icons-vue';
 
 const API_ORDER_KEY = 'apiProviderOrder';
 
@@ -816,6 +854,9 @@ const filteredQuestions = ref<Question[]>([]); // 筛选后的题目数组（应
 
 // 文章题段落隐藏状态
 const hiddenParagraphs = ref<Set<number>>(new Set());
+
+// 高项论文整篇/段落模式切换
+const isFullArticleMode = ref(false);
 
 // AI 讲解相关状态
 const aiDrawerVisible = ref(false);
