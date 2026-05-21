@@ -3269,6 +3269,48 @@ background-color: #f78989;
   gap: 16px;
 }
 
+/* 整篇模式：左右布局 */
+.full-article-mode {
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  width: 100%;
+}
+
+.full-article-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.full-article-content {
+  padding: 16px;
+  border: 1.5px solid #e8e4df;
+  border-radius: 14px;
+  background: #fff;
+  font-size: 22px;
+  line-height: 1.8;
+  color: #1a1a1a;
+}
+
+.full-article-right {
+  width: 400px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.full-handwrite-input {
+  flex: 1;
+}
+
+.full-handwrite-input :deep(.el-textarea__inner) {
+  height: 100%;
+  min-height: 400px;
+  font-size: 18px;
+  line-height: 1.6;
+}
+
 .paragraph-block {
   display: flex;
   flex-direction: column;
