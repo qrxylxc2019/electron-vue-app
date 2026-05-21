@@ -1,4 +1,4 @@
-﻿﻿<template>
+﻿﻿﻿﻿<template>
   <div class="directory-list">
     <div class="header">
       <h1>选择科目</h1>
@@ -29,7 +29,7 @@
           <el-icon size="56" color="#c4a882"><Folder /></el-icon>
           <span class="directory-name">{{ dir.name }}</span>
           <span class="directory-count">
-            {{ dir.name === '高项论文' ? getArticleCount(dir.id) : dir.name === '高项案例' ? getCaseCount(dir.id) : getQuestionCount(dir.id) }} 题
+            {{ dir.name === '高项论文' ? getArticleCount(dir.id) : (dir.name === '高项案例' || dir.name === '案例押题') ? getCaseCount(dir.id) : getQuestionCount(dir.id) }} 题
           </span>
         </div>
       </div>
@@ -551,7 +551,7 @@ const loadDirectories = async () => {
       if (dir.name === '高项论文') {
         const articles = await window.electronAPI.getArticles(dir.id);
         articleCounts.value[dir.id] = articles.length;
-      } else if (dir.name === '高项案例') {
+      } else if (dir.name === '高项案例' || dir.name === '案例押题') {
         const materials = await window.electronAPI.getCaseMaterials(dir.id);
         caseCounts.value[dir.id] = materials.length;
       } else {
@@ -581,10 +581,10 @@ const getCaseCount = (dirId: number) => {
 const enterQuiz = (directoryId: number) => {
   const dir = directories.value.find(d => d.id === directoryId);
   const isArticleDir = dir?.name === '高项论文';
-  const isCaseDir = dir?.name === '高项案例';
-  const count = isArticleDir ? getArticleCount(directoryId) : getQuestionCount(directoryId);
+  const isCaseDir = dir?.name === '高项案例' || dir?.name === '案例押题';
+  const count = isArticleDir ? getArticleCount(directoryId) : isCaseDir ? getCaseCount(directoryId) : getQuestionCount(directoryId);
 
-  if (count === 0 && !isCaseDir) {
+  if (count === 0) {
     ElMessage.warning('该科目暂无题目');
     return;
   }
