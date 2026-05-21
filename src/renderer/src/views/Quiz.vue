@@ -3275,11 +3275,16 @@ background-color: #f78989;
   flex-direction: row;
   gap: 20px;
   width: 100%;
+  height: 100%;
+  min-height: 0;
 }
 
 .full-article-left {
   flex: 1;
   min-width: 0;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .full-article-content {
@@ -3290,6 +3295,9 @@ background-color: #f78989;
   font-size: 22px;
   line-height: 1.8;
   color: #1a1a1a;
+  height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .full-article-right {
@@ -3298,15 +3306,18 @@ background-color: #f78989;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  height: 100%;
+  min-height: 0;
 }
 
 .full-handwrite-input {
   flex: 1;
+  min-height: 0;
 }
 
 .full-handwrite-input :deep(.el-textarea__inner) {
   height: 100%;
-  min-height: 400px;
+  min-height: unset;
   font-size: 18px;
   line-height: 1.6;
 }
