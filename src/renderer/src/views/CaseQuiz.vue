@@ -221,20 +221,19 @@
               <el-icon><Delete /></el-icon> 删除案例
             </el-button>
             <el-button
-              v-if="!isFiltering"
               class="filter-btn"
               @click="openFilterDialog"
             >
               <el-icon><Filter /></el-icon>
-              {{ '筛选' }}
+              {{ '所有题目' }}
             </el-button>
             <el-button
-              v-else
+              v-if="isFiltering"
               class="exit-filter-btn"
               @click="exitFilter"
             >
               <el-icon><Close /></el-icon>
-              {{ '退出筛选' }}
+              {{ '退出模式' }}
             </el-button>
             <el-button
               class="handwrite-btn"
@@ -396,34 +395,19 @@
     </div>
   </div>
 
-  <!-- 筛选案例弹窗 -->
+  <!-- 所有题目弹窗 -->
   <el-dialog
     v-model="filterDialogVisible"
-    title="筛选案例"
+    title="所有题目"
     width="700px"
     :close-on-click-modal="true"
     destroy-on-close
     class="filter-dialog"
   >
-    <div class="filter-form">
-      <el-input
-        v-model="filterKeyword"
-        placeholder="输入关键词搜索案例标题..."
-        clearable
-        @keydown.enter="searchFilterQuestions"
-      >
-        <template #append>
-          <el-button @click="searchFilterQuestions">
-            <el-icon><Search /></el-icon>
-            查询
-          </el-button>
-        </template>
-      </el-input>
-    </div>
     <div class="filter-table-wrapper">
       <el-table
-        v-if="filterMaterialList.length > 0"
-        :data="filterMaterialList"
+        v-if="allMaterialList.length > 0"
+        :data="allMaterialList"
         height="400"
         @selection-change="handleFilterSelectionChange"
         ref="filterTableRef"
@@ -436,12 +420,11 @@
         </el-table-column>
         <el-table-column label="小题数" width="90">
           <template #default="{ row }">
-            <el-tag size="small">{{ (caseQuestionsMap.value[row.id] || []).length }} 道</el-tag>
+            <el-tag size="small">{{ (caseQuestionsMap[row.id] || []).length }} 道</el-tag>
           </template>
         </el-table-column>
       </el-table>
-      <el-empty v-else-if="hasSearched" description="未找到匹配的案例" />
-      <el-empty v-else description="请输入关键词查询" />
+      <el-empty v-else description="暂无案例题目" />
     </div>
     <template #footer>
       <div class="filter-footer">
@@ -455,7 +438,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, shallowRef } from 'vue';
+import { ref, computed, onMounted, watch, shallowRef, nextTick } from 'vue';
 import type { CaseMaterial, CaseQuestion } from '../types';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
@@ -518,10 +501,8 @@ const currentAIQuestion = ref<CaseQuestion | null>(null);
 // 筛选状态
 const isFiltering = ref(false);
 const filterDialogVisible = ref(false);
-const filterKeyword = ref('');
-const filterMaterialList = ref<CaseMaterial[]>([]);
+const allMaterialList = ref<CaseMaterial[]>([]); // 所有题目列表（弹窗中展示）
 const selectedFilterMaterials = ref<CaseMaterial[]>([]);
-const hasSearched = ref(false);
 const filterTableRef = ref<any>(null);
 const originalMaterials = ref<CaseMaterial[]>([]); // 保存原始材料顺序
 const originalCaseQuestionsMap = ref<Record<number, CaseQuestion[]>>({}); // 保存原始小题
@@ -855,38 +836,25 @@ const openAddMaterialDialog = () => {
 
 // 筛选相关方法
 const openFilterDialog = () => {
-  filterDialogVisible.value = true;
-  filterKeyword.value = '';
-  filterMaterialList.value = [];
+  // 如果还没保存过原始数据，先保存
+  if (!isFiltering.value && originalMaterials.value.length === 0) {
+    originalMaterials.value = [...materials.value];
+    originalCaseQuestionsMap.value = { ...caseQuestionsMap.value };
+  }
+  // 弹窗中展示所有原始题目
+  allMaterialList.value = originalMaterials.value.length > 0 ? [...originalMaterials.value] : [...materials.value];
   selectedFilterMaterials.value = [];
-  hasSearched.value = false;
-};
+  filterDialogVisible.value = true;
 
-const searchFilterQuestions = async () => {
-  const keyword = filterKeyword.value.trim();
-  if (!keyword) {
-    ElMessage.warning('请输入关键词');
-    return;
-  }
-  
-  try {
-    const dirId = parseInt(props.directoryId);
-    const results = await window.electronAPI.searchCaseMaterials(dirId, keyword);
-    filterMaterialList.value = results;
-    hasSearched.value = true;
-    
-    // 默认全选
-    nextTick(() => {
-      if (filterTableRef.value) {
-        filterMaterialList.value.forEach((row: CaseMaterial) => {
-          filterTableRef.value.toggleRowSelection(row, true);
-        });
-      }
-    });
-  } catch (error) {
-    ElMessage.error('查询失败');
-    console.error(error);
-  }
+  // 默认全选当前正在展示的题目
+  nextTick(() => {
+    if (filterTableRef.value) {
+      const currentIds = new Set(materials.value.map(m => m.id));
+      allMaterialList.value.forEach((row: CaseMaterial) => {
+        filterTableRef.value.toggleRowSelection(row, currentIds.has(row.id));
+      });
+    }
+  });
 };
 
 const handleFilterSelectionChange = (selection: CaseMaterial[]) => {
@@ -898,25 +866,20 @@ const confirmFilter = async () => {
     ElMessage.warning('请至少选择一个案例');
     return;
   }
-  
-  // 保存原始数据（如果还没保存过）
-  if (!isFiltering.value) {
-    originalMaterials.value = [...materials.value];
-    originalCaseQuestionsMap.value = { ...caseQuestionsMap.value };
-  }
-  
+
   // 获取选中的材料ID
   const selectedIds = new Set(selectedFilterMaterials.value.map(m => m.id));
   filteredMaterialIds.value = selectedIds;
-  
-  // 只保留选中的材料
-  const filteredMats = materials.value.filter(m => selectedIds.has(m.id));
-  
+
+  // 从原始数据中筛选
+  const baseMaterials = originalMaterials.value.length > 0 ? originalMaterials.value : materials.value;
+  const filteredMats = baseMaterials.filter(m => selectedIds.has(m.id));
+
   materials.value = filteredMats;
   isFiltering.value = true;
   filterDialogVisible.value = false;
   currentMaterialIndex.value = 0;
-  
+
   // 默认显示答案
   const firstMatQuestions = caseQuestionsMap.value[filteredMats[0]?.id] || [];
   const defaultShowAnswers: Record<number, boolean> = {};
@@ -928,8 +891,8 @@ const confirmFilter = async () => {
   handwriteInputs.value = {};
   editingQuestionTitleId.value = null;
   editingQuestionAnswerId.value = null;
-  
-  ElMessage.success(`已筛选 ${selectedFilterMaterials.value.length} 个案例`);
+
+  ElMessage.success(`已选择 ${selectedFilterMaterials.value.length} 个案例`);
 };
 
 const exitFilter = () => {
@@ -942,7 +905,7 @@ const exitFilter = () => {
   originalMaterials.value = [];
   originalCaseQuestionsMap.value = {};
   currentMaterialIndex.value = 0;
-  
+
   const firstMatQuestions = caseQuestionsMap.value[materials.value[0]?.id] || [];
   const defaultShowAnswers: Record<number, boolean> = {};
   firstMatQuestions.forEach((_: any, idx: number) => {
@@ -953,8 +916,8 @@ const exitFilter = () => {
   handwriteInputs.value = {};
   editingQuestionTitleId.value = null;
   editingQuestionAnswerId.value = null;
-  
-  ElMessage.success('已退出筛选，恢复原始案例');
+
+  ElMessage.success('已退出选择模式，恢复所有案例');
 };
 
 // 新增题目弹窗粘贴图片处理
