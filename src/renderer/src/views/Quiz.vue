@@ -3299,6 +3299,26 @@ background-color: #f78989;
   min-width: 0;
   height: 100%;
   overflow-y: auto;
+  padding-right: 8px;
+}
+
+/* 滚动条样式优化 */
+.full-article-left::-webkit-scrollbar {
+  width: 8px;
+}
+
+.full-article-left::-webkit-scrollbar-track {
+  background: #f5f3f0;
+  border-radius: 4px;
+}
+
+.full-article-left::-webkit-scrollbar-thumb {
+  background: #c4a882;
+  border-radius: 4px;
+}
+
+.full-article-left::-webkit-scrollbar-thumb:hover {
+  background: #a08060;
 }
 
 .full-article-content {
@@ -3312,7 +3332,7 @@ background-color: #f78989;
 }
 
 .full-article-right {
-  width: 400px;
+  flex:1;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -3526,6 +3546,26 @@ background-color: #f78989;
   min-width: 0;
   height: 100%;
   overflow-y: auto;
+  padding-right: 8px;
+}
+
+/* Drawer 内滚动条样式 */
+.full-article-drawer-content .full-article-left::-webkit-scrollbar {
+  width: 8px;
+}
+
+.full-article-drawer-content .full-article-left::-webkit-scrollbar-track {
+  background: #f5f3f0;
+  border-radius: 4px;
+}
+
+.full-article-drawer-content .full-article-left::-webkit-scrollbar-thumb {
+  background: #c4a882;
+  border-radius: 4px;
+}
+
+.full-article-drawer-content .full-article-left::-webkit-scrollbar-thumb:hover {
+  background: #a08060;
 }
 
 .full-article-drawer-content .full-article-content {
