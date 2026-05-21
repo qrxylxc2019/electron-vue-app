@@ -2813,6 +2813,7 @@ onMounted(() => {
   border: 1px solid #e8e4df;
   background: #fff;
   box-shadow: none;
+  height:100%;
 }
 
 :deep(.el-card__header) {
@@ -3283,9 +3284,8 @@ background-color: #f78989;
 .full-article-left {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  height: 100%;
+  overflow-y: auto;
 }
 
 .full-article-content {
@@ -3296,9 +3296,6 @@ background-color: #f78989;
   font-size: 22px;
   line-height: 1.8;
   color: #1a1a1a;
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0;
 }
 
 .full-article-right {
