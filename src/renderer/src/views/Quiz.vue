@@ -3275,15 +3275,16 @@ background-color: #f78989;
   flex-direction: row;
   gap: 20px;
   width: 100%;
-  height: 100%;
+  flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
 .full-article-left {
   flex: 1;
   min-width: 0;
-  height: 100%;
-  min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
@@ -3295,9 +3296,9 @@ background-color: #f78989;
   font-size: 22px;
   line-height: 1.8;
   color: #1a1a1a;
-  height: 100%;
+  flex: 1;
   overflow-y: auto;
-  box-sizing: border-box;
+  min-height: 0;
 }
 
 .full-article-right {
@@ -3306,13 +3307,14 @@ background-color: #f78989;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  height: 100%;
-  min-height: 0;
+  overflow: hidden;
 }
 
 .full-handwrite-input {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .full-handwrite-input :deep(.el-textarea__inner) {
