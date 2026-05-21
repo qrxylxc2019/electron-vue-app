@@ -197,41 +197,11 @@
 
             <!-- 文章题：按段落显示，带隐藏/显示按钮 -->
             <div v-else-if="currentQuestion.question_type === 'write'" class="write-content">
-              <!-- 整篇模式：左侧整篇内容，右侧手写输入 -->
-              <template v-if="directoryName === '高项论文' && isFullArticleMode">
-                <div class="full-article-mode">
-                  <div class="full-article-left">
-                    <div class="full-article-content markdown-body" v-html="renderMarkdown(currentQuestion.option_a || currentQuestion.title || '')"></div>
-                  </div>
-                  <div class="full-article-right" v-if="showHandwrite">
-                    <el-input
-                      v-model="handwriteInputs['full']"
-                      type="textarea"
-                      :rows="20"
-                      placeholder="整篇手写内容..."
-                      class="handwrite-input full-handwrite-input"
-                    />
-                    <div class="handwrite-actions">
-                      <el-button
-                        class="clear-handwrite-btn"
-                        size="small"
-                        text
-                        @click="handwriteInputs['full'] = ''"
-                      >
-                        <el-icon><Delete /></el-icon>
-                        清空
-                      </el-button>
-                    </div>
-                  </div>
-                </div>
-              </template>
-              <!-- 段落模式 -->
-              <template v-else>
-                <div
-                  v-for="(paragraph, index) in writeParagraphs"
-                  :key="index"
-                  class="paragraph-block"
-                >
+              <div
+                v-for="(paragraph, index) in writeParagraphs"
+                :key="index"
+                class="paragraph-block"
+              >
                   <div class="paragraph-row">
                     <div
                       class="paragraph-item"
@@ -317,7 +287,6 @@
                     </div>
                   </div>
                 </div>
-              </template>
             </div>
 
             <!-- 判断题选项 -->
@@ -405,10 +374,10 @@
               </el-button>
               <el-button
                 class="mode-toggle-btn"
-                @click="isFullArticleMode = !isFullArticleMode"
+                @click="fullArticleDrawerVisible = true"
               >
                 <el-icon><Document /></el-icon>
-                {{ isFullArticleMode ? '段落模式' : '整篇模式' }}
+                整篇模式
               </el-button>
               <el-button
                 class="handwrite-btn"
@@ -606,6 +575,49 @@
                 @click="sendAIChatMessage"
               >
                 <el-icon><Promotion /></el-icon>
+              </el-button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 整篇模式抽屉 -->
+    <div
+      class="full-article-drawer-overlay"
+      :class="{ 'show': fullArticleDrawerVisible }"
+      @click="fullArticleDrawerVisible = false"
+    >
+      <div
+        class="full-article-drawer"
+        :class="{ 'show': fullArticleDrawerVisible }"
+        @click.stop
+      >
+        <div class="drawer-header">
+          <h2>整篇模式</h2>
+          <el-icon class="drawer-close" @click="fullArticleDrawerVisible = false"><Close /></el-icon>
+        </div>
+        <div class="drawer-content full-article-drawer-content">
+          <div class="full-article-left">
+            <div class="full-article-content markdown-body" v-html="renderMarkdown(currentQuestion?.option_a || currentQuestion?.title || '')"></div>
+          </div>
+          <div class="full-article-right" v-if="showHandwrite">
+            <el-input
+              v-model="handwriteInputs['full']"
+              type="textarea"
+              :rows="20"
+              placeholder="整篇手写内容..."
+              class="handwrite-input full-handwrite-input"
+            />
+            <div class="handwrite-actions">
+              <el-button
+                class="clear-handwrite-btn"
+                size="small"
+                text
+                @click="handwriteInputs['full'] = ''"
+              >
+                <el-icon><Delete /></el-icon>
+                清空
               </el-button>
             </div>
           </div>
@@ -857,6 +869,7 @@ const hiddenParagraphs = ref<Set<number>>(new Set());
 
 // 高项论文整篇/段落模式切换
 const isFullArticleMode = ref(false);
+const fullArticleDrawerVisible = ref(false);
 
 // AI 讲解相关状态
 const aiDrawerVisible = ref(false);
@@ -3460,6 +3473,89 @@ background-color: #f78989;
   display: flex;
   flex-direction: column;
   box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+}
+
+/* 整篇模式抽屉 */
+.full-article-drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0);
+  z-index: 1000;
+  pointer-events: none;
+  transition: background 0.3s ease;
+}
+
+.full-article-drawer-overlay.show {
+  background: rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
+}
+
+.full-article-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 90%;
+  height: 100%;
+  background: #fff;
+  z-index: 1001;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.full-article-drawer.show {
+  transform: translateX(0);
+}
+
+.full-article-drawer-content {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  padding: 20px;
+  overflow: hidden;
+}
+
+.full-article-drawer-content .full-article-left {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.full-article-drawer-content .full-article-content {
+  padding: 16px;
+  border: 1.5px solid #e8e4df;
+  border-radius: 14px;
+  background: #fff;
+  font-size: 22px;
+  line-height: 1.8;
+  color: #1a1a1a;
+}
+
+.full-article-drawer-content .full-article-right {
+  width: 400px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.full-article-drawer-content .full-handwrite-input {
+  flex: 1;
+  min-height: 0;
+}
+
+.full-article-drawer-content .full-handwrite-input :deep(.el-textarea__inner) {
+  height: 100%;
+  min-height: unset;
+  font-size: 18px;
+  line-height: 1.6;
 }
 
 .ai-drawer.show {
