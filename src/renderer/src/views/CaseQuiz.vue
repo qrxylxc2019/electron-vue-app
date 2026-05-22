@@ -146,6 +146,13 @@
                   {{ showAnswers[idx] ? '隐藏答案' : '显示答案' }}
                 </el-button>
                 <el-button
+                  class="delete-question-btn"
+                  @click="confirmDeleteQuestion(q)"
+                >
+                  <el-icon><Delete /></el-icon>
+                  删除
+                </el-button>
+                <el-button
                   class="clear-handwrite-btn"
                   size="small"
                   text
@@ -441,7 +448,7 @@
 import { ref, computed, onMounted, watch, shallowRef, nextTick } from 'vue';
 import type { CaseMaterial, CaseQuestion } from '../types';
 import { useRouter, useRoute } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { marked } from 'marked';
 import { EditPen, DocumentCopy, Check, Cpu, Close, Loading, Promotion, View, Hide, Delete, ArrowRight, Edit, CircleCheck, Plus, Filter, Search } from '@element-plus/icons-vue';
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue';
@@ -824,6 +831,47 @@ const deleteCurrentMaterial = async () => {
   } catch (error) {
     ElMessage.error('删除失败');
     console.error(error);
+  }
+};
+
+// 删除小题
+const confirmDeleteQuestion = async (q: CaseQuestion) => {
+  try {
+    await ElMessageBox.confirm(
+      '确定要删除这道小题吗？删除后不可恢复！',
+      '删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    );
+    const success = await window.electronAPI.deleteCaseQuestion(q.id);
+    if (success) {
+      ElMessage.success('小题已删除');
+      // 从当前材料的小题列表中移除
+      const matId = q.material_id;
+      if (caseQuestionsMap.value[matId]) {
+        caseQuestionsMap.value[matId] = caseQuestionsMap.value[matId].filter(
+          (item: CaseQuestion) => item.id !== q.id
+        );
+      }
+      // 重置答案显示状态
+      const questions = caseQuestionsMap.value[currentMaterial.value?.id] || [];
+      const defaultShowAnswers: Record<number, boolean> = {};
+      questions.forEach((_: any, idx: number) => {
+        defaultShowAnswers[idx] = true;
+      });
+      showAnswers.value = defaultShowAnswers;
+      handwriteInputs.value = {};
+    } else {
+      ElMessage.error('删除失败');
+    }
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败');
+      console.error(error);
+    }
   }
 };
 
@@ -1540,6 +1588,23 @@ const getProviderOrder = (): string[] => {
 }
 
 .delete-material-btn:hover {
+  background-color: #f78989;
+}
+
+/* 小题删除按钮 */
+.delete-question-btn {
+  background-color: #F56C6C;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 8px 16px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 40px;
+}
+
+.delete-question-btn:hover {
   background-color: #f78989;
 }
 

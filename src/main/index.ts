@@ -797,6 +797,23 @@ function setupIpc() {
     }
   });
 
+  // 删除案例小题
+  ipcMain.handle('db:deleteCaseQuestion', (_event, id: number) => {
+    if (!db) return false;
+    try {
+      // 先删除关联的子小题
+      const deleteChildren = db.prepare('DELETE FROM case_questions WHERE pid = ?');
+      deleteChildren.run(id);
+      // 再删除小题本身
+      const stmt = db.prepare('DELETE FROM case_questions WHERE id = ?');
+      const result = stmt.run(id);
+      return result.changes > 0;
+    } catch (err) {
+      console.error('deleteCaseQuestion error:', err);
+      return false;
+    }
+  });
+
   // 更新案例材料内容
   ipcMain.handle('db:updateCaseMaterial', (_event, id: number, content: string) => {
     if (!db) return false;
