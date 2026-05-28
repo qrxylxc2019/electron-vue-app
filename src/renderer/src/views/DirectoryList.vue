@@ -582,9 +582,11 @@ const enterQuiz = (directoryId: number) => {
   const dir = directories.value.find(d => d.id === directoryId);
   const isArticleDir = dir?.name === '高项论文';
   const isCaseDir = dir?.name === '高项案例' || dir?.name === '案例押题';
+  const isAIDir = dir?.name === 'ai题目';
   const count = isArticleDir ? getArticleCount(directoryId) : isCaseDir ? getCaseCount(directoryId) : getQuestionCount(directoryId);
 
-  if (count === 0) {
+  // ai题目允许题目数为0，仍然可以进入页面
+  if (count === 0 && !isAIDir) {
     ElMessage.warning('该科目暂无题目');
     return;
   }
@@ -593,6 +595,20 @@ const enterQuiz = (directoryId: number) => {
   if (isCaseDir) {
     router.push({
       name: 'CaseQuiz',
+      params: { directoryId: directoryId.toString() },
+      query: {
+        mode: quizSettings.value.mode,
+        count: quizSettings.value.count.toString(),
+        repeat: quizSettings.value.repeat.toString()
+      }
+    });
+    return;
+  }
+
+  // ai题目进入AI文章题页面
+  if (isAIDir) {
+    router.push({
+      name: 'AIQuiz',
       params: { directoryId: directoryId.toString() },
       query: {
         mode: quizSettings.value.mode,
