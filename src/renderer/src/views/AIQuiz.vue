@@ -995,15 +995,24 @@ onMounted(() => { loadData(); });
   flex-direction: column;
   gap: 8px;
   flex-shrink: 0;
+  align-self: center;
   padding-top: 4px;
 }
 
-.content-actions .edit-btn,
-.content-actions .save-btn,
 .content-actions .toggle-btn {
-  padding: 6px 10px;
-  font-size: 13px;
-  min-width: 52px;
+  min-height: 40px;
+  padding: 8px 16px;
+  font-size: 14px;
+  border-radius: 8px;
+  margin-left: 0;
+}
+
+.content-actions .edit-btn,
+.content-actions .save-btn {
+  min-height: 40px;
+  padding: 8px 16px;
+  font-size: 14px;
+  border-radius: 8px;
 }
 
 /* 手写输入区域 */
