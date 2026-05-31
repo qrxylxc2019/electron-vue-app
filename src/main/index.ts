@@ -382,6 +382,25 @@ function seedDefaultData() {
   } catch (err) {
     console.error('Seed default data error:', err);
   }
+
+  // 初始化考研政治科目
+  try {
+    const checkKaoyan = db.prepare("SELECT id FROM directories WHERE name = '考研政治'");
+    const existingKaoyan = checkKaoyan.get();
+
+    let kaoyanDirId: number;
+    if (!existingKaoyan) {
+      const insertKaoyan = db.prepare("INSERT INTO directories (name, sort_order) VALUES (?, ?)");
+      const kaoyanResult = insertKaoyan.run('考研政治', 1);
+      kaoyanDirId = Number(kaoyanResult.lastInsertRowid);
+      console.log('Created directory: 考研政治, id:', kaoyanDirId);
+    } else {
+      kaoyanDirId = (existingKaoyan as any).id;
+      console.log('Directory 考研政治 already exists, id:', kaoyanDirId);
+    }
+  } catch (err) {
+    console.error('Seed 考研政治 data error:', err);
+  }
 }
 
 // IPC ����

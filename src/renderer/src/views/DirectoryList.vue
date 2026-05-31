@@ -29,7 +29,7 @@
           <el-icon size="56" color="#c4a882"><Folder /></el-icon>
           <span class="directory-name">{{ dir.name }}</span>
           <span class="directory-count">
-            {{ dir.name === '高项论文' ? getArticleCount(dir.id) : (dir.name === '高项案例' || dir.name === '案例押题') ? getCaseCount(dir.id) : getQuestionCount(dir.id) }} 题
+            {{ dir.name === '高项论文' || dir.name === 'ai题目' ? getArticleCount(dir.id) : (dir.name === '高项案例' || dir.name === '案例押题') ? getCaseCount(dir.id) : getQuestionCount(dir.id) }} 题
           </span>
         </div>
       </div>
@@ -548,7 +548,7 @@ const loadDirectories = async () => {
 
     // 获取每个目录的题目数量
     for (const dir of dirs) {
-      if (dir.name === '高项论文') {
+      if (dir.name === '高项论文' || dir.name === 'ai题目') {
         const articles = await window.electronAPI.getArticles(dir.id);
         articleCounts.value[dir.id] = articles.length;
       } else if (dir.name === '高项案例' || dir.name === '案例押题') {
