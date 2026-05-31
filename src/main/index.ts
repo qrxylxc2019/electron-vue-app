@@ -512,6 +512,19 @@ function setupIpc() {
     }
   });
 
+  // 删除目录
+  ipcMain.handle('db:deleteDirectory', (_event, id: number) => {
+    if (!db) return false;
+    try {
+      const stmt = db.prepare('DELETE FROM directories WHERE id = ?');
+      const result = stmt.run(id);
+      return result.changes > 0;
+    } catch (err) {
+      console.error('deleteDirectory error:', err);
+      return false;
+    }
+  });
+
   // ������Ŀ��������ԣ�
   ipcMain.handle('db:addQuestion', (_event, question: any) => {
     if (!db) return null;

@@ -19,6 +19,13 @@
         <el-button class="add-dir-btn" @click="showAddDialog = true">
           <el-icon><Plus /></el-icon>新增科目
         </el-button>
+        <el-button
+          :class="isSelecting ? 'delete-btn' : 'select-btn'"
+          @click="handleSelectClick"
+        >
+          <el-icon><Delete v-if="isSelecting" /><Check v-else /></el-icon>
+          {{ isSelecting ? '删除' : '选择' }}
+        </el-button>
       </div>
     </div>
     <div class="directory-grid">
@@ -26,8 +33,15 @@
         v-for="dir in directories"
         :key="dir.id"
         class="directory-card"
-        @click="enterQuiz(dir.id)"
+        :class="{ 'selected': selectedIds.includes(dir.id), 'selecting': isSelecting }"
+        @click="isSelecting ? toggleSelect(dir.id) : enterQuiz(dir.id)"
       >
+        <div v-if="isSelecting" class="select-checkbox">
+          <el-icon :size="24" :color="selectedIds.includes(dir.id) ? '#c4a882' : '#ccc'">
+            <CircleCheck v-if="selectedIds.includes(dir.id)" />
+            <CircleCheckFilled v-else />
+          </el-icon>
+        </div>
         <div class="card-content">
           <el-icon size="56" color="#c4a882"><Folder /></el-icon>
           <span class="directory-name">{{ dir.name }}</span>
@@ -231,7 +245,7 @@ import { ref, onMounted, nextTick, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import type { Directory, Article } from '../types';
-import { Rank, ChatDotRound, Loading, Refresh, Plus } from '@element-plus/icons-vue';
+import { Rank, ChatDotRound, Loading, Refresh, Plus, Delete, Check, CircleCheck, CircleCheckFilled } from '@element-plus/icons-vue';
 
 const router = useRouter();
 const directories = ref<Directory[]>([]);
@@ -239,6 +253,8 @@ const questionCounts = ref<Record<number, number>>({});
 const articleCounts = ref<Record<number, number>>({});
 const caseCounts = ref<Record<number, number>>({});
 const showAddDialog = ref(false);
+const isSelecting = ref(false);
+const selectedIds = ref<number[]>([]);
 const newDirectory = ref({ name: '' });
 const isFullscreen = ref(false);
 const showSettingsDialog = ref(false);
@@ -555,6 +571,112 @@ const refreshData = async () => {
   }
 };
 
+// 处理选择/删除按钮点击
+const handleSelectClick = () => {
+  console.log('handleSelectClick called, isSelecting:', isSelecting.value);
+  if (isSelecting.value) {
+    console.log('Calling batchDelete, selectedIds:', selectedIds.value);
+    batchDelete();
+  } else {
+    console.log('Calling startSelect');
+    startSelect();
+  }
+};
+
+// 开始选择
+const startSelect = () => {
+  console.log('startSelect called');
+  isSelecting.value = true;
+  selectedIds.value = [];
+  console.log('isSelecting set to:', isSelecting.value);
+};
+
+// 取消选择
+const cancelSelect = () => {
+  console.log('cancelSelect called');
+  isSelecting.value = false;
+  selectedIds.value = [];
+};
+
+// 切换选择状态
+const toggleSelect = (id: number) => {
+  console.log('toggleSelect called, id:', id, 'current selectedIds:', selectedIds.value);
+  const index = selectedIds.value.indexOf(id);
+  if (index > -1) {
+    selectedIds.value = selectedIds.value.filter(item => item !== id);
+  } else {
+    selectedIds.value = [...selectedIds.value, id];
+  }
+  console.log('after toggle, selectedIds:', selectedIds.value);
+};
+
+// 批量删除
+const batchDelete = async () => {
+  console.log('batchDelete called, selectedIds:', selectedIds.value);
+  if (selectedIds.value.length === 0) {
+    ElMessage.warning('请先选择要删除的科目');
+    return;
+  }
+
+  let confirmed = false;
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedIds.value.length} 个科目吗？此操作不可恢复。`,
+      '删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    );
+    confirmed = true;
+    console.log('User confirmed delete');
+  } catch (err: any) {
+    console.log('ElMessageBox result:', err);
+    if (err === 'cancel' || err === 'close') {
+      console.log('User cancelled delete');
+      return;
+    }
+    // 如果点击了确定但抛出了其他错误，继续执行删除
+    console.log('Unexpected error in confirm, but continuing...');
+    confirmed = true;
+  }
+
+  if (!confirmed) {
+    return;
+  }
+
+  let successCount = 0;
+  let failCount = 0;
+
+  for (const id of [...selectedIds.value]) {
+    try {
+      console.log('Deleting directory id:', id);
+      const success = await window.electronAPI.deleteDirectory(id);
+      console.log('Delete result for id', id, ':', success);
+      if (success) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+    } catch (error) {
+      failCount++;
+      console.error(`删除科目 ${id} 失败:`, error);
+    }
+  }
+
+  if (successCount > 0) {
+    ElMessage.success(`成功删除 ${successCount} 个科目`);
+  }
+  if (failCount > 0) {
+    ElMessage.error(`${failCount} 个科目删除失败`);
+  }
+
+  selectedIds.value = [];
+  isSelecting.value = false;
+  await loadDirectories();
+};
+
 const loadDirectories = async () => {
   try {
     const dirs = await window.electronAPI.getDirectories();
@@ -835,6 +957,55 @@ h1 {
   font-size: 18px;
   transition: all 0.2s ease;
   min-height: 56px;
+}
+
+.header-actions .select-btn {
+  background-color: transparent;
+  color: #1a1a1a;
+  border: 1.5px solid #e8e4df;
+  border-radius: 12px;
+  padding: 22px 32px;
+  font-size: 18px;
+  transition: all 0.2s ease;
+  min-height: 56px;
+}
+
+.header-actions .select-btn:hover {
+  border-color: #c4a882;
+  background-color: #fdfbf8;
+}
+
+.header-actions .delete-btn {
+  background-color: #fef0f0;
+  color: #f56c6c;
+  border: 1.5px solid #f56c6c;
+  border-radius: 12px;
+  padding: 22px 32px;
+  font-size: 18px;
+  transition: all 0.2s ease;
+  min-height: 56px;
+}
+
+.header-actions .delete-btn:hover {
+  background-color: #f56c6c;
+  color: #fff;
+}
+
+/* 选择模式下的卡片样式 */
+.directory-card.selecting {
+  position: relative;
+}
+
+.directory-card.selected {
+  border-color: #c4a882;
+  background-color: #fdfbf8;
+}
+
+.select-checkbox {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
 }
 
 .ds-test-btn {

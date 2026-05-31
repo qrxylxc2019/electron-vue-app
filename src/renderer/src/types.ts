@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿// 类型声明
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿// 类型声明
 export interface Directory {
   id: number;
   name: string;
@@ -93,6 +93,7 @@ declare global {
     electronAPI: {
       getDirectories: () => Promise<Directory[]>;
       addDirectory: (name: string, parentId?: number | null) => Promise<Directory | null>;
+      deleteDirectory: (id: number) => Promise<boolean>;
       getQuestions: (directoryId: number) => Promise<Question[]>;
       searchQuestions: (directoryId: number, keyword: string) => Promise<Question[]>;
       getArticles: (directoryId: number) => Promise<Article[]>;

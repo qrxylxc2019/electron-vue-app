@@ -4,6 +4,7 @@ const electronAPI = {
   // 目录相关
   getDirectories: () => ipcRenderer.invoke('db:getDirectories'),
   addDirectory: (name: string, parentId?: number | null) => ipcRenderer.invoke('db:addDirectory', name, parentId),
+  deleteDirectory: (id: number) => ipcRenderer.invoke('db:deleteDirectory', id),
 
   // 题目相关
   getQuestions: (directoryId: number) => ipcRenderer.invoke('db:getQuestions', directoryId),
