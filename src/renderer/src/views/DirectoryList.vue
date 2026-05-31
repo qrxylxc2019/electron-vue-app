@@ -3,6 +3,9 @@
     <div class="header">
       <h1>选择科目</h1>
       <div class="header-actions">
+        <el-button class="refresh-btn" @click="refreshData">
+          <el-icon><Refresh /></el-icon>刷新
+        </el-button>
         <el-button class="settings-btn" @click="openGlobalQuizSettings">
           <el-icon><Setting /></el-icon>设置
         </el-button>
@@ -13,7 +16,7 @@
           <el-icon><FullScreen /></el-icon>
           {{ isFullscreen ? '取消全屏' : '全屏' }}
         </el-button>
-        <el-button style="display:none" class="add-btn" @click="showAddDialog = true">
+        <el-button class="add-dir-btn" @click="showAddDialog = true">
           <el-icon><Plus /></el-icon>新增科目
         </el-button>
       </div>
@@ -228,7 +231,7 @@ import { ref, onMounted, nextTick, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import type { Directory, Article } from '../types';
-import { Rank, ChatDotRound, Loading } from '@element-plus/icons-vue';
+import { Rank, ChatDotRound, Loading, Refresh, Plus } from '@element-plus/icons-vue';
 
 const router = useRouter();
 const directories = ref<Directory[]>([]);
@@ -541,6 +544,17 @@ const checkFullscreen = async () => {
   }
 };
 
+// 刷新数据
+const refreshData = async () => {
+  try {
+    await loadDirectories();
+    ElMessage.success('刷新成功');
+  } catch (error) {
+    ElMessage.error('刷新失败');
+    console.error(error);
+  }
+};
+
 const loadDirectories = async () => {
   try {
     const dirs = await window.electronAPI.getDirectories();
@@ -793,7 +807,8 @@ h1 {
   justify-content: center;
 }
 
-.header-actions .settings-btn {
+.header-actions .settings-btn,
+.header-actions .refresh-btn {
   background-color: transparent;
   color: #1a1a1a;
   border: 1.5px solid #e8e4df;
@@ -804,9 +819,22 @@ h1 {
   min-height: 56px;
 }
 
-.header-actions .settings-btn:hover {
+.header-actions .settings-btn:hover,
+.header-actions .refresh-btn:hover,
+.header-actions .add-dir-btn:hover {
   border-color: #c4a882;
   background-color: #fdfbf8;
+}
+
+.header-actions .add-dir-btn {
+  background-color: transparent;
+  color: #1a1a1a;
+  border: 1.5px solid #e8e4df;
+  border-radius: 12px;
+  padding: 22px 32px;
+  font-size: 18px;
+  transition: all 0.2s ease;
+  min-height: 56px;
 }
 
 .ds-test-btn {
