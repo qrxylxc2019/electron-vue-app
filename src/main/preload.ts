@@ -111,6 +111,12 @@ const electronAPI = {
 
   // 考研英语单词
   getWordImages: () => ipcRenderer.invoke('word:getImages'),
+
+  // 英语翻译
+  getTranslateList: (dirId: number) => ipcRenderer.invoke('translate:getList', dirId),
+  addTranslate: (data: any) => ipcRenderer.invoke('translate:add', data),
+  updateTranslate: (id: number, data: any) => ipcRenderer.invoke('translate:update', id, data),
+  deleteTranslate: (id: number) => ipcRenderer.invoke('translate:delete', id),
 };
 
 // 暴露给渲染进程的 API

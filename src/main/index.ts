@@ -185,6 +185,19 @@ function initDatabase() {
       )
     `);
 
+    // 英语翻译材料表
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS english_translate (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        directory_id INTEGER NOT NULL,
+        content TEXT NOT NULL,
+        answer TEXT NOT NULL,
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (directory_id) REFERENCES directories(id)
+      )
+    `);
+
     // 案例材料表
     db.exec(`
       CREATE TABLE IF NOT EXISTS case_materials (
@@ -659,6 +672,60 @@ function setupIpc() {
       return { success: true };
     } catch (err: any) {
       console.error('[main] deleteEnglishReading error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // ========== 英语翻译 IPC ==========
+
+  // 获取英语翻译列表
+  ipcMain.handle('translate:getList', (_event, dirId: number) => {
+    if (!db) return { success: false, error: '数据库未初始化' };
+    try {
+      const stmt = db.prepare('SELECT * FROM english_translate WHERE directory_id = ? ORDER BY id');
+      const list = stmt.all(dirId) as any[];
+      return { success: true, list };
+    } catch (err: any) {
+      console.error('translate:getList error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // 添加英语翻译
+  ipcMain.handle('translate:add', (_event, data: any) => {
+    if (!db) return { success: false, error: '数据库未初始化' };
+    try {
+      const stmt = db.prepare('INSERT INTO english_translate (directory_id, content, answer) VALUES (?, ?, ?)');
+      const result = stmt.run(data.directory_id, data.content, data.answer);
+      return { success: true, id: result.lastInsertRowid };
+    } catch (err: any) {
+      console.error('translate:add error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // 更新英语翻译
+  ipcMain.handle('translate:update', (_event, id: number, data: any) => {
+    if (!db) return { success: false, error: '数据库未初始化' };
+    try {
+      const stmt = db.prepare('UPDATE english_translate SET content = ?, answer = ? WHERE id = ?');
+      stmt.run(data.content, data.answer, id);
+      return { success: true };
+    } catch (err: any) {
+      console.error('translate:update error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // 删除英语翻译
+  ipcMain.handle('translate:delete', (_event, id: number) => {
+    if (!db) return { success: false, error: '数据库未初始化' };
+    try {
+      const stmt = db.prepare('DELETE FROM english_translate WHERE id = ?');
+      stmt.run(id);
+      return { success: true };
+    } catch (err: any) {
+      console.error('translate:delete error:', err);
       return { success: false, error: err.message };
     }
   });

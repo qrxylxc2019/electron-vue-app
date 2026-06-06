@@ -697,6 +697,13 @@ const loadDirectories = async () => {
         } else {
           questionCounts.value[dir.id] = 0;
         }
+      } else if (dir.name === '英语翻译') {
+        const result = await window.electronAPI.getTranslateList(dir.id);
+        if (result.success) {
+          questionCounts.value[dir.id] = result.list.length;
+        } else {
+          questionCounts.value[dir.id] = 0;
+        }
       } else {
         const questions = await window.electronAPI.getQuestions(dir.id);
         questionCounts.value[dir.id] = questions.length;
@@ -767,6 +774,20 @@ const enterQuiz = (directoryId: number) => {
   if (dir?.name === '考研英语') {
     router.push({
       name: 'English',
+      params: { directoryId: directoryId.toString() },
+      query: {
+        mode: quizSettings.value.mode,
+        count: quizSettings.value.count.toString(),
+        repeat: quizSettings.value.repeat.toString()
+      }
+    });
+    return;
+  }
+
+  // 英语翻译进入翻译页面
+  if (dir?.name === '英语翻译') {
+    router.push({
+      name: 'Translate',
       params: { directoryId: directoryId.toString() },
       query: {
         mode: quizSettings.value.mode,
