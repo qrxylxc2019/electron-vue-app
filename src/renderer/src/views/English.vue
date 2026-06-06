@@ -1103,17 +1103,12 @@ onMounted(() => {
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
-  scrollbar-width: thin;
-  -ms-overflow-style: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .english-left::-webkit-scrollbar {
-  width: 6px;
-}
-
-.english-left::-webkit-scrollbar-thumb {
-  background-color: #c4a882;
-  border-radius: 3px;
+  display: none;
 }
 
 .english-center {
