@@ -1619,14 +1619,17 @@ ipcMain.handle('english:explainQuestion', async (_event, data: any) => {
   const providerOrder = (data.providerOrder as string[]) || ['modelspace', 'deepseek'];
   const isFollowUp = data.isFollowUp as boolean;
   const userMessage = data.userMessage as string || '';
-  const contextKey = `${data.materialTitle}_${data.questionNumber}`;
+  const contextKey = data._overrideContextKey || `${data.materialTitle}_${data.questionNumber}`;
 
   let messages: Array<{role: string; content: string}> = [];
   if (isFollowUp && englishChatContexts.has(contextKey)) {
     messages = [...englishChatContexts.get(contextKey)!];
   }
 
-  if (!isFollowUp) {
+  if (data._overrideMessages && Array.isArray(data._overrideMessages)) {
+    // 使用前端传入的自定义消息（如选中文本翻译解析）
+    messages = [...data._overrideMessages];
+  } else if (!isFollowUp) {
     const prompt = PROMPTS.explainEnglishQuestion(
       data.materialTitle,
       data.materialContent,

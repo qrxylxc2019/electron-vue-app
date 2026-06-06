@@ -54,8 +54,10 @@
             </template>
             <div
               v-if="!isEditingMaterial"
+              ref="materialContentRef"
               class="material-content markdown-body"
               v-html="renderMarkdown(currentMaterial.content)"
+              @mouseup="handleMaterialTextSelect"
             ></div>
             <div
               v-else
@@ -301,6 +303,54 @@
       </template>
     </el-dialog>
 
+    <!-- 选中文本 AI 悬浮窗 -->
+    <div
+      v-if="selectionPopupVisible"
+      class="selection-popup"
+      :style="{ left: selectionPopupPos.x + 'px', top: selectionPopupPos.y + 'px' }"
+    >
+      <div class="selection-popup-content">
+        <div class="popup-header" @mousedown="startDragPopup">
+          <span class="popup-title">AI 翻译解析</span>
+          <el-icon class="popup-close" @click="closeSelectionPopup"><Close /></el-icon>
+        </div>
+        <div class="popup-messages" ref="popupMessagesRef">
+          <div
+            v-for="(msg, index) in selectionChatMessages"
+            :key="index"
+            class="popup-message"
+            :class="msg.role"
+          >
+            <div v-if="msg.role === 'assistant'" class="ai-markdown" v-html="renderMarkdown(msg.content)"></div>
+          </div>
+          <div v-if="selectionAILoading" class="popup-message assistant">
+            <el-icon class="is-loading"><Loading /></el-icon>
+          </div>
+          <div v-if="selectionAIError" class="popup-message assistant error">
+            <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:inherit;">{{ selectionAIError }}</pre>
+          </div>
+        </div>
+        <div class="popup-input-area">
+          <el-input
+            v-model="selectionUserInput"
+            type="textarea"
+            :rows="1"
+            placeholder="继续提问..."
+            class="popup-input"
+            @keydown.enter.prevent="sendSelectionChatMessage"
+          />
+          <el-button
+            class="popup-send-btn"
+            :loading="selectionAILoading"
+            :disabled="!selectionUserInput.trim()"
+            @click="sendSelectionChatMessage"
+          >
+            <el-icon><Promotion /></el-icon>
+          </el-button>
+        </div>
+      </div>
+    </div>
+
     <!-- AI 讲解抽屉 -->
     <div
       class="ai-drawer-overlay"
@@ -436,6 +486,31 @@ const aiChatContentRef = ref<HTMLDivElement | null>(null);
 let aiUnsubscribers: (() => void)[] = [];
 const englishAIContexts = ref<Record<string, Array<{role: string; content: string}>>>({});
 const currentAIQuestion = ref<any | null>(null);
+
+// 材料选中文本 AI 悬浮窗状态
+const materialContentRef = ref<HTMLDivElement | null>(null);
+const selectionPopupVisible = ref(false);
+const selectionPopupPos = ref({ x: 0, y: 0 });
+const selectedText = ref('');
+const selectionAIResult = ref('');
+const selectionAILoading = ref(false);
+const selectionAIError = ref('');
+const selectionChatMessages = ref<Array<{role: 'user' | 'assistant'; content: string; provider?: string}>>([]);
+const selectionUserInput = ref('');
+let selectionAIUnsubscribers: (() => void)[] = [];
+const selectionAIContexts = ref<Record<string, Array<{role: string; content: string}>>>({});
+const popupMessagesRef = ref<HTMLDivElement | null>(null);
+
+// 悬浮窗消息滚动到底部
+const scrollPopupToBottom = () => {
+  nextTick(() => {
+    setTimeout(() => {
+      if (popupMessagesRef.value) {
+        popupMessagesRef.value.scrollTop = popupMessagesRef.value.scrollHeight;
+      }
+    }, 50);
+  });
+};
 
 // 新增题目弹窗状态
 const addMaterialDialogVisible = ref(false);
@@ -1039,7 +1114,185 @@ watch(currentMaterial, () => {
   editingMaterialContent.value = '';
   editingQuestionTitleId.value = null;
   editingQuestionExplanationId.value = null;
+  // 清空选中文本悬浮窗
+  closeSelectionPopup();
 });
+
+// 处理材料文本选中
+const handleMaterialTextSelect = () => {
+  const selection = window.getSelection();
+  if (!selection || selection.isCollapsed) {
+    return;
+  }
+  const text = selection.toString().trim();
+  if (!text || text.length < 2) {
+    return;
+  }
+  selectedText.value = text;
+  // 只有第一次显示时才定位到选中位置，已显示时保持当前位置
+  if (!selectionPopupVisible.value) {
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    selectionPopupPos.value = {
+      x: rect.right + window.scrollX,
+      y: rect.top + window.scrollY - 40,
+    };
+  }
+  selectionPopupVisible.value = true;
+  // 选中后直接调用 AI
+  nextTick(() => {
+    callSelectionAI(false, '');
+  });
+};
+
+// 悬浮窗拖动
+const isDraggingPopup = ref(false);
+const dragOffset = ref({ x: 0, y: 0 });
+
+const startDragPopup = (e: MouseEvent) => {
+  isDraggingPopup.value = true;
+  dragOffset.value = {
+    x: e.clientX - selectionPopupPos.value.x,
+    y: e.clientY - selectionPopupPos.value.y,
+  };
+  document.addEventListener('mousemove', onDragPopup);
+  document.addEventListener('mouseup', stopDragPopup);
+};
+
+const onDragPopup = (e: MouseEvent) => {
+  if (!isDraggingPopup.value) return;
+  selectionPopupPos.value = {
+    x: e.clientX - dragOffset.value.x,
+    y: e.clientY - dragOffset.value.y,
+  };
+};
+
+const stopDragPopup = () => {
+  isDraggingPopup.value = false;
+  document.removeEventListener('mousemove', onDragPopup);
+  document.removeEventListener('mouseup', stopDragPopup);
+};
+
+// 关闭选中文本悬浮窗
+const closeSelectionPopup = () => {
+  selectionPopupVisible.value = false;
+  selectedText.value = '';
+  selectionAIResult.value = '';
+  selectionAIError.value = '';
+  selectionChatMessages.value = [];
+  selectionUserInput.value = '';
+  selectionAILoading.value = false;
+  selectionAIUnsubscribers.forEach(fn => fn());
+  selectionAIUnsubscribers = [];
+};
+
+// 调用 AI 翻译并解析选中文本
+const callSelectionAI = async (isFollowUp = false, userMessage = '') => {
+  if (!selectedText.value) return;
+  selectionAILoading.value = true;
+  selectionAIError.value = '';
+
+  selectionAIUnsubscribers.forEach(fn => fn());
+  selectionAIUnsubscribers = [];
+
+  let assistantContent = '';
+  let currentProvider = '';
+
+  const unsubProviderSwitch = window.electronAPI.onAIProviderSwitch((provider: string) => {
+    currentProvider = provider === 'modelspace' ? 'ModelSpace' : provider === 'deepseek' ? 'DeepSeek' : provider;
+    const lastMsg = selectionChatMessages.value[selectionChatMessages.value.length - 1];
+    if (lastMsg && lastMsg.role === 'assistant') lastMsg.provider = currentProvider;
+  });
+  selectionAIUnsubscribers.push(unsubProviderSwitch);
+
+  const unsubChunk = window.electronAPI.onAIStreamChunk((content: string) => {
+    assistantContent += content;
+    const lastMsg = selectionChatMessages.value[selectionChatMessages.value.length - 1];
+    if (lastMsg && lastMsg.role === 'assistant') {
+      lastMsg.content = assistantContent;
+      if (currentProvider && !lastMsg.provider) lastMsg.provider = currentProvider;
+    } else {
+      selectionChatMessages.value.push({ role: 'assistant', content: assistantContent, provider: currentProvider || undefined });
+    }
+    scrollPopupToBottom();
+  });
+  selectionAIUnsubscribers.push(unsubChunk);
+
+  const unsubDone = window.electronAPI.onAIStreamDone(() => {
+    selectionAILoading.value = false;
+    const key = `selection_${selectedText.value}`;
+    selectionAIContexts.value[key] = selectionChatMessages.value.map(m => ({ role: m.role, content: m.content }));
+  });
+  selectionAIUnsubscribers.push(unsubDone);
+
+  const unsubError = window.electronAPI.onAIStreamError((error: string) => {
+    selectionAILoading.value = false;
+    selectionAIError.value = error;
+  });
+  selectionAIUnsubscribers.push(unsubError);
+
+  try {
+    const providerOrder = getProviderOrder();
+    const contextKey = `selection_${selectedText.value}`;
+    let messages: Array<{role: string; content: string}> = [];
+
+    if (isFollowUp && selectionAIContexts.value[contextKey]) {
+      messages = [...selectionAIContexts.value[contextKey]];
+      messages.push({ role: 'user', content: userMessage });
+    } else {
+      const systemPrompt = `你是一位资深的考研英语辅导专家。用户选中了阅读材料中的一段英文文本，请你完成以下任务：
+
+1. 【翻译】将选中的英文准确翻译成中文，注意考研英语中常见的熟词僻义、长难句结构。
+2. 【解析】分析这段话的语法结构、关键短语、句间逻辑关系。
+3. 【词汇】指出其中的高频考研词汇或难点词汇，给出释义和用法。
+
+请用清晰的中文回答，结构分明。`;
+      const userPrompt = `请翻译并解析以下选中的文本：\n\n${selectedText.value}`;
+      messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ];
+      selectionChatMessages.value.push({ role: 'user', content: userPrompt });
+      scrollPopupToBottom();
+    }
+
+    const result = await window.electronAPI.explainEnglishQuestion({
+      materialTitle: currentMaterial.value?.title || '',
+      materialContent: currentMaterial.value?.content || '',
+      questionNumber: 0,
+      questionTitle: '',
+      optionA: '',
+      optionB: '',
+      optionC: '',
+      optionD: '',
+      correctAnswer: '',
+      explanation: '',
+      isFollowUp,
+      userMessage: isFollowUp ? userMessage : '',
+      providerOrder,
+      // 覆盖默认提示词，使用选中文本的专用提示词
+      _overrideMessages: messages,
+    });
+
+    if (!result.success && result.error) {
+      selectionAILoading.value = false;
+      selectionAIError.value = result.error;
+    }
+  } catch (err: any) {
+    selectionAILoading.value = false;
+    selectionAIError.value = err.message || '调用失败';
+  }
+};
+
+// 发送选中文本的追问
+const sendSelectionChatMessage = async () => {
+  if (!selectionUserInput.value.trim() || selectionAILoading.value) return;
+  const userMessage = selectionUserInput.value.trim();
+  selectionUserInput.value = '';
+  selectionChatMessages.value.push({ role: 'user', content: userMessage });
+  scrollPopupToBottom();
+  await callSelectionAI(true, userMessage);
+};
 
 onMounted(() => {
   loadData();
@@ -1967,5 +2220,155 @@ onMounted(() => {
 
 .add-material-form .el-input__inner::placeholder {
   color: #9a9590;
+}
+
+/* 选中文本 AI 悬浮窗 */
+.selection-popup {
+  position: fixed;
+  z-index: 3000;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e8e4df;
+  max-width: 480px;
+  min-width: 200px;
+  animation: popupFadeIn 0.2s ease;
+}
+
+@keyframes popupFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.selection-ai-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.selection-popup-content {
+  display: flex;
+  flex-direction: column;
+  max-height: 400px;
+  width: 480px;
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e8e4df;
+  flex-shrink: 0;
+  cursor: move;
+  user-select: none;
+  background: #fdfbf8;
+  border-radius: 12px 12px 0 0;
+}
+
+.popup-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.popup-close {
+  font-size: 18px;
+  color: #9a9590;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.popup-close:hover {
+  color: #1a1a1a;
+}
+
+.popup-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #f8f7f5;
+  min-height: 100px;
+}
+
+.popup-message {
+  display: flex;
+}
+
+.popup-message.assistant {
+  justify-content: flex-start;
+}
+
+.popup-message.assistant .ai-markdown {
+  background: #fff;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #e8e4df;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #333;
+  max-width: 100%;
+}
+
+.popup-message.assistant.error pre {
+  background: #fef0f0;
+  color: #f56c6c;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.popup-input-area {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid #e8e4df;
+  background: #fff;
+  flex-shrink: 0;
+  border-radius: 0 0 12px 12px;
+}
+
+.popup-input {
+  flex: 1;
+}
+
+.popup-input :deep(.el-textarea__inner) {
+  border-radius: 8px;
+  resize: none;
+  font-size: 14px;
+  padding: 8px 12px;
+}
+
+.popup-send-btn {
+  padding: 8px;
+  border: none;
+  background: #c4a882;
+  color: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.popup-send-btn:hover {
+  background: #a08060;
+}
+
+.popup-send-btn:disabled {
+  background: #d0ccc8;
+  cursor: not-allowed;
 }
 </style>
