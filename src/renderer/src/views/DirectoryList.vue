@@ -690,6 +690,13 @@ const loadDirectories = async () => {
       } else if (dir.name === '高项案例' || dir.name === '案例押题') {
         const materials = await window.electronAPI.getCaseMaterials(dir.id);
         caseCounts.value[dir.id] = materials.length;
+      } else if (dir.name === '考研英语') {
+        const result = await window.electronAPI.getEnglishReadings(dir.id);
+        if (result.success) {
+          questionCounts.value[dir.id] = result.materials.length;
+        } else {
+          questionCounts.value[dir.id] = 0;
+        }
       } else {
         const questions = await window.electronAPI.getQuestions(dir.id);
         questionCounts.value[dir.id] = questions.length;
