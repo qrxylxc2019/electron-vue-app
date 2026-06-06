@@ -124,10 +124,10 @@
                   class="option-item"
                   :class="{
                     'selected': selectedAnswers[q.id] === optIdx,
-                    'correct': showAnswers[idx] && optIdx === getCorrectIndex(q.correct_answer),
-                    'wrong': showAnswers[idx] && selectedAnswers[q.id] === optIdx && optIdx !== getCorrectIndex(q.correct_answer)
+                    'correct': showAnswers[q.id] && optIdx === getCorrectIndex(q.correct_answer),
+                    'wrong': showAnswers[q.id] && selectedAnswers[q.id] === optIdx && optIdx !== getCorrectIndex(q.correct_answer)
                   }"
-                  @click="selectAnswer(q.id, optIdx)"
+                  @click="selectAnswer(q.id, optIdx, q.correct_answer)"
                 >
                   <span class="option-label">{{ ['A', 'B', 'C', 'D'][optIdx] }}.</span>
                   <span class="option-text">{{ option }}</span>
@@ -144,13 +144,6 @@
                   AI讲解
                 </el-button>
                 <el-button
-                  class="toggle-answer-btn"
-                  @click="toggleAnswer(idx)"
-                >
-                  <el-icon><View v-if="!showAnswers[idx]" /><Hide v-else /></el-icon>
-                  {{ showAnswers[idx] ? '隐藏答案' : '显示答案' }}
-                </el-button>
-                <el-button
                   class="delete-question-btn"
                   @click="confirmDeleteQuestion(q)"
                 >
@@ -160,7 +153,7 @@
               </div>
 
               <!-- 答案区域 -->
-              <div v-if="showAnswers[idx]" class="answer-content">
+              <div v-if="showAnswers[q.id]" class="answer-content">
                 <el-divider />
                 <div class="answer-label">正确答案：{{ q.correct_answer }}</div>
                 <div
@@ -455,15 +448,18 @@ const getCorrectIndex = (answer: string) => {
   return ['A', 'B', 'C', 'D'].indexOf(answer);
 };
 
-// 选择答案
-const selectAnswer = (questionId: number, optionIdx: number) => {
+// 选择答案（立即判断对错）
+const selectAnswer = (questionId: number, optionIdx: number, correctAnswer: string) => {
   if (showAnswers.value[questionId]) return;
   selectedAnswers.value[questionId] = optionIdx;
-};
+  showAnswers.value[questionId] = true;
 
-// 切换指定小题的答案显示
-const toggleAnswer = (index: number) => {
-  showAnswers.value[index] = !showAnswers.value[index];
+  const correctIdx = getCorrectIndex(correctAnswer);
+  if (optionIdx === correctIdx) {
+    ElMessage.success('回答正确！');
+  } else {
+    ElMessage.error('回答错误');
+  }
 };
 
 // 下一篇材料
