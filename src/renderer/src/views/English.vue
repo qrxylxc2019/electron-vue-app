@@ -5,10 +5,6 @@
     <div class="english-content" v-if="currentMaterial">
       <!-- 顶部工具栏：进度 + 操作按钮 -->
       <div class="top-toolbar">
-        <div class="progress-bar">
-          <span class="progress-text">阅读 {{ currentMaterialIndex + 1 }} / {{ materials.length }}</span>
-          <el-progress :percentage="materialProgressPercent" :show-text="false" />
-        </div>
         <div class="toolbar-actions">
           <el-button
             class="add-material-btn"
@@ -33,6 +29,11 @@
             {{ currentMaterialIndex === materials.length - 1 ? '重新开始' : '下一篇' }} <el-icon><ArrowRight /></el-icon>
           </el-button>
         </div>
+        <div class="progress-bar">
+          <span class="progress-text">阅读 {{ currentMaterialIndex + 1 }} / {{ materials.length }}</span>
+          <el-progress :percentage="materialProgressPercent" :show-text="false" />
+        </div>
+        
       </div>
 
       <!-- 两栏布局主体：材料与小题各50% -->
@@ -2305,6 +2306,12 @@ onMounted(() => {
   gap: 10px;
   background: #f8f7f5;
   min-height: 100px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.popup-messages::-webkit-scrollbar {
+  display: none;
 }
 
 .popup-message {
