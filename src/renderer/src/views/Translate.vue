@@ -7,7 +7,7 @@
       <div class="top-toolbar">
         <div class="toolbar-actions">
           <el-button
-            class="add-btn"
+            class="add-material-btn"
             type="primary"
             size="small"
             @click="openAddDialog"
@@ -15,14 +15,14 @@
             <el-icon><Plus /></el-icon> 新增题目
           </el-button>
           <el-button
-            class="delete-btn"
+            class="delete-material-btn"
             size="small"
             @click="deleteCurrentItem"
           >
             <el-icon><Delete /></el-icon> 删除题目
           </el-button>
           <el-button
-            class="next-btn"
+            class="next-material-btn"
             size="small"
             @click="nextItem"
           >
@@ -78,11 +78,10 @@
                 type="textarea"
                 :rows="6"
                 placeholder="请在此处输入你的中文翻译..."
-                :disabled="showResult"
               />
               <div class="input-actions">
                 <el-button
-                  type="primary"
+                  class="toggle-answer-btn"
                   :disabled="!userAnswer.trim() || showResult"
                   @click="submitAnswer"
                 >
@@ -90,6 +89,7 @@
                 </el-button>
                 <el-button
                   v-if="showResult"
+                  class="next-material-btn"
                   @click="resetAnswer"
                 >
                   重新作答
@@ -528,7 +528,7 @@ loadData();
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #faf8f5;
+  background-color: #f5f3f0;
 }
 
 .translate-content {
@@ -544,27 +544,40 @@ loadData();
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 20px;
   margin-bottom: 16px;
-  padding: 0 4px;
+  flex-shrink: 0;
 }
 
 .toolbar-actions {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
   flex-shrink: 0;
 }
 
 .progress-bar {
   flex: 1;
-  max-width: 300px;
+  min-width: 0;
 }
 
 .progress-text {
-  font-size: 14px;
-  color: #8c8279;
-  margin-bottom: 4px;
   display: block;
+  margin-bottom: 8px;
+  color: #6b6560;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+:deep(.el-progress-bar__outer) {
+  background-color: #e8e4df;
+  border-radius: 4px;
+  height: 6px !important;
+}
+
+:deep(.el-progress-bar__inner) {
+  background-color: #c4a882;
+  border-radius: 4px;
 }
 
 /* 两栏主体 */
@@ -609,10 +622,11 @@ loadData();
 }
 
 .material-content {
-  font-size: 18px;
+  font-size: 22px;
+  color: #4a4540;
   line-height: 1.8;
-  color: #2c2c2c;
   white-space: pre-wrap;
+  padding: 8px 0;
 }
 
 /* 输入区域 */
@@ -644,22 +658,21 @@ loadData();
 }
 
 .result-text {
-  font-size: 16px;
-  line-height: 1.7;
-  padding: 12px;
-  border-radius: 8px;
-  background-color: #f5f3f0;
+  font-size: 20px;
+  color: #4a4540;
+  line-height: 1.8;
   white-space: pre-wrap;
+  background: #f5f7f0;
+  padding: 16px;
+  border-radius: 10px;
 }
 
 .result-text.correct {
   background-color: #f0f9eb;
-  color: #2c2c2c;
 }
 
 .result-text.wrong {
   background-color: #fef0f0;
-  color: #2c2c2c;
 }
 
 .ai-actions {
@@ -667,14 +680,93 @@ loadData();
 }
 
 .ai-explain-btn {
-  background-color: #c4a882;
-  border-color: #c4a882;
+  background-color: #4a7c59;
   color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 44px;
 }
 
 .ai-explain-btn:hover {
-  background-color: #b89a76;
-  border-color: #b89a76;
+  background-color: #3d6b4a;
+}
+
+.add-material-btn {
+  background-color: #4a7c59;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 44px;
+}
+
+.add-material-btn:hover {
+  background-color: #3d6b4a;
+}
+
+.delete-material-btn {
+  background-color: #F56C6C;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 44px;
+}
+
+.delete-material-btn:hover {
+  background-color: #f78989;
+}
+
+.next-material-btn {
+  background-color: #4a7c59;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 44px;
+}
+
+.next-material-btn:hover:not(:disabled) {
+  background-color: #3d6b4a;
+}
+
+.next-material-btn:disabled {
+  background-color: #c0c4cc;
+  cursor: not-allowed;
+}
+
+.toggle-answer-btn {
+  background-color: #4a7c59;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 44px;
+}
+
+.toggle-answer-btn:hover {
+  background-color: #3d6b4a;
+}
+
+.toggle-answer-btn:disabled {
+  background-color: #c0c4cc;
+  cursor: not-allowed;
 }
 
 /* 空状态 */
