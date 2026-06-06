@@ -767,7 +767,12 @@ const enterQuiz = (directoryId: number) => {
   if (dir?.name === '考研英语') {
     router.push({
       name: 'English',
-      params: { directoryId: directoryId.toString() }
+      params: { directoryId: directoryId.toString() },
+      query: {
+        mode: quizSettings.value.mode,
+        count: quizSettings.value.count.toString(),
+        repeat: quizSettings.value.repeat.toString()
+      }
     });
     return;
   }

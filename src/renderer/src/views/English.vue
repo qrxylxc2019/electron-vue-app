@@ -609,15 +609,48 @@ const copyMaterialContent = async () => {
   }
 };
 
+// 数组随机打乱
+function shuffleArray<T>(array: T[]): T[] {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
 // 加载数据
 const loadData = async () => {
   try {
     const result = await window.electronAPI.getEnglishReadings(directoryId.value);
     if (result.success && result.materials) {
-      materials.value = result.materials;
+      let mats = result.materials;
+
+      // 处理出题设置参数
+      const mode = route.query.mode as string;
+      const count = parseInt(route.query.count as string) || mats.length;
+      const repeat = parseInt(route.query.repeat as string) || 1;
+
+      // 先随机打乱
+      mats = shuffleArray([...mats]);
+
+      if (mode === 'random' && count < mats.length) {
+        mats = mats.slice(0, count);
+      }
+
+      if (repeat > 1) {
+        const baseMaterials = [...mats];
+        const repeated: any[] = [];
+        for (let i = 0; i < repeat; i++) {
+          repeated.push(...shuffleArray([...baseMaterials]));
+        }
+        mats = repeated;
+      }
+
+      materials.value = mats;
       currentMaterialIndex.value = 0;
       selectedAnswers.value = {};
       showAnswers.value = {};
+      excludedOptions.value = {};
     }
   } catch (error) {
     ElMessage.error('加载阅读材料失败');
