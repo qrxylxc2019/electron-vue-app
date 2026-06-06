@@ -169,7 +169,6 @@
                   class="ai-explain-btn"
                   @click="openAIChatDrawerForQuestion(q)"
                 >
-                  <el-icon><Cpu /></el-icon>
                   AI讲解
                 </el-button>
                 <el-button
