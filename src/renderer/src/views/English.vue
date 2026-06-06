@@ -3,13 +3,39 @@
     <el-page-header @back="goBack" :content="directoryName" />
 
     <div class="english-content" v-if="currentMaterial">
-      <!-- 案例进度 -->
-      <div class="progress-bar">
-        <span class="progress-text">阅读 {{ currentMaterialIndex + 1 }} / {{ materials.length }}</span>
-        <el-progress :percentage="materialProgressPercent" :show-text="false" />
+      <!-- 顶部工具栏：进度 + 操作按钮 -->
+      <div class="top-toolbar">
+        <div class="progress-bar">
+          <span class="progress-text">阅读 {{ currentMaterialIndex + 1 }} / {{ materials.length }}</span>
+          <el-progress :percentage="materialProgressPercent" :show-text="false" />
+        </div>
+        <div class="toolbar-actions">
+          <el-button
+            class="add-material-btn"
+            type="primary"
+            size="small"
+            @click="openAddMaterialDialog"
+          >
+            <el-icon><Plus /></el-icon> 新增题目
+          </el-button>
+          <el-button
+            class="delete-material-btn"
+            size="small"
+            @click="deleteCurrentMaterial"
+          >
+            <el-icon><Delete /></el-icon> 删除阅读
+          </el-button>
+          <el-button
+            class="next-material-btn"
+            size="small"
+            @click="nextMaterial"
+          >
+            {{ currentMaterialIndex === materials.length - 1 ? '重新开始' : '下一篇' }} <el-icon><ArrowRight /></el-icon>
+          </el-button>
+        </div>
       </div>
 
-      <!-- 三栏布局主体 -->
+      <!-- 两栏布局主体：材料与小题各50% -->
       <div class="english-main-wrapper">
         <!-- 左侧：阅读材料 -->
         <div class="english-left">
@@ -202,30 +228,6 @@
           <el-empty v-else description="该阅读材料暂无小题" />
         </div>
 
-        <!-- 右侧：大题操作按钮 -->
-        <div class="english-right">
-          <div class="right-actions">
-            <el-button
-              class="add-material-btn"
-              type="primary"
-              @click="openAddMaterialDialog"
-            >
-              <el-icon><Plus /></el-icon> 新增题目
-            </el-button>
-            <el-button
-              class="delete-material-btn"
-              @click="deleteCurrentMaterial"
-            >
-              <el-icon><Delete /></el-icon> 删除阅读
-            </el-button>
-            <el-button
-              class="next-material-btn"
-              @click="nextMaterial"
-            >
-              {{ currentMaterialIndex === materials.length - 1 ? '重新开始' : '下一篇' }} <el-icon><ArrowRight /></el-icon>
-            </el-button>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -1243,8 +1245,7 @@ const callSelectionAI = async (isFollowUp = false, userMessage = '') => {
       const systemPrompt = `你是一位资深的考研英语辅导专家。用户选中了阅读材料中的一段英文文本，请你完成以下任务：
 
 1. 【翻译】将选中的英文准确翻译成中文，注意考研英语中常见的熟词僻义、长难句结构。
-2. 【解析】分析这段话的语法结构、关键短语、句间逻辑关系。
-3. 【词汇】指出其中的高频考研词汇或难点词汇，给出释义和用法。
+2. 【词汇】指出其中的高频考研词汇或难点词汇，给出释义和用法。
 
 请用清晰的中文回答，结构分明。`;
       const userPrompt = `请翻译并解析以下选中的文本：\n\n${selectedText.value}`;
@@ -1320,9 +1321,19 @@ onMounted(() => {
   flex-direction: column;
 }
 
-.progress-bar {
+/* 顶部工具栏 */
+.top-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
   margin-bottom: 16px;
   flex-shrink: 0;
+}
+
+.progress-bar {
+  flex: 1;
+  min-width: 0;
 }
 
 .progress-text {
@@ -1344,6 +1355,13 @@ onMounted(() => {
   border-radius: 4px;
 }
 
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
 .english-main-wrapper {
   display: flex;
   flex: 1;
@@ -1352,7 +1370,7 @@ onMounted(() => {
 }
 
 .english-left {
-  width: 38%;
+  width: 50%;
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
@@ -1365,7 +1383,7 @@ onMounted(() => {
 }
 
 .english-center {
-  flex: 1;
+  width: 50%;
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -1378,21 +1396,6 @@ onMounted(() => {
 
 .english-center::-webkit-scrollbar {
   display: none;
-}
-
-.english-right {
-  width: 120px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.right-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
 }
 
 .material-card {
