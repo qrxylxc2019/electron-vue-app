@@ -342,7 +342,6 @@
             :loading="selectionAILoading"
             @click="callSelectionAI(false, '')"
           >
-            <el-icon><Cpu /></el-icon>
             AI 翻译
           </el-button>
         </div>
@@ -2496,6 +2495,22 @@ onMounted(() => {
   padding: 8px 20px;
   font-size: 14px;
   flex-shrink: 0;
+  background: #c4a882;
+  border-color: #c4a882;
+  color: #fff;
+}
+
+.popup-ai-btn:hover {
+  background: #a08060;
+  border-color: #a08060;
+  color: #fff;
+}
+
+.popup-ai-btn.is-loading,
+.popup-ai-btn:active {
+  background: #c4a882;
+  border-color: #c4a882;
+  color: #fff;
 }
 
 .popup-input-area {
