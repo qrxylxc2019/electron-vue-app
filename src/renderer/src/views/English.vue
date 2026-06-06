@@ -318,6 +318,11 @@
           <el-icon class="popup-close" @click="closeSelectionPopup"><Close /></el-icon>
         </div>
         <div class="popup-messages" ref="popupMessagesRef">
+          <!-- 显示选中的文本 -->
+          <div v-if="selectedText && !selectionChatMessages.length" class="popup-selected-text">
+            <div class="selected-text-label">选中的文本：</div>
+            <div class="selected-text-content">{{ selectedText }}</div>
+          </div>
           <div
             v-for="(msg, index) in selectionChatMessages"
             :key="index"
@@ -333,7 +338,19 @@
             <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:inherit;">{{ selectionAIError }}</pre>
           </div>
         </div>
-        <div class="popup-input-area">
+        <!-- 底部操作区：未提问时显示 AI 翻译按钮，已提问后显示输入框 -->
+        <div v-if="!selectionChatMessages.length" class="popup-action-area">
+          <el-button
+            class="popup-ai-btn"
+            type="primary"
+            :loading="selectionAILoading"
+            @click="callSelectionAI(false, '')"
+          >
+            <el-icon><Cpu /></el-icon>
+            AI 翻译
+          </el-button>
+        </div>
+        <div v-else class="popup-input-area">
           <el-input
             v-model="selectionUserInput"
             type="textarea"
@@ -1142,10 +1159,8 @@ const handleMaterialTextSelect = () => {
     };
   }
   selectionPopupVisible.value = true;
-  // 选中后直接调用 AI
-  nextTick(() => {
-    callSelectionAI(false, '');
-  });
+  // 清空之前的对话，显示选中文本等待用户点击 AI 翻译
+  selectionChatMessages.value = [];
 };
 
 // 悬浮窗拖动
@@ -2422,6 +2437,53 @@ onMounted(() => {
   padding: 10px 12px;
   border-radius: 8px;
   font-size: 13px;
+}
+
+/* 选中的文本展示 */
+.popup-selected-text {
+  padding: 12px 14px;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e8e4df;
+}
+
+.selected-text-label {
+  font-size: 12px;
+  color: #9a9590;
+  margin-bottom: 6px;
+}
+
+.selected-text-content {
+  font-size: 14px;
+  color: #1a1a1a;
+  line-height: 1.6;
+  max-height: 200px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.selected-text-content::-webkit-scrollbar {
+  display: none;
+}
+
+/* AI 翻译按钮区域 */
+.popup-action-area {
+  display: flex;
+  justify-content: center;
+  padding: 12px 14px;
+  border-top: 1px solid #e8e4df;
+  background: #fff;
+  flex-shrink: 0;
+  border-radius: 0 0 12px 12px;
+}
+
+.popup-ai-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 24px;
+  font-size: 14px;
 }
 
 .popup-input-area {
