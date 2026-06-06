@@ -5,6 +5,7 @@ import CaseQuiz from '../views/CaseQuiz.vue';
 import AIQuiz from '../views/AIQuiz.vue';
 import English from '../views/English.vue';
 import Translate from '../views/Translate.vue';
+import Article from '../views/Article.vue';
 
 const routes = [
   { path: '/', name: 'Home', component: DirectoryList },
@@ -13,6 +14,7 @@ const routes = [
   { path: '/ai/:directoryId', name: 'AIQuiz', component: AIQuiz, props: true },
   { path: '/english/:directoryId', name: 'English', component: English, props: true },
   { path: '/translate/:directoryId', name: 'Translate', component: Translate, props: true },
+  { path: '/article/:directoryId', name: 'Article', component: Article, props: true },
 ];
 
 const router = createRouter({

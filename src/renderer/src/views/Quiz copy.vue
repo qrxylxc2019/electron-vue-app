@@ -2,7 +2,7 @@
   <div class="quiz-container">
     <el-page-header @back="goBack" :content="directoryName" />
 
-    <div class="quiz-content" v-if="questions.length > 0 && currentQuestion">
+    <div class="quiz-content" v-if="(questions.length > 0 || articles.length > 0) && currentQuestion">
       <div class="top-toolbar">
         <div class="toolbar-actions">
           <el-button
@@ -22,6 +22,57 @@
 
     <!-- 左右布局主体 -->
     <div class="quiz-main">
+      <!-- 高项论文模式：左侧显示所有文章列表 -->
+      <div v-if="directoryName === '高项论文'" class="article-list-panel">
+        <el-card class="article-list-card">
+          <template #header>
+            <div class="article-list-header">
+              <span>文章列表</span>
+              <el-tag type="info">{{ allArticles.length }} 篇</el-tag>
+            </div>
+          </template>
+          <div class="article-list">
+            <div
+              v-for="(article, idx) in allArticles"
+              :key="article.id"
+              class="article-list-item"
+              :class="{ 'active': currentQuestion?.id === article.id }"
+              @click="jumpToArticleById(article.id)"
+            >
+              <span v-if="!isEditingArticleTitle(article.id)" class="article-title">{{ article.title || '无标题' }}</span>
+              <el-input
+                v-else
+                :ref="el => setArticleTitleInputRef(el, article.id)"
+                v-model="editingArticleTitles[article.id]"
+                size="small"
+                class="article-title-input"
+                @blur="saveArticleTitle(article.id)"
+                @keydown.enter="saveArticleTitle(article.id)"
+              />
+              <el-button
+                v-if="!isEditingArticleTitle(article.id)"
+                class="edit-title-btn"
+                size="small"
+                text
+                @click.stop="startEditArticleTitle(article.id, article.title)"
+              >
+                <el-icon :size="14"><EditPen /></el-icon>
+              </el-button>
+              <el-button
+                v-else
+                class="save-title-btn"
+                size="small"
+                type="primary"
+                text
+                @click.stop="saveArticleTitle(article.id)"
+              >
+                <el-icon :size="14"><CircleCheck /></el-icon>
+              </el-button>
+            </div>
+          </div>
+        </el-card>
+      </div>
+
       <!-- 左侧：题目内容 -->
       <div class="quiz-left">
           <el-card class="question-card">
@@ -210,6 +261,42 @@
                       </el-button>
                     </div>
                   </div>
+                      <!-- 高项论文手写输入区 -->
+                  <div v-if="showHandwrite && directoryName === '高项论文'" class="handwrite-area">
+                    <el-input
+                      v-model="handwriteInputs[index]"
+                      type="textarea"
+                      :rows="6"
+                      :placeholder="`第 ${index + 1} 段手写内容...`"
+                      class="handwrite-input"
+                    />
+                    <!-- 关键词显示区域 -->
+                    <div v-if="paragraphKeywords[index]" style="display:none" class="keywords-display">
+                      <el-icon><Collection /></el-icon>
+                      <span class="keywords-label">记忆关键词：</span>
+                      <span class="keywords-content">{{ paragraphKeywords[index] }}</span>
+                    </div>
+                    <div class="handwrite-actions">
+                      <el-button
+                        style="display:none"
+                        class="ai-keywords-btn"
+                        :loading="keywordsLoading[index]"
+                        @click="extractParagraphKeywords(index)"
+                      >
+                        <el-icon><Cpu /></el-icon>
+                        AI关键词
+                      </el-button>
+                      <el-button
+                        class="clear-handwrite-btn"
+                        size="small"
+                        text
+                        @click="handwriteInputs[index] = ''"
+                      >
+                        <el-icon><Delete /></el-icon>
+                        清空
+                      </el-button>
+                    </div>
+                  </div>
                 </div>
             </div>
 
@@ -238,8 +325,8 @@
               </div>
             </div>
 
-            <!-- AI 讲解按钮和同类题按钮 -->
-            <div class="ai-explain-section">
+            <!-- AI 讲解按钮和同类题按钮 - 非高项论文科目显示 -->
+            <div v-if="directoryName !== '高项论文'" class="ai-explain-section">
               <el-button
                 class="ai-explain-btn"
                 @click="openAIChatDrawer"
@@ -279,10 +366,58 @@
           </el-card>
         </div>
 
+        <!-- 右侧：操作按钮 - 高项论文科目所有按钮都在右侧 -->
+        <div class="quiz-right">
+          <div class="right-actions">
+            <template v-if="directoryName === '高项论文'">
+              <el-button
+                class="delete-question-btn"
+                @click="deleteCurrentQuestion"
+              >
+                <el-icon><Delete /></el-icon> 删除题目
+              </el-button>
+              <el-button
+                class="add-article-btn"
+                type="primary"
+                @click="openAddArticleDialog"
+              >
+                <el-icon><Plus /></el-icon> 新增论文
+              </el-button>
+<el-button
+              class="full-article-mode-btn"
+              @click="fullArticleDrawerVisible = true"
+            >
+              <el-icon><Document /></el-icon>
+              整篇模式
+            </el-button>
+              <el-button
+                class="handwrite-btn"
+                :class="{ 'active': showHandwrite }"
+                @click="toggleHandwrite"
+              >
+                <el-icon><EditPen /></el-icon>
+                {{ showHandwrite ? '隐藏手写' : '显示手写' }}
+              </el-button>
+              <el-button
+                class="ai-explain-btn"
+                @click="openAIChatDrawer"
+              >
+                <el-icon><Cpu /></el-icon>
+                AI讲解
+              </el-button>
+              <el-button
+                class="next-question-btn"
+                @click="nextQuestion"
+              >
+                下一题 <el-icon><ArrowRight /></el-icon>
+              </el-button>
+            </template>
+          </div>
+        </div>
       </div>
     </div>
 
-    <el-empty v-else description="暂无题目" />
+    <el-empty v-else :description="isArticleMode ? '暂无文章' : '暂无题目'" />
 
     <!-- AI 讲解抽屉 -->
     <div
@@ -458,6 +593,49 @@
       </div>
     </div>
 
+    <!-- 整篇模式抽屉 -->
+    <div
+      class="full-article-drawer-overlay"
+      :class="{ 'show': fullArticleDrawerVisible }"
+      @click="fullArticleDrawerVisible = false"
+    >
+      <div
+        class="full-article-drawer"
+        :class="{ 'show': fullArticleDrawerVisible }"
+        @click.stop
+      >
+        <div class="drawer-header">
+          <h2>整篇模式</h2>
+          <el-icon class="drawer-close" @click="fullArticleDrawerVisible = false"><Close /></el-icon>
+        </div>
+        <div class="drawer-content full-article-drawer-content">
+          <div class="full-article-left">
+            <div class="full-article-content markdown-body" v-html="renderMarkdown(currentQuestion?.option_a || currentQuestion?.title || '')"></div>
+          </div>
+          <div class="full-article-right" v-if="showHandwrite">
+            <el-input
+              v-model="handwriteInputs['full']"
+              type="textarea"
+              :rows="20"
+              placeholder="整篇手写内容..."
+              class="handwrite-input full-handwrite-input"
+            />
+            <div class="handwrite-actions">
+              <el-button
+                class="clear-handwrite-btn"
+                size="small"
+                text
+                @click="handwriteInputs['full'] = ''"
+              >
+                <el-icon><Delete /></el-icon>
+                清空
+              </el-button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 同类题抽屉 -->
     <div
       class="similar-drawer-overlay"
@@ -555,6 +733,37 @@
       </div>
     </div>
   </div>
+
+  <!-- 新增论文弹窗 -->
+  <el-dialog
+    v-model="addArticleDialogVisible"
+    title="新增论文"
+    width="900px"
+    :close-on-click-modal="true"
+    destroy-on-close
+    class="add-article-dialog"
+  >
+    <div class="add-article-form">
+      <div class="form-item">
+        <label>论文标题：</label>
+        <el-input v-model="newArticleTitle" placeholder="请输入论文标题" />
+      </div>
+      <div class="form-item">
+        <label>论文内容：</label>
+        <div
+          ref="addArticleEditorRef"
+          class="article-editor"
+          contenteditable="true"
+          v-html="newArticleContent"
+          @paste="handleAddArticlePaste"
+        ></div>
+      </div>
+    </div>
+    <template #footer>
+      <el-button @click="addArticleDialogVisible = false">取消</el-button>
+      <el-button type="primary" @click="saveNewArticle">保存</el-button>
+    </template>
+  </el-dialog>
 
   <!-- 批量新增题目弹窗 -->
   <el-dialog
@@ -717,7 +926,10 @@ const props = defineProps<{
 const router = useRouter();
 const route = useRoute();
 const directoryName = ref('');
+const isArticleMode = ref(false);
 const questions = ref<Question[]>([]);
+const articles = ref<Article[]>([]);
+const allArticles = ref<Article[]>([]); // 高项论文模式下所有原始文章数据（用于左侧列表）
 const allQuestions = ref<Question[]>([]); // 保存该科目所有原始题目（用于筛选时查询全部）
 const currentIndex = ref(0);
 const selectedAnswer = ref<string>('');
@@ -739,6 +951,10 @@ const filteredQuestions = ref<Question[]>([]); // 筛选后的题目数组（应
 // 文章题段落隐藏状态
 const hiddenParagraphs = ref<Set<number>>(new Set());
 
+// 高项论文整篇/段落模式切换
+const isFullArticleMode = ref(false);
+const fullArticleDrawerVisible = ref(false);
+
 // AI 讲解相关状态
 const aiDrawerVisible = ref(false);
 const aiLoading = ref(false);
@@ -754,6 +970,12 @@ let aiUnsubscribers: (() => void)[] = [];
 const showSkillList = ref(false);
 const currentSkill = ref<string>('');
 const aiInputPlaceholder = ref('对这道题还有疑问？继续向 AI 提问...');
+
+// 新增论文弹窗状态
+const addArticleDialogVisible = ref(false);
+const newArticleTitle = ref('');
+const newArticleContent = ref('');
+const addArticleEditorRef = ref<HTMLDivElement | null>(null);
 
 // 批量新增题目弹窗状态
 const addQuestionDialogVisible = ref(false);
@@ -815,6 +1037,10 @@ const editingParagraphIndex = ref<number | null>(null);
 const paragraphEditorRefs = ref<Record<number, HTMLDivElement>>({});
 const paragraphEditContents = ref<Record<number, string>>({});
 
+// 文章标题编辑状态
+const editingArticleTitleId = ref<number | null>(null);
+const editingArticleTitles = ref<Record<number, string>>({});
+const articleTitleInputRefs = ref<Record<number, any>>({});
 const aiShowSimilarAnswer = ref(false);
 const aiSimilarDeletedOptions = ref<Set<string>>(new Set());
 
@@ -822,6 +1048,9 @@ const aiSimilarDeletedOptions = ref<Set<string>>(new Set());
 const showHandwrite = ref(true);
 const handwriteInputs = ref<Record<number, string>>({});
 
+// 段落关键词状态
+const paragraphKeywords = ref<Record<number, string>>({});
+const keywordsLoading = ref<Record<number, boolean>>({});
 
 // 检测是否在底部（允许 10px 误差）
 const isAtBottom = () => {
@@ -858,15 +1087,36 @@ const renderMarkdown = (content: string) => {
   return marked.parse(trimmed, { async: false }) as string;
 };
 
-// 当前题目
+// 当前题目/文章
 const currentQuestion = computed(() => {
+  if (isArticleMode.value) {
+    // 文章模式：将 Article 转换为 Question 格式
+    const article = articles.value[currentIndex.value];
+    if (!article) return null;
+    return {
+      id: article.id,
+      directory_id: article.directory_id,
+      question_type: 'write' as QuestionType,
+      title: article.title,
+      option_a: article.content,
+      option_b: null,
+      option_c: null,
+      option_d: null,
+      option_e: null,
+      correct_answer: article.correct_answer,
+      explanation: article.explanation,
+      sort_order: article.sort_order,
+      created_at: article.created_at,
+    } as Question;
+  }
   return questions.value[currentIndex.value] || null;
 });
 
 // 进度百分比
 const progressPercent = computed(() => {
-  if (questions.value.length === 0) return 0;
-  return ((currentIndex.value + 1) / questions.value.length) * 100;
+  const total = isArticleMode.value ? articles.value.length : questions.value.length;
+  if (total === 0) return 0;
+  return ((currentIndex.value + 1) / total) * 100;
 });
 
 // 是否答对
@@ -962,35 +1212,74 @@ const loadData = async () => {
       directoryName.value = dir.name;
     }
 
-    // 普通模式：从 questions 表加载
-    let qs = await window.electronAPI.getQuestions(dirId);
-    
-    // 处理出题设置参数
-    const mode = route.query.mode as string;
-    const count = parseInt(route.query.count as string) || qs.length;
-    const repeat = parseInt(route.query.repeat as string) || 1;
-    
-    // 先随机打乱
-    qs = shuffleArray([...qs]);
-    
-    if (mode === 'random' && count < qs.length) {
-      // 随机抽取指定数量的题目
-      qs = qs.slice(0, count);
-    }
-    
-    if (repeat > 1) {
-      // 重复出题：将抽出的题目重复指定次数
-      const baseQuestions = [...qs];
-      const repeated: Question[] = [];
-      for (let i = 0; i < repeat; i++) {
-        // 每次重复都重新打乱顺序
-        repeated.push(...shuffleArray([...baseQuestions]));
+    // 判断是否是文章模式（高项论文）
+    isArticleMode.value = route.query.isArticle === '1' || dir?.name === '高项论文';
+
+    if (isArticleMode.value) {
+      // 文章模式：从 article 表加载
+      let arts = await window.electronAPI.getArticles(dirId);
+      if (arts.length === 0) {
+        ElMessage.warning('该科目暂无文章');
+        return;
       }
-      qs = repeated;
+      // 保存所有原始文章数据用于左侧列表显示
+      allArticles.value = [...arts];
+
+      // 处理出题设置参数
+      const mode = route.query.mode as string;
+      const count = parseInt(route.query.count as string) || arts.length;
+      const repeat = parseInt(route.query.repeat as string) || 1;
+
+      // 先随机打乱
+      arts = shuffleArray([...arts]);
+
+      if (mode === 'random' && count < arts.length) {
+        arts = arts.slice(0, count);
+      }
+
+      if (repeat > 1) {
+        const baseArticles = [...arts];
+        const repeated: Article[] = [];
+        for (let i = 0; i < repeat; i++) {
+          repeated.push(...shuffleArray([...baseArticles]));
+        }
+        arts = repeated;
+      }
+
+      articles.value = arts;
+      questions.value = []; // 清空题目
+    } else {
+      // 普通模式：从 questions 表加载
+      let qs = await window.electronAPI.getQuestions(dirId);
+      
+      // 处理出题设置参数
+      const mode = route.query.mode as string;
+      const count = parseInt(route.query.count as string) || qs.length;
+      const repeat = parseInt(route.query.repeat as string) || 1;
+      
+      // 先随机打乱
+      qs = shuffleArray([...qs]);
+      
+      if (mode === 'random' && count < qs.length) {
+        // 随机抽取指定数量的题目
+        qs = qs.slice(0, count);
+      }
+      
+      if (repeat > 1) {
+        // 重复出题：将抽出的题目重复指定次数
+        const baseQuestions = [...qs];
+        const repeated: Question[] = [];
+        for (let i = 0; i < repeat; i++) {
+          // 每次重复都重新打乱顺序
+          repeated.push(...shuffleArray([...baseQuestions]));
+        }
+        qs = repeated;
+      }
+      
+      allQuestions.value = [...qs]; // 保存全部原始题目
+      questions.value = qs;
+      articles.value = []; // 清空文章
     }
-    
-    allQuestions.value = [...qs]; // 保存全部原始题目
-    questions.value = qs;
     
     resetState();
   } catch (error) {
@@ -1054,18 +1343,54 @@ const confirmMultipleAnswer = () => {
 const deleteCurrentQuestion = async () => {
   if (!currentQuestion.value) return;
 
+  const isArticle = isArticleMode.value;
+  const itemName = isArticle ? '文章' : '题目';
+
+  // 只有高项论文需要弹窗确认，高项科目直接删除
+  if (directoryName.value === '高项论文') {
+    try {
+      await ElMessageBox.confirm(
+        `确定要删除当前${itemName}吗？此操作不可恢复。`,
+        '删除确认',
+        {
+          confirmButtonText: '确定删除',
+          cancelButtonText: '取消',
+          type: 'warning',
+        }
+      );
+    } catch {
+      // 用户取消
+      return;
+    }
+  }
+
   try {
     const id = currentQuestion.value.id;
-    const success = await window.electronAPI.deleteQuestion(id);
+    let success: boolean;
+
+    if (isArticle) {
+      success = await window.electronAPI.deleteArticle(id);
+    } else {
+      success = await window.electronAPI.deleteQuestion(id);
+    }
 
     if (success) {
-      ElMessage.success('题目已删除');
+      ElMessage.success(`${itemName}已删除`);
 
       // 从本地数组中移除所有相同id的题目（处理重复出题的情况）
-      questions.value = questions.value.filter(q => q.id !== id);
+      if (isArticle) {
+        articles.value = articles.value.filter(a => a.id !== id);
+        // 高项论文模式：同时刷新左侧列表的 allArticles
+        if (directoryName.value === '高项论文') {
+          allArticles.value = allArticles.value.filter(a => a.id !== id);
+        }
+      } else {
+        questions.value = questions.value.filter(q => q.id !== id);
+      }
 
       // 如果删除后没有题目了，返回上一页
-      if (questions.value.length === 0) {
+      const remaining = isArticle ? articles.value.length : questions.value.length;
+      if (remaining === 0) {
         ElMessage.info('该科目下已无任何题目');
         router.push({ name: 'Home' });
         return;
@@ -1083,6 +1408,13 @@ const deleteCurrentQuestion = async () => {
     ElMessage.error('删除失败');
     console.error(error);
   }
+};
+
+// 打开新增论文弹窗
+const openAddArticleDialog = () => {
+  addArticleDialogVisible.value = true;
+  newArticleTitle.value = '';
+  newArticleContent.value = '';
 };
 
 // 打开批量新增题目弹窗
@@ -1212,6 +1544,72 @@ const saveNewQuestions = async () => {
     addQuestionDialogVisible.value = false;
     newQuestionContent.value = '';
     await loadData();
+  } catch (error) {
+    ElMessage.error('保存失败');
+    console.error(error);
+  }
+};
+
+// 新增论文弹窗粘贴图片处理
+const handleAddArticlePaste = async (event: ClipboardEvent) => {
+  const items = event.clipboardData?.items;
+  if (!items) return;
+
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      event.preventDefault();
+      const blob = item.getAsFile();
+      if (!blob) continue;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64 = e.target?.result as string;
+        if (base64 && addArticleEditorRef.value) {
+          const imgHtml = `<img src="${base64}" style="max-width:100%;" />`;
+          document.execCommand('insertHTML', false, imgHtml);
+        }
+      };
+      reader.readAsDataURL(blob);
+    }
+  }
+};
+
+// 保存新论文
+const saveNewArticle = async () => {
+  if (!newArticleTitle.value.trim()) {
+    ElMessage.warning('请输入论文标题');
+    return;
+  }
+
+  const editorContent = addArticleEditorRef.value?.innerHTML || '';
+  if (!editorContent.trim()) {
+    ElMessage.warning('请输入论文内容');
+    return;
+  }
+
+  try {
+    const dirId = parseInt(props.directoryId);
+    const result = await window.electronAPI.addArticle({
+      directory_id: dirId,
+      title: newArticleTitle.value.trim(),
+      content: editorContent,
+    });
+
+    if (!result) {
+      ElMessage.error('保存失败');
+      return;
+    }
+
+    ElMessage.success('论文保存成功');
+    addArticleDialogVisible.value = false;
+
+    // 刷新数据
+    await loadData();
+    // 跳转到新添加的论文
+    const newIndex = articles.value.findIndex(a => a.id === result.id);
+    if (newIndex >= 0) {
+      currentIndex.value = newIndex;
+    }
   } catch (error) {
     ElMessage.error('保存失败');
     console.error(error);
@@ -1433,12 +1831,12 @@ const saveParagraph = async (index: number) => {
   // 清理多余换行
   newParagraph = newParagraph.replace(/\n{3,}/g, '\n\n').trim();
 
-// 更新题目内容
-const question = questions.value[currentIndex.value];
-if (!question) return;
+// 更新文章内容
+const article = articles.value[currentIndex.value];
+if (!article) return;
 
 // 获取当前所有段落
-const currentContent = question.option_a || '';
+const currentContent = article.content;
 let paragraphs: string[];
 // 如果内容是富文本 HTML，按 div/p 分段
 if (/<(div|p)\b/i.test(currentContent)) {
@@ -1461,23 +1859,28 @@ if (/<(div|p)\b/i.test(currentContent)) {
 
 // 替换指定段落
 if (index >= 0 && index < paragraphs.length) {
-  paragraphs[index] = newParagraph;
-  const newContent = paragraphs.join('\n\n');
-  
-  try {
-    const success = await window.electronAPI.updateQuestion(question.id, { option_a: newContent });
-    if (success) {
-      question.option_a = newContent;
-      editingParagraphIndex.value = null;
-      ElMessage.success('段落已保存');
-    } else {
+paragraphs[index] = newParagraph;
+// 统一用换行符拼接段落，不再使用富文本 div 包裹
+const newContent = paragraphs.join('\n\n');
+    
+    try {
+      const success = await window.electronAPI.updateArticle(article.id, newContent);
+      if (success) {
+        article.content = newContent;
+        // 更新当前显示的文章内容
+        if (currentQuestion.value) {
+          currentQuestion.value.option_a = newContent;
+        }
+        editingParagraphIndex.value = null;
+        ElMessage.success('段落已保存');
+      } else {
+        ElMessage.error('保存失败');
+      }
+    } catch (error) {
       ElMessage.error('保存失败');
+      console.error(error);
     }
-  } catch (error) {
-    ElMessage.error('保存失败');
-    console.error(error);
   }
-}
 };
 
 // 切换手写输入显示/隐藏
@@ -1495,6 +1898,98 @@ const updateHandwriteInput = (index: number, value: string) => {
   handwriteInputs.value[index] = value;
 };
 
+// AI 提取段落关键词
+const extractParagraphKeywords = async (index: number) => {
+  const paragraph = writeParagraphs.value[index];
+  if (!paragraph || !paragraph.trim()) {
+    ElMessage.warning('段落内容为空，无法提取关键词');
+    return;
+  }
+
+  keywordsLoading.value[index] = true;
+  try {
+    const providerOrder = getProviderOrder();
+    const result = await window.electronAPI.extractKeywords({
+      paragraph: paragraph.trim(),
+      providerOrder,
+    });
+
+    if (result.success && result.keywords) {
+      paragraphKeywords.value[index] = result.keywords;
+      ElMessage.success('关键词提取成功');
+    } else {
+      ElMessage.error(result.error || '提取失败');
+    }
+  } catch (error) {
+    ElMessage.error('提取关键词失败');
+    console.error(error);
+  } finally {
+    keywordsLoading.value[index] = false;
+  }
+};
+
+// 文章标题编辑相关方法
+const isEditingArticleTitle = (id: number) => {
+  return editingArticleTitleId.value === id;
+};
+
+const setArticleTitleInputRef = (el: any, id: number) => {
+  if (el) {
+    articleTitleInputRefs.value[id] = el;
+  }
+};
+
+const startEditArticleTitle = (id: number, title: string) => {
+  editingArticleTitleId.value = id;
+  editingArticleTitles.value[id] = title || '';
+  // 自动聚焦输入框
+  nextTick(() => {
+    const inputRef = articleTitleInputRefs.value[id];
+    if (inputRef && inputRef.focus) {
+      inputRef.focus();
+    }
+  });
+};
+
+const saveArticleTitle = async (id: number) => {
+  const newTitle = editingArticleTitles.value[id];
+  if (newTitle === undefined) return;
+
+  // 查找文章
+  const article = allArticles.value.find(a => a.id === id);
+  if (!article) return;
+
+  // 如果标题没有变化，直接退出编辑
+  if (article.title === newTitle) {
+    editingArticleTitleId.value = null;
+    return;
+  }
+
+  try {
+    const success = await window.electronAPI.updateArticle(id, article.content, newTitle);
+    if (success) {
+      // 更新 allArticles 中的标题
+      article.title = newTitle;
+      // 更新 articles 中的标题（如果存在）
+      const articleInList = articles.value.find(a => a.id === id);
+      if (articleInList) {
+        articleInList.title = newTitle;
+      }
+      // 更新当前显示的标题
+      if (currentQuestion.value && currentQuestion.value.id === id) {
+        currentQuestion.value.title = newTitle;
+      }
+      editingArticleTitleId.value = null;
+      ElMessage.success('标题已保存');
+    } else {
+      ElMessage.error('保存失败');
+    }
+  } catch (error) {
+    ElMessage.error('保存失败');
+    console.error(error);
+  }
+};
+
 // 上一题
 const prevQuestion = () => {
   if (currentIndex.value > 0) {
@@ -1503,9 +1998,35 @@ const prevQuestion = () => {
   }
 };
 
+// 跳转到指定文章（高项论文模式）
+const jumpToArticle = (index: number) => {
+  if (index < 0 || index >= articles.value.length) return;
+  currentIndex.value = index;
+  resetQuestionState();
+};
+
+// 根据文章 ID 跳转（左侧列表点击用）
+const jumpToArticleById = (id: number) => {
+  // 在当前的 articles（重复出题数组）中查找该文章
+  const idx = articles.value.findIndex(a => a.id === id);
+  if (idx !== -1) {
+    // 如果当前出题数组中有，直接跳转
+    currentIndex.value = idx;
+    resetQuestionState();
+  } else {
+    // 如果当前出题数组中没有（被随机抽掉了），临时插入到当前位置
+    const article = allArticles.value.find(a => a.id === id);
+    if (article) {
+      articles.value.splice(currentIndex.value + 1, 0, article);
+      currentIndex.value++;
+      resetQuestionState();
+    }
+  }
+};
+
 // 下一题
 const nextQuestion = () => {
-  const total = questions.value.length;
+  const total = isArticleMode.value ? articles.value.length : questions.value.length;
   if (currentIndex.value < total - 1) {
     currentIndex.value++;
     resetQuestionState();

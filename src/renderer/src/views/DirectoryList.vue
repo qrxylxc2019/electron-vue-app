@@ -798,14 +798,27 @@ const enterQuiz = (directoryId: number) => {
     return;
   }
 
+  // 高项论文进入文章页面
+  if (isArticleDir) {
+    router.push({
+      name: 'Article',
+      params: { directoryId: directoryId.toString() },
+      query: {
+        mode: quizSettings.value.mode,
+        count: quizSettings.value.count.toString(),
+        repeat: quizSettings.value.repeat.toString()
+      }
+    });
+    return;
+  }
+
   router.push({
     name: 'Quiz',
     params: { directoryId: directoryId.toString() },
     query: {
       mode: quizSettings.value.mode,
       count: quizSettings.value.count.toString(),
-      repeat: quizSettings.value.repeat.toString(),
-      isArticle: isArticleDir ? '1' : '0'
+      repeat: quizSettings.value.repeat.toString()
     }
   });
 };
