@@ -155,6 +155,11 @@ declare global {
       // 英语阅读
       getEnglishReadings: (dirId: number) => Promise<{ success: boolean; materials?: any[]; error?: string }>;
       addEnglishReading: (data: any) => Promise<{ success: boolean; materialId?: number; error?: string }>;
+      updateEnglishReading: (id: number, data: any) => Promise<{ success: boolean; error?: string }>;
+      deleteEnglishReading: (id: number) => Promise<{ success: boolean; error?: string }>;
+      updateEnglishQuestion: (id: number, data: any) => Promise<{ success: boolean; error?: string }>;
+      deleteEnglishQuestion: (id: number) => Promise<{ success: boolean; error?: string }>;
+      explainEnglishQuestion: (data: any) => Promise<{ success: boolean; error?: string }>;
 
       // 考研英语单词
       getWordImages: () => Promise<{ success: boolean; images?: string[]; error?: string }>;

@@ -224,13 +224,6 @@
               <el-icon><Delete /></el-icon> 删除阅读
             </el-button>
             <el-button
-              class="import-btn"
-              @click="showImportDialog = true"
-            >
-              <el-icon><Document /></el-icon>
-              批量导入
-            </el-button>
-            <el-button
               class="next-material-btn"
               @click="nextMaterial"
             >
@@ -253,19 +246,15 @@
       class="add-material-dialog"
     >
       <div class="add-material-form">
-        <div class="form-item">
-          <label>阅读标题：</label>
-          <el-input v-model="newMaterialTitle" placeholder="请输入阅读标题" />
-        </div>
         <div class="form-item editor-row">
           <div class="editor-left">
-            <div
-              ref="addMaterialEditorRef"
-              class="material-editor add-material-editor"
-              contenteditable="true"
-              v-html="newMaterialContent"
-              @paste="handleAddMaterialPaste"
-            ></div>
+            <el-input
+              v-model="newMaterialContent"
+              type="textarea"
+              :rows="24"
+              class="batch-import-textarea"
+              placeholder="请按格式粘贴内容..."
+            />
           </div>
           <div class="editor-right">
             <div class="format-tip-card">
@@ -284,15 +273,21 @@
 解析：...
 【/题目1】
 
-【题目2】
+====================
+
+【材料】
+阅读材料内容...
+【/材料】
+
+【题目1】
 题干：...
 选项A：...
 选项B：...
 选项C：...
 选项D：...
-答案：B
+答案：A
 解析：...
-【/题目2】</pre>
+【/题目1】</pre>
               </div>
               <el-button
                 class="copy-format-btn"
@@ -384,24 +379,6 @@
       </div>
     </div>
 
-    <!-- 批量导入对话框 -->
-    <el-dialog
-      v-model="showImportDialog"
-      title="批量导入阅读题"
-      width="800px"
-      class="warm-dialog"
-    >
-      <el-input
-        v-model="importText"
-        type="textarea"
-        :rows="20"
-        placeholder="请按格式粘贴内容..."
-      />
-      <template #footer>
-        <el-button @click="showImportDialog = false">取消</el-button>
-        <el-button type="primary" @click="parseAndImport">导入</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -616,7 +593,9 @@ const deleteCurrentMaterial = async () => {
     await ElMessageBox.confirm('确定要删除这篇阅读材料吗？删除后不可恢复！', '删除确认',
       { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' });
     const id = currentMaterial.value.id;
+    console.log('[English] 删除材料, id=', id);
     const result = await window.electronAPI.deleteEnglishReading(id);
+    console.log('[English] 删除材料结果:', result);
     if (result.success) {
       ElMessage.success('阅读材料已删除');
       materials.value = materials.value.filter(m => m.id !== id);
@@ -629,7 +608,8 @@ const deleteCurrentMaterial = async () => {
       ElMessage.error(result.error || '删除失败');
     }
   } catch (error: any) {
-    if (error !== 'cancel') ElMessage.error('删除失败');
+    console.error('[English] 删除材料异常:', error);
+    if (error !== 'cancel') ElMessage.error('删除失败: ' + (error?.message || error));
   }
 };
 
@@ -638,7 +618,9 @@ const confirmDeleteQuestion = async (q: any) => {
   try {
     await ElMessageBox.confirm('确定要删除这道小题吗？删除后不可恢复！', '删除确认',
       { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' });
+    console.log('[English] 删除小题, id=', q.id);
     const result = await window.electronAPI.deleteEnglishQuestion(q.id);
+    console.log('[English] 删除小题结果:', result);
     if (result.success) {
       ElMessage.success('小题已删除');
       if (currentMaterial.value && currentMaterial.value.questions) {
@@ -651,41 +633,36 @@ const confirmDeleteQuestion = async (q: any) => {
       ElMessage.error(result.error || '删除失败');
     }
   } catch (error: any) {
-    if (error !== 'cancel') ElMessage.error('删除失败');
+    console.error('[English] 删除小题异常:', error);
+    if (error !== 'cancel') ElMessage.error('删除失败: ' + (error?.message || error));
   }
 };
 
 // 打开新增题目弹窗
 const openAddMaterialDialog = () => {
   addMaterialDialogVisible.value = true;
-  newMaterialTitle.value = '';
   newMaterialContent.value = '';
-};
-
-// 新增题目弹窗粘贴图片处理
-const handleAddMaterialPaste = async (event: ClipboardEvent) => {
-  const items = event.clipboardData?.items;
-  if (!items) return;
-  for (const item of items) {
-    if (item.type.startsWith('image/')) {
-      event.preventDefault();
-      const blob = item.getAsFile();
-      if (!blob) continue;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const base64 = e.target?.result as string;
-        if (base64 && addMaterialEditorRef.value) {
-          document.execCommand('insertHTML', false, `<img src="${base64}" style="max-width:100%;" />`);
-        }
-      };
-      reader.readAsDataURL(blob);
-    }
-  }
 };
 
 // 复制格式模板
 const copyFormatTemplate = async () => {
   const template = `【材料】
+阅读材料内容...
+【/材料】
+
+【题目1】
+题干：...
+选项A：...
+选项B：...
+选项C：...
+选项D：...
+答案：A
+解析：...
+【/题目1】
+
+====================
+
+【材料】
 阅读材料内容...
 【/材料】
 
@@ -706,94 +683,94 @@ const copyFormatTemplate = async () => {
   }
 };
 
-// 保存新题目
-const saveNewMaterial = async () => {
-  if (!newMaterialTitle.value.trim()) {
-    ElMessage.warning('请输入阅读标题');
-    return;
+// 解析单个材料块
+const parseMaterialBlock = (text: string) => {
+  const materialMatch = text.match(/【材料】\s*([\s\S]*?)\s*【\/材料】/);
+  if (!materialMatch) return null;
+
+  const content = materialMatch[1].trim();
+  const questions: any[] = [];
+  const questionRegex = /【题目(\d+)】\s*([\s\S]*?)\s*【\/题目\1】/g;
+  let match;
+  while ((match = questionRegex.exec(text)) !== null) {
+    const questionText = match[2];
+    const titleMatch = questionText.match(/题干：(.*)/);
+    const optionAMatch = questionText.match(/选项A：(.*)/);
+    const optionBMatch = questionText.match(/选项B：(.*)/);
+    const optionCMatch = questionText.match(/选项C：(.*)/);
+    const optionDMatch = questionText.match(/选项D：(.*)/);
+    const answerMatch = questionText.match(/答案：(.*)/);
+    const explanationMatch = questionText.match(/解析：([\s\S]*?)(?=【|$)/);
+
+    if (titleMatch && answerMatch) {
+      questions.push({
+        question_number: parseInt(match[1]),
+        title: titleMatch[1].trim(),
+        option_a: optionAMatch?.[1].trim() || '',
+        option_b: optionBMatch?.[1].trim() || '',
+        option_c: optionCMatch?.[1].trim() || '',
+        option_d: optionDMatch?.[1].trim() || '',
+        correct_answer: answerMatch[1].trim(),
+        explanation: explanationMatch?.[1].trim() || ''
+      });
+    }
   }
-  const editorContent = addMaterialEditorRef.value?.innerHTML || '';
-  if (!editorContent.trim()) {
+
+  return { content, questions };
+};
+
+// 保存新题目（支持多材料块）
+const saveNewMaterial = async () => {
+  const text = newMaterialContent.value.trim();
+  if (!text) {
     ElMessage.warning('请输入阅读内容');
     return;
   }
+
+  // 按 ==================== 分割多个材料块
+  const blocks = text.split(/={3,}/).map(b => b.trim()).filter(b => b);
+  if (blocks.length === 0) {
+    ElMessage.warning('未找到有效内容');
+    return;
+  }
+
+  let totalQuestions = 0;
+  let lastMaterialId: number | null = null;
+
   try {
-    const result = await window.electronAPI.addEnglishReading({
-      directory_id: directoryId.value,
-      title: newMaterialTitle.value.trim(),
-      content: editorContent,
-      questions: []
-    });
-    if (!result || !result.success) {
-      ElMessage.error(result?.error || '保存失败');
-      return;
+    for (const block of blocks) {
+      const parsed = parseMaterialBlock(block);
+      if (!parsed) {
+        ElMessage.warning('部分格式不正确，已跳过');
+        continue;
+      }
+
+      const data = JSON.parse(JSON.stringify({
+        directory_id: directoryId.value,
+        title: '',
+        content: parsed.content,
+        questions: parsed.questions
+      }));
+
+      const result = await window.electronAPI.addEnglishReading(data);
+      if (result.success) {
+        totalQuestions += parsed.questions.length;
+        if (result.materialId) lastMaterialId = result.materialId;
+      }
     }
-    ElMessage.success('阅读题目保存成功');
+
+    ElMessage.success(`成功保存 ${blocks.length} 篇阅读，共 ${totalQuestions} 道题目`);
     addMaterialDialogVisible.value = false;
+    newMaterialContent.value = '';
     await loadData();
-    if (result.materialId) {
-      currentMaterialIndex.value = materials.value.findIndex(m => m.id === result.materialId);
+
+    if (lastMaterialId) {
+      const idx = materials.value.findIndex(m => m.id === lastMaterialId);
+      if (idx >= 0) currentMaterialIndex.value = idx;
     }
-    if (currentMaterialIndex.value < 0) currentMaterialIndex.value = materials.value.length - 1;
   } catch (error) {
     ElMessage.error('保存失败');
-  }
-};
-
-// 批量导入
-const showImportDialog = ref(false);
-const importText = ref('');
-
-const parseAndImport = () => {
-  try {
-    const text = importText.value;
-    const materialMatch = text.match(/【材料】\s*([\s\S]*?)\s*【\/材料】/);
-    if (!materialMatch) { ElMessage.warning('未找到材料内容'); return; }
-
-    const content = materialMatch[1].trim();
-    const questions: any[] = [];
-    const questionRegex = /【题目(\d+)】\s*([\s\S]*?)\s*【\/题目\1】/g;
-    let match;
-    while ((match = questionRegex.exec(text)) !== null) {
-      const questionText = match[2];
-      const titleMatch = questionText.match(/题干：(.*)/);
-      const optionAMatch = questionText.match(/选项A：(.*)/);
-      const optionBMatch = questionText.match(/选项B：(.*)/);
-      const optionCMatch = questionText.match(/选项C：(.*)/);
-      const optionDMatch = questionText.match(/选项D：(.*)/);
-      const answerMatch = questionText.match(/答案：(.*)/);
-      const explanationMatch = questionText.match(/解析：([\s\S]*?)(?=【|$)/);
-
-      if (titleMatch && answerMatch) {
-        questions.push({
-          question_number: parseInt(match[1]),
-          title: titleMatch[1].trim(),
-          option_a: optionAMatch?.[1].trim() || '',
-          option_b: optionBMatch?.[1].trim() || '',
-          option_c: optionCMatch?.[1].trim() || '',
-          option_d: optionDMatch?.[1].trim() || '',
-          correct_answer: answerMatch[1].trim(),
-          explanation: explanationMatch?.[1].trim() || ''
-        });
-      }
-    }
-
-    const data = JSON.parse(JSON.stringify({
-      directory_id: directoryId.value, title: '', content, questions
-    }));
-
-    window.electronAPI.addEnglishReading(data).then((result: any) => {
-      if (result.success) {
-        ElMessage.success(`成功导入 ${questions.length} 道题目`);
-        showImportDialog.value = false;
-        importText.value = '';
-        loadData();
-      } else {
-        ElMessage.error(result.error || '导入失败');
-      }
-    });
-  } catch (error) {
-    ElMessage.error('解析失败，请检查格式');
+    console.error(error);
   }
 };
 

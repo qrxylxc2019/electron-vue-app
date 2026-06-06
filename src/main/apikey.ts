@@ -158,6 +158,32 @@ ${answer || '暂无参考答案'}
 2小林在编制测试用例时未完全覆盖所有功能，导致在测试时出现遗漏`,
   }),
 
+  // 英语阅读小题解析
+  explainEnglishQuestion: (materialTitle: string, materialContent: string, questionNumber: number, questionTitle: string, options: string, answer: string) => ({
+    system: `你是一位资深的考研英语阅读理解辅导专家，擅长分析阅读材料并给出清晰的解题思路。`,
+    user: `请详细讲解以下这道英语阅读理解题：
+
+【阅读材料标题】${materialTitle}
+
+【阅读材料内容】
+${materialContent}
+
+【第 ${questionNumber} 小题】
+${questionTitle}
+
+【选项】
+${options || '暂无选项'}
+
+【参考答案】
+${answer || '暂无参考答案'}
+
+请按照以下结构进行讲解：
+1. 题目定位（在材料中的位置）
+2. 选项分析（逐一分析每个选项）
+3. 正确答案解析
+4. 解题技巧`,
+  }),
+
   // 案例题解析
   explainCase: (material: string, question: string, answer: string) => ({
     system: `你是一位资深的信息系统项目管理师案例题辅导专家，擅长分析案例并给出清晰的解题思路。

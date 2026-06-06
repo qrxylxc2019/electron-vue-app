@@ -632,6 +632,79 @@ function setupIpc() {
     }
   });
 
+  // 英语阅读：更新材料
+  ipcMain.handle('english:updateReading', (_event, id: number, data: any) => {
+    if (!db) return { success: false, error: '数据库未初始化' };
+    try {
+      const stmt = db.prepare('UPDATE english_materials SET content = ? WHERE id = ?');
+      stmt.run(data.content || '', id);
+      return { success: true };
+    } catch (err: any) {
+      console.error('updateEnglishReading error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // 英语阅读：删除材料（级联删除小题）
+  ipcMain.handle('english:deleteReading', (_event: any, id: number) => {
+    console.log('[main] english:deleteReading called, id=', id);
+    if (!db) {
+      console.error('[main] db not initialized');
+      return { success: false, error: '数据库未初始化' };
+    }
+    try {
+      const stmt = db.prepare('DELETE FROM english_materials WHERE id = ?');
+      const result = stmt.run(id);
+      console.log('[main] deleteEnglishReading result:', result);
+      return { success: true };
+    } catch (err: any) {
+      console.error('[main] deleteEnglishReading error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // 英语阅读：更新小题
+  ipcMain.handle('english:updateQuestion', (_event, id: number, data: any) => {
+    if (!db) return { success: false, error: '数据库未初始化' };
+    try {
+      const fields: string[] = [];
+      const values: any[] = [];
+      if (data.title !== undefined) { fields.push('title = ?'); values.push(data.title); }
+      if (data.option_a !== undefined) { fields.push('option_a = ?'); values.push(data.option_a); }
+      if (data.option_b !== undefined) { fields.push('option_b = ?'); values.push(data.option_b); }
+      if (data.option_c !== undefined) { fields.push('option_c = ?'); values.push(data.option_c); }
+      if (data.option_d !== undefined) { fields.push('option_d = ?'); values.push(data.option_d); }
+      if (data.correct_answer !== undefined) { fields.push('correct_answer = ?'); values.push(data.correct_answer); }
+      if (data.explanation !== undefined) { fields.push('explanation = ?'); values.push(data.explanation); }
+      if (fields.length === 0) return { success: true };
+      values.push(id);
+      const stmt = db.prepare(`UPDATE english_questions SET ${fields.join(', ')} WHERE id = ?`);
+      stmt.run(...values);
+      return { success: true };
+    } catch (err: any) {
+      console.error('updateEnglishQuestion error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // 英语阅读：删除小题
+  ipcMain.handle('english:deleteQuestion', (_event, id: number) => {
+    console.log('[main] english:deleteQuestion called, id=', id);
+    if (!db) {
+      console.error('[main] db not initialized');
+      return { success: false, error: '数据库未初始化' };
+    }
+    try {
+      const stmt = db.prepare('DELETE FROM english_questions WHERE id = ?');
+      const result = stmt.run(id);
+      console.log('[main] deleteEnglishQuestion result:', result);
+      return { success: true };
+    } catch (err: any) {
+      console.error('[main] deleteEnglishQuestion error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
   // 获取考研英语单词图片列表
   ipcMain.handle('word:getImages', () => {
     try {
@@ -1537,6 +1610,112 @@ ipcMain.handle('ai:explainCaseQuestion', async (_event, data: any) => {
 
 // 案例题 AI 讲解上下文存储
 const caseChatContexts = new Map<string, Array<{role: string; content: string}>>();
+
+// 英语阅读 AI 讲解上下文存储
+const englishChatContexts = new Map<string, Array<{role: string; content: string}>>();
+
+// 英语阅读：AI 讲解
+ipcMain.handle('english:explainQuestion', async (_event, data: any) => {
+  const providerOrder = (data.providerOrder as string[]) || ['modelspace', 'deepseek'];
+  const isFollowUp = data.isFollowUp as boolean;
+  const userMessage = data.userMessage as string || '';
+  const contextKey = `${data.materialTitle}_${data.questionNumber}`;
+
+  let messages: Array<{role: string; content: string}> = [];
+  if (isFollowUp && englishChatContexts.has(contextKey)) {
+    messages = [...englishChatContexts.get(contextKey)!];
+  }
+
+  if (!isFollowUp) {
+    const prompt = PROMPTS.explainEnglishQuestion(
+      data.materialTitle,
+      data.materialContent,
+      data.questionNumber,
+      data.questionTitle,
+      data.options,
+      data.answer
+    );
+    messages = [
+      { role: 'system', content: prompt.system },
+      { role: 'user', content: prompt.user },
+    ];
+  } else {
+    messages.push({ role: 'user', content: userMessage });
+  }
+
+  const result = await callAIWithFallback(
+    providerOrder,
+    async (provider) => {
+      log(`[AI] 开始调用厂商: ${provider}`);
+      if (provider === 'deepseekLocal') {
+        const dsClient = getDeepSeekClient();
+        if (!dsClient) {
+          throw new Error('DeepSeek 本地版客户端未初始化，请先设置 Token');
+        }
+        log(`[AI] 使用 DeepSeek 本地版客户端`);
+        const dsMessages = messages.map(m => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content
+        }));
+        let assistantContent = '';
+        for await (const chunk of dsClient.chatStream(dsMessages, 'deepseek-chat')) {
+          if (chunk.type === 'text' && chunk.content) {
+            assistantContent += chunk.content;
+            if (mainWindow) {
+              mainWindow.webContents.send('ai:streamChunk', chunk.content);
+            }
+          } else if (chunk.type === 'error') {
+            throw new Error(chunk.content || 'DeepSeek 聊天失败');
+          }
+        }
+        messages.push({ role: 'assistant', content: assistantContent });
+        englishChatContexts.set(contextKey, messages);
+        if (mainWindow) {
+          mainWindow.webContents.send('ai:streamDone');
+        }
+        return assistantContent;
+      }
+
+      const client = getOpenAIClient(provider);
+      const model = getCurrentModel(provider);
+      const stream = await client.chat.completions.create({
+        model,
+        messages: messages as any,
+        stream: true,
+        temperature: 0.7,
+        max_tokens: 4096,
+      });
+
+      let assistantContent = '';
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || '';
+        if (content) {
+          assistantContent += content;
+          if (mainWindow) {
+            mainWindow.webContents.send('ai:streamChunk', content);
+          }
+        }
+      }
+
+      messages.push({ role: 'assistant', content: assistantContent });
+      englishChatContexts.set(contextKey, messages);
+
+      if (mainWindow) {
+        mainWindow.webContents.send('ai:streamDone');
+      }
+      return assistantContent;
+    }
+  );
+
+  if (!result.success) {
+    if (mainWindow) {
+      mainWindow.webContents.send('ai:streamError', result.error);
+    }
+    return { success: false, error: result.error };
+  }
+
+  return { success: true };
+});
 
 // API 设置已改为前端本地存储，IPC 接口保留空实现以兼容旧代码
 ipcMain.handle('db:getApiSettings', () => {

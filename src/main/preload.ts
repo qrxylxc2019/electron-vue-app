@@ -103,6 +103,11 @@ const electronAPI = {
   // 英语阅读
   getEnglishReadings: (dirId: number) => ipcRenderer.invoke('english:getReadings', dirId),
   addEnglishReading: (data: any) => ipcRenderer.invoke('english:addReading', data),
+  updateEnglishReading: (id: number, data: any) => ipcRenderer.invoke('english:updateReading', id, data),
+  deleteEnglishReading: (id: number) => ipcRenderer.invoke('english:deleteReading', id),
+  updateEnglishQuestion: (id: number, data: any) => ipcRenderer.invoke('english:updateQuestion', id, data),
+  deleteEnglishQuestion: (id: number) => ipcRenderer.invoke('english:deleteQuestion', id),
+  explainEnglishQuestion: (data: any) => ipcRenderer.invoke('english:explainQuestion', data),
 
   // 考研英语单词
   getWordImages: () => ipcRenderer.invoke('word:getImages'),
