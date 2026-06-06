@@ -1375,14 +1375,14 @@ onMounted(() => {
 }
 
 .option-label {
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 600;
   color: #1a1a1a;
-  min-width: 24px;
+  min-width: 30px;
 }
 
 .option-text {
-  font-size: 14px;
+  font-size: 18px;
   color: #333;
   flex: 1;
 }
