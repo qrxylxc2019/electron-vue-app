@@ -1258,10 +1258,12 @@ const callSelectionAI = async (isFollowUp = false, userMessage = '') => {
       messages = [...selectionAIContexts.value[contextKey]];
       messages.push({ role: 'user', content: userMessage });
     } else {
-      const systemPrompt = `你是一位资深的考研英语辅导专家。用户选中了阅读材料中的一段英文文本，请你完成以下任务：
+      const systemPrompt = `你是一位资深的考研英语辅导专家。用户选中了阅读材料中的英文文本（可能是一个单词、短语或句子），请你直接进行翻译和解析，不要要求用户提供更多内容。
 
-1. 【翻译】将选中的英文准确翻译成中文，注意考研英语中常见的熟词僻义、长难句结构。
-2. 【词汇】指出其中的高频考研词汇或难点词汇，给出释义和用法。
+请完成以下任务：
+1. 【翻译】将选中的英文准确翻译成中文。如果是一个单词，给出所有常见释义；如果是短语或句子，给出通顺的中文翻译。
+2. 【词汇】指出其中的高频考研词汇或难点词汇，给出释义、词性和用法。
+3. 【解析】如果是句子，分析语法结构、关键短语、句间逻辑关系。
 
 请用清晰的中文回答，结构分明。`;
       const userPrompt = `请翻译并解析以下选中的文本：\n\n${selectedText.value}`;
