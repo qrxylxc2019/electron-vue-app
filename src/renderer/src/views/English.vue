@@ -2259,8 +2259,8 @@ onMounted(() => {
 .selection-popup-content {
   display: flex;
   flex-direction: column;
-  max-height: 400px;
-  width: 480px;
+  max-height: 600px;
+  width: 520px;
 }
 
 .popup-header {
@@ -2321,6 +2321,89 @@ onMounted(() => {
   line-height: 1.7;
   color: #333;
   max-width: 100%;
+}
+
+/* 悬浮窗内 Markdown 样式 */
+.popup-message.assistant .ai-markdown :deep(h1),
+.popup-message.assistant .ai-markdown :deep(h2),
+.popup-message.assistant .ai-markdown :deep(h3),
+.popup-message.assistant .ai-markdown :deep(h4) {
+  margin-top: 12px;
+  margin-bottom: 8px;
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.popup-message.assistant .ai-markdown :deep(p) {
+  margin-bottom: 8px;
+}
+
+.popup-message.assistant .ai-markdown :deep(strong) {
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.popup-message.assistant .ai-markdown :deep(code) {
+  background: #f0ece7;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+}
+
+.popup-message.assistant .ai-markdown :deep(pre) {
+  background: #f5f3f0;
+  padding: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin-bottom: 10px;
+}
+
+.popup-message.assistant .ai-markdown :deep(pre code) {
+  background: transparent;
+  padding: 0;
+}
+
+.popup-message.assistant .ai-markdown :deep(ul),
+.popup-message.assistant .ai-markdown :deep(ol) {
+  margin-bottom: 10px;
+  padding-left: 20px;
+}
+
+.popup-message.assistant .ai-markdown :deep(li) {
+  margin-bottom: 4px;
+}
+
+.popup-message.assistant .ai-markdown :deep(blockquote) {
+  border-left: 4px solid #c4a882;
+  padding-left: 12px;
+  margin-left: 0;
+  color: #666;
+  font-style: italic;
+}
+
+.popup-message.assistant .ai-markdown :deep(hr) {
+  border: none;
+  border-top: 1px solid #e8e4df;
+  margin: 12px 0;
+}
+
+.popup-message.assistant .ai-markdown :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+
+.popup-message.assistant .ai-markdown :deep(th),
+.popup-message.assistant .ai-markdown :deep(td) {
+  border: 1px solid #e8e4df;
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.popup-message.assistant .ai-markdown :deep(th) {
+  background: #f5f3f0;
+  font-weight: 600;
 }
 
 .popup-message.assistant.error pre {
