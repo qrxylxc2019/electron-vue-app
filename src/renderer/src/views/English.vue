@@ -318,11 +318,6 @@
           <el-icon class="popup-close" @click="closeSelectionPopup"><Close /></el-icon>
         </div>
         <div class="popup-messages" ref="popupMessagesRef">
-          <!-- 显示选中的文本 -->
-          <div v-if="selectedText && !selectionChatMessages.length" class="popup-selected-text">
-            <div class="selected-text-label">选中的文本：</div>
-            <div class="selected-text-content">{{ selectedText }}</div>
-          </div>
           <div
             v-for="(msg, index) in selectionChatMessages"
             :key="index"
@@ -338,8 +333,9 @@
             <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:inherit;">{{ selectionAIError }}</pre>
           </div>
         </div>
-        <!-- 底部操作区：未提问时显示 AI 翻译按钮，已提问后显示输入框 -->
-        <div v-if="!selectionChatMessages.length" class="popup-action-area">
+        <!-- 底部操作区：显示 AI 翻译按钮 -->
+        <div class="popup-action-area">
+          <div v-if="selectedText" class="selected-text-inline">选中的内容：{{ selectedText }}</div>
           <el-button
             class="popup-ai-btn"
             type="primary"
@@ -350,7 +346,7 @@
             AI 翻译
           </el-button>
         </div>
-        <div v-else class="popup-input-area">
+        <div v-if="selectionChatMessages.length" class="popup-input-area">
           <el-input
             v-model="selectionUserInput"
             type="textarea"
@@ -1159,8 +1155,8 @@ const handleMaterialTextSelect = () => {
     };
   }
   selectionPopupVisible.value = true;
-  // 清空之前的对话，显示选中文本等待用户点击 AI 翻译
-  selectionChatMessages.value = [];
+  // 新选中文本时，只更新选中的文本，不清空之前的聊天记录
+  // 用户可以看到之前的对话，点击 AI 翻译后会基于新文本进行新的解析
 };
 
 // 悬浮窗拖动
@@ -2472,7 +2468,9 @@ onMounted(() => {
 /* AI 翻译按钮区域 */
 .popup-action-area {
   display: flex;
-  justify-content: center;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 12px 14px;
   border-top: 1px solid #e8e4df;
   background: #fff;
@@ -2480,12 +2478,24 @@ onMounted(() => {
   border-radius: 0 0 12px 12px;
 }
 
+.selected-text-inline {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.4;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .popup-ai-btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 24px;
+  padding: 8px 20px;
   font-size: 14px;
+  flex-shrink: 0;
 }
 
 .popup-input-area {
