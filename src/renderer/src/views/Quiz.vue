@@ -3,10 +3,21 @@
     <el-page-header @back="goBack" :content="directoryName" />
 
     <div class="quiz-content" v-if="(questions.length > 0 || articles.length > 0) && currentQuestion">
-      <!-- 题目进度 -->
-      <div class="progress-bar">
-        <span class="progress-text">题目 {{ currentIndex + 1 }} / {{ questions.length }}</span>
-        <el-progress :percentage="progressPercent" :show-text="false" />
+      <div class="top-toolbar">
+        <div class="toolbar-actions">
+          <el-button
+            class="add-material-btn"
+            type="primary"
+            size="small"
+            @click="openAddQuestionDialog"
+          >
+            <el-icon><Plus /></el-icon> 新增题目
+          </el-button>
+        </div>
+        <div class="progress-bar">
+          <span class="progress-text">题目 {{ currentIndex + 1 }} / {{ questions.length }}</span>
+          <el-progress :percentage="progressPercent" :show-text="false" />
+        </div>
       </div>
 
     <!-- 左右布局主体 -->
@@ -754,6 +765,79 @@
     </template>
   </el-dialog>
 
+  <!-- 批量新增题目弹窗 -->
+  <el-dialog
+    v-model="addQuestionDialogVisible"
+    title="批量新增题目"
+    width="900px"
+    :close-on-click-modal="true"
+    destroy-on-close
+    class="add-question-dialog"
+  >
+    <div class="add-question-form">
+      <div class="form-item editor-row">
+        <div class="editor-left">
+          <div class="editor-header">
+            <span class="editor-label">题目内容（支持批量粘贴）</span>
+            <el-button
+              class="copy-format-btn"
+              size="small"
+              text
+              @click="copyQuestionFormatTemplate"
+            >
+              <el-icon><DocumentCopy /></el-icon>
+              复制格式
+            </el-button>
+          </div>
+          <el-input
+            v-model="newQuestionContent"
+            type="textarea"
+            :rows="18"
+            placeholder="请按格式粘贴题目内容..."
+          />
+        </div>
+        <div class="editor-right">
+          <div class="format-hint">
+            <div class="hint-title">格式说明</div>
+            <div class="hint-content">
+              <pre>【题目】
+题干内容...
+【/题目】
+【类型】单选题【/类型】
+【选项】
+A. 选项A内容
+B. 选项B内容
+C. 选项C内容
+D. 选项D内容
+【/选项】
+【答案】A【/答案】
+【解析】解析内容...【/解析】
+
+====================
+
+【题目】
+题干内容...
+【/题目】
+【类型】多选题【/类型】
+【选项】
+A. 选项A内容
+B. 选项B内容
+C. 选项C内容
+D. 选项D内容
+【/选项】
+【答案】AB【/答案】
+【解析】解析内容...【/解析】</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <template #footer>
+      <el-button @click="addQuestionDialogVisible = false">取消</el-button>
+      <el-button type="primary" @click="saveNewQuestions">保存</el-button>
+    </template>
+  </el-dialog>
+
   <!-- 筛选题目弹窗 -->
   <el-dialog
     v-model="filterDialogVisible"
@@ -818,7 +902,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { marked } from 'marked';
 import type { Question, Article, QuestionType, OptionWithState } from '../types';
-import { Cpu, Collection, Delete, ArrowRight, Loading, Warning, CircleCheck, CircleClose, Close, Promotion, EditPen, DocumentCopy, Check, Filter, Search, Document } from '@element-plus/icons-vue';
+import { Cpu, Collection, Delete, ArrowRight, Loading, Warning, CircleCheck, CircleClose, Close, Promotion, EditPen, DocumentCopy, Check, Filter, Search, Document, Plus } from '@element-plus/icons-vue';
 
 const API_ORDER_KEY = 'apiProviderOrder';
 
@@ -892,6 +976,11 @@ const addArticleDialogVisible = ref(false);
 const newArticleTitle = ref('');
 const newArticleContent = ref('');
 const addArticleEditorRef = ref<HTMLDivElement | null>(null);
+
+// 批量新增题目弹窗状态
+const addQuestionDialogVisible = ref(false);
+const newQuestionContent = ref('');
+const addQuestionEditorRef = ref<HTMLDivElement | null>(null);
 
 // 技能列表
 const skillList = [
@@ -1326,6 +1415,139 @@ const openAddArticleDialog = () => {
   addArticleDialogVisible.value = true;
   newArticleTitle.value = '';
   newArticleContent.value = '';
+};
+
+// 打开批量新增题目弹窗
+const openAddQuestionDialog = () => {
+  addQuestionDialogVisible.value = true;
+  newQuestionContent.value = '';
+};
+
+// 复制格式模板
+const copyQuestionFormatTemplate = async () => {
+  const template = `【题目】
+题干内容...
+【/题目】
+【类型】单选题【/类型】
+【选项】
+A. 选项A内容
+B. 选项B内容
+C. 选项C内容
+D. 选项D内容
+【/选项】
+【答案】A【/答案】
+【解析】解析内容...【/解析】
+
+====================
+
+【题目】
+题干内容...
+【/题目】
+【类型】单选题【/类型】
+【选项】
+A. 选项A内容
+B. 选项B内容
+C. 选项C内容
+D. 选项D内容
+【/选项】
+【答案】A【/答案】
+【解析】解析内容...【/解析】`;
+  try {
+    await navigator.clipboard.writeText(template);
+    ElMessage.success('格式已复制到剪贴板');
+  } catch (e) {
+    ElMessage.error('复制失败');
+  }
+};
+
+// 中文类型映射
+const typeMapping: Record<string, QuestionType> = {
+  '单选题': 'single',
+  '多选题': 'multiple',
+  '判断题': 'judge',
+};
+
+// 解析题目块
+const parseQuestionBlock = (text: string) => {
+  const titleMatch = text.match(/【题目】\s*([\s\S]*?)\s*【\/题目】/);
+  const typeMatch = text.match(/【类型】\s*([\s\S]*?)\s*【\/类型】/);
+  const optionsMatch = text.match(/【选项】\s*([\s\S]*?)\s*【\/选项】/);
+  const answerMatch = text.match(/【答案】\s*([\s\S]*?)\s*【\/答案】/);
+  const explanationMatch = text.match(/【解析】\s*([\s\S]*?)\s*【\/解析】/);
+
+  if (!titleMatch || !answerMatch) return null;
+
+  const title = titleMatch[1].trim();
+  const rawType = typeMatch?.[1].trim() || '单选题';
+  const questionType = typeMapping[rawType] || (rawType as QuestionType) || 'single';
+  const answer = answerMatch[1].trim();
+  const explanation = explanationMatch?.[1].trim() || '';
+
+  // 解析选项
+  const options: Record<string, string> = {};
+  if (optionsMatch) {
+    const optionLines = optionsMatch[1].trim().split('\n');
+    for (const line of optionLines) {
+      const match = line.match(/^([A-E])\.\s*(.*)$/);
+      if (match) {
+        options[match[1]] = match[2].trim();
+      }
+    }
+  }
+
+  return {
+    directory_id: parseInt(props.directoryId),
+    question_type: questionType,
+    title,
+    option_a: options['A'] || null,
+    option_b: options['B'] || null,
+    option_c: options['C'] || null,
+    option_d: options['D'] || null,
+    option_e: options['E'] || null,
+    correct_answer: answer,
+    explanation,
+  };
+};
+
+// 保存批量新增的题目
+const saveNewQuestions = async () => {
+  const text = newQuestionContent.value.trim();
+  if (!text) {
+    ElMessage.warning('请输入题目内容');
+    return;
+  }
+
+  // 按 ==================== 分割多个题目块
+  const blocks = text.split(/={3,}/).map(b => b.trim()).filter(b => b);
+  if (blocks.length === 0) {
+    ElMessage.warning('未找到有效内容');
+    return;
+  }
+
+  let totalAdded = 0;
+
+  try {
+    for (const block of blocks) {
+      const parsed = parseQuestionBlock(block);
+      if (!parsed) {
+        ElMessage.warning('部分格式不正确，已跳过');
+        continue;
+      }
+
+      const result = await window.electronAPI.addQuestion(parsed);
+      if (result) {
+        totalAdded++;
+      }
+    }
+
+    ElMessage.success(`成功保存 ${totalAdded} 道题目`);
+    addQuestionDialogVisible.value = false;
+    newQuestionContent.value = '';
+    await loadData();
+  } catch (error) {
+    ElMessage.error('保存失败');
+    console.error(error);
+  }
 };
 
 // 新增论文弹窗粘贴图片处理
@@ -2650,9 +2872,26 @@ onMounted(() => {
   flex-direction: column;
 }
 
-.progress-bar {
-  margin-bottom: 20px;
+/* 顶部工具栏 */
+.top-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 16px;
   flex-shrink: 0;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.progress-bar {
+  flex: 1;
+  min-width: 0;
 }
 
 .quiz-main {
@@ -2911,11 +3150,11 @@ onMounted(() => {
   color: #fff;
   border: none;
   border-radius: 12px;
-  padding: 18px 20px;
-  font-size: 16px;
+  padding: 12px 20px;
+  font-size: 15px;
   transition: all 0.2s ease;
   height: auto;
-  min-height: 56px;
+  min-height: 44px;
   margin-left:0;
 }
 
@@ -3872,18 +4111,19 @@ font-size: 16px;
 }
 
 .generate-similar-btn {
-  background: #1a1a1a;
+  background: #8b9a6d;
   color: #fff;
   border: none;
-  border-radius: 10px;
-  padding: 12px 24px;
+  border-radius: 12px;
+  padding: 12px 20px;
   font-size: 15px;
-  width:200px;
-  height:50px
+  width: 200px;
+  height: 44px;
+  min-height: 44px;
 }
 
 .generate-similar-btn:hover {
-  background: #333;
+  background: #8b9a6d;
 }
 
 .ai-similar-card {
@@ -4145,21 +4385,21 @@ word-break: break-word;
 
 /* 同类题按钮 */
 .similar-btn {
-  background-color: #1a1a1a;
+  background-color: #8b9a6d;
   color: #fff;
   border: none;
   border-radius: 12px;
-  padding: 16px 32px;
-  font-size: 16px;
+  padding: 12px 20px;
+  font-size: 15px;
   transition: all 0.2s ease;
-  min-height: 52px;
+  min-height: 44px;
   height: auto;
   position: relative;
-   margin-left: 0;
+  margin-left: 0;
 }
 
 .similar-btn:hover {
-  background-color: #333;
+  background-color: #8b9a6d;
 }
 
 .similar-count {
@@ -4495,13 +4735,13 @@ word-break: break-word;
 }
 
 :deep(.add-article-dialog .el-dialog__footer .el-button--primary) {
-  background: #1a1a1a;
-  border-color: #1a1a1a;
+  background: #8b9a6d;
+  border-color: #8b9a6d;
 }
 
 :deep(.add-article-dialog .el-dialog__footer .el-button--primary:hover) {
-  background: #333;
-  border-color: #333;
+  background: #8b9a6d;
+  border-color: #8b9a6d;
 }
 
 .add-article-btn {
@@ -4509,11 +4749,11 @@ word-break: break-word;
   color: #fff;
   border: none;
   border-radius: 12px;
-  padding: 18px 20px;
-  font-size: 16px;
+  padding: 12px 20px;
+  font-size: 15px;
   transition: all 0.2s ease;
   height: auto;
-  min-height: 56px;
+  min-height: 44px;
   width: 100%;
   margin-left: 0;
 }
@@ -4522,17 +4762,134 @@ word-break: break-word;
   background-color: #8b9a6d;
 }
 
-/* 整篇模式按钮 - 与手写按钮统一 */
+/* 批量新增题目弹窗样式 */
+.add-question-form {
+  padding: 20px 24px;
+}
+
+.add-question-form .editor-row {
+  display: flex;
+  gap: 20px;
+}
+
+.add-question-form .editor-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.add-question-form .editor-right {
+  width: 240px;
+  flex-shrink: 0;
+}
+
+.add-question-form .editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.add-question-form .editor-label {
+  font-weight: 600;
+  color: #1a1a1a;
+  font-size: 15px;
+}
+
+.add-question-form .copy-format-btn {
+  color: #c4a882;
+}
+
+.add-question-form .copy-format-btn:hover {
+  color: #a08060;
+}
+
+.format-hint {
+  background: #f5f3f0;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.format-hint .hint-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: #1a1a1a;
+  margin-bottom: 12px;
+}
+
+.format-hint .hint-content {
+  font-size: 13px;
+  color: #6b6560;
+  line-height: 1.6;
+}
+
+.format-hint .hint-content pre {
+  background: #fff;
+  border: 1px solid #e8e4df;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 0;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+:deep(.add-question-dialog) {
+  border-radius: 16px;
+  overflow: hidden;
+  padding: 0 !important;
+  background: #faf9f7;
+}
+
+:deep(.add-question-dialog .el-dialog__header) {
+  background: #faf9f7;
+  border-bottom: 1px solid #e8e4df;
+  padding: 20px 24px;
+  margin-right: 0;
+}
+
+:deep(.add-question-dialog .el-dialog__title) {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+:deep(.add-question-dialog .el-dialog__footer) {
+  background: #faf9f7;
+  border-top: 1px solid #e8e4df;
+  padding: 16px 24px;
+}
+
+:deep(.add-question-dialog .el-dialog__footer .el-button) {
+  min-height: 44px;
+  padding: 12px 24px;
+  font-size: 15px;
+  border-radius: 10px;
+}
+
+:deep(.add-question-dialog .el-dialog__footer .el-button--primary) {
+  background: #8b9a6d;
+  border-color: #8b9a6d;
+}
+
+:deep(.add-question-dialog .el-dialog__footer .el-button--primary:hover) {
+  background: #8b9a6d;
+  border-color: #8b9a6d;
+}
+
+/* 整篇模式按钮 - 与AI解析按钮统一 */
 .full-article-mode-btn {
   background-color: #8b9a6d;
   color: #fff;
   border: none;
   border-radius: 12px;
-  padding: 18px 20px;
-  font-size: 16px;
+  padding: 12px 20px;
+  font-size: 15px;
   transition: all 0.2s ease;
   height: auto;
-  min-height: 56px;
+  min-height: 44px;
   width: 100%;
   margin-left: 0;
 }
@@ -4618,5 +4975,22 @@ word-break: break-word;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+/* 顶部工具栏新增题目按钮 */
+.add-material-btn {
+  background-color: #8b9a6d;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 44px;
+}
+
+.add-material-btn:hover {
+  background-color: #8b9a6d;
 }
 </style>
