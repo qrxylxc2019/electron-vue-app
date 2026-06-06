@@ -150,16 +150,27 @@
                 <div
                   v-for="(option, optIdx) in [q.option_a, q.option_b, q.option_c, q.option_d]"
                   :key="optIdx"
-                  class="option-item"
-                  :class="{
-                    'selected': selectedAnswers[q.id] === optIdx,
-                    'correct': showAnswers[q.id] && optIdx === getCorrectIndex(q.correct_answer),
-                    'wrong': showAnswers[q.id] && selectedAnswers[q.id] === optIdx && optIdx !== getCorrectIndex(q.correct_answer)
-                  }"
-                  @click="selectAnswer(q.id, optIdx, q.correct_answer)"
+                  class="option-row"
+                  :class="{ 'excluded': excludedOptions[`${q.id}_${optIdx}`] }"
                 >
-                  <span class="option-label">{{ ['A', 'B', 'C', 'D'][optIdx] }}.</span>
-                  <span class="option-text">{{ option }}</span>
+                  <div
+                    class="delete-btn"
+                    @click.stop="toggleExcludeOption(q.id, optIdx)"
+                  >
+                    <el-icon><Delete /></el-icon>
+                  </div>
+                  <div
+                    class="option-item"
+                    :class="{
+                      'selected': selectedAnswers[q.id] === optIdx,
+                      'correct': showAnswers[q.id] && optIdx === getCorrectIndex(q.correct_answer),
+                      'wrong': showAnswers[q.id] && selectedAnswers[q.id] === optIdx && optIdx !== getCorrectIndex(q.correct_answer)
+                    }"
+                    @click="selectAnswer(q.id, optIdx, q.correct_answer)"
+                  >
+                    <span class="option-label">{{ ['A', 'B', 'C', 'D'][optIdx] }}.</span>
+                    <span class="option-text">{{ option }}</span>
+                  </div>
                 </div>
               </div>
 
@@ -474,6 +485,8 @@ const materialProgressPercent = computed(() => {
 // 答题状态
 const selectedAnswers = ref<Record<number, number>>({});
 const showAnswers = ref<Record<number, boolean>>({});
+// 被排除的选项（用户点击删除图标标记的选项）
+const excludedOptions = ref<Record<string, boolean>>({});
 
 // 复制按钮状态
 const copySuccess = ref(false);
@@ -557,6 +570,13 @@ const nextMaterial = () => {
   currentMaterialIndex.value = (currentMaterialIndex.value + 1) % materials.value.length;
   selectedAnswers.value = {};
   showAnswers.value = {};
+  excludedOptions.value = {};
+};
+
+// 切换选项排除状态
+const toggleExcludeOption = (questionId: number, optIdx: number) => {
+  const key = `${questionId}_${optIdx}`;
+  excludedOptions.value[key] = !excludedOptions.value[key];
 };
 
 // Markdown 渲染
@@ -688,7 +708,7 @@ const deleteCurrentMaterial = async () => {
       if (currentMaterialIndex.value >= materials.value.length) {
         currentMaterialIndex.value = materials.value.length - 1;
       }
-      selectedAnswers.value = {}; showAnswers.value = {};
+      selectedAnswers.value = {}; showAnswers.value = {}; excludedOptions.value = {};
     } else {
       ElMessage.error(result.error || '删除失败');
     }
@@ -713,7 +733,7 @@ const confirmDeleteQuestion = async (q: any) => {
           (item: any) => item.id !== q.id
         );
       }
-      selectedAnswers.value = {}; showAnswers.value = {};
+      selectedAnswers.value = {}; showAnswers.value = {}; excludedOptions.value = {};
     } else {
       ElMessage.error(result.error || '删除失败');
     }
@@ -1606,6 +1626,7 @@ onMounted(() => {
 }
 
 .option-item {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1615,6 +1636,7 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.2s ease;
   background-color: #fff;
+  min-width: 0;
 }
 
 .option-item:hover {
@@ -1635,6 +1657,48 @@ onMounted(() => {
 .option-item.wrong {
   border-color: #f56c6c;
   background-color: #fef0f0;
+}
+
+/* 选项行布局：删除按钮在选项框外 */
+.option-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.option-row .delete-btn {
+  flex-shrink: 0;
+  align-self: center;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #f56c6c;
+  font-size: 18px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.option-row .delete-btn:hover {
+  background-color: #fef0f0;
+}
+
+.option-row.excluded .delete-btn {
+  color: #c0c4cc;
+}
+
+.option-row.excluded .option-item {
+  opacity: 0.5;
+  text-decoration: line-through;
+  background-color: #f5f3f0;
+  border-color: #d0ccc8;
+}
+
+.option-row.excluded .option-item .option-text {
+  text-decoration: line-through;
+  color: #999;
 }
 
 .option-label {
