@@ -1,4 +1,4 @@
-﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿<template>
   <div class="directory-list">
     <div class="header">
       <h1>选择科目</h1>
@@ -719,10 +719,11 @@ const enterQuiz = (directoryId: number) => {
   const isArticleDir = dir?.name === '高项论文';
   const isCaseDir = dir?.name === '高项案例' || dir?.name === '案例押题';
   const isAIDir = dir?.name === 'ai题目';
+  const isWordDir = dir?.name === '考研英语';
   const count = isArticleDir ? getArticleCount(directoryId) : isCaseDir ? getCaseCount(directoryId) : getQuestionCount(directoryId);
 
-  // ai题目允许题目数为0，仍然可以进入页面
-  if (count === 0 && !isAIDir) {
+  // ai题目和考研英语允许题目数为0，仍然可以进入页面
+  if (count === 0 && !isAIDir && !isWordDir) {
     ElMessage.warning('该科目暂无题目');
     return;
   }
@@ -751,6 +752,15 @@ const enterQuiz = (directoryId: number) => {
         count: quizSettings.value.count.toString(),
         repeat: quizSettings.value.repeat.toString()
       }
+    });
+    return;
+  }
+
+  // 考研英语进入英语学习页面
+  if (dir?.name === '考研英语') {
+    router.push({
+      name: 'English',
+      params: { directoryId: directoryId.toString() }
     });
     return;
   }

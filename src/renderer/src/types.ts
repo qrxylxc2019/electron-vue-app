@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿// 类型声明
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿// 类型声明
 export interface Directory {
   id: number;
   name: string;
@@ -152,6 +152,12 @@ declare global {
       onDSStreamError: (callback: (data: { sessionKey: string; error: string }) => void) => () => void;
       // DeepSeek 本地版
       testDeepseekLocalToken: (token: string) => Promise<{ success: boolean; error?: string }>;
+      // 英语阅读
+      getEnglishReadings: (dirId: number) => Promise<{ success: boolean; materials?: any[]; error?: string }>;
+      addEnglishReading: (data: any) => Promise<{ success: boolean; materialId?: number; error?: string }>;
+
+      // 考研英语单词
+      getWordImages: () => Promise<{ success: boolean; images?: string[]; error?: string }>;
     };
   }
 }

@@ -153,6 +153,38 @@ function initDatabase() {
       )
     `);
 
+    // 英语阅读材料表
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS english_materials (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        directory_id INTEGER NOT NULL,
+        title TEXT,
+        content TEXT NOT NULL,
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (directory_id) REFERENCES directories(id)
+      )
+    `);
+
+    // 英语阅读题目表
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS english_questions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        material_id INTEGER NOT NULL,
+        question_number INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        option_a TEXT,
+        option_b TEXT,
+        option_c TEXT,
+        option_d TEXT,
+        correct_answer TEXT,
+        explanation TEXT,
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (material_id) REFERENCES english_materials(id) ON DELETE CASCADE
+      )
+    `);
+
     // 案例材料表
     db.exec(`
       CREATE TABLE IF NOT EXISTS case_materials (
@@ -401,6 +433,25 @@ function seedDefaultData() {
   } catch (err) {
     console.error('Seed 考研政治 data error:', err);
   }
+
+  // 初始化考研英语科目
+  try {
+    const checkEnglish = db.prepare("SELECT id FROM directories WHERE name = '考研英语'");
+    const existingEnglish = checkEnglish.get();
+
+    let englishDirId: number;
+    if (!existingEnglish) {
+      const insertEnglish = db.prepare("INSERT INTO directories (name, sort_order) VALUES (?, ?)");
+      const englishResult = insertEnglish.run('考研英语', 2);
+      englishDirId = Number(englishResult.lastInsertRowid);
+      console.log('Created directory: 考研英语, id:', englishDirId);
+    } else {
+      englishDirId = (existingEnglish as any).id;
+      console.log('Directory 考研英语 already exists, id:', englishDirId);
+    }
+  } catch (err) {
+    console.error('Seed 考研英语 data error:', err);
+  }
 }
 
 // IPC ����
@@ -522,6 +573,94 @@ function setupIpc() {
     } catch (err) {
       console.error('deleteDirectory error:', err);
       return false;
+    }
+  });
+
+  // 获取英语阅读材料列表
+  ipcMain.handle('english:getReadings', (_event, dirId: number) => {
+    if (!db) return { success: false, error: '数据库未初始化' };
+    try {
+      const materialsStmt = db.prepare('SELECT * FROM english_materials WHERE directory_id = ? ORDER BY id');
+      const materials = materialsStmt.all(dirId) as any[];
+
+      const questionsStmt = db.prepare('SELECT * FROM english_questions WHERE material_id = ? ORDER BY question_number');
+      for (const material of materials) {
+        material.questions = questionsStmt.all(material.id);
+      }
+
+      return { success: true, materials };
+    } catch (err: any) {
+      console.error('getEnglishReadings error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // 添加英语阅读材料
+  ipcMain.handle('english:addReading', (_event, data: any) => {
+    if (!db) return { success: false, error: '数据库未初始化' };
+    try {
+      const insertMaterial = db.prepare(`
+        INSERT INTO english_materials (directory_id, title, content)
+        VALUES (?, ?, ?)
+      `);
+      const materialResult = insertMaterial.run(data.directory_id, data.title || '', data.content);
+      const materialId = Number(materialResult.lastInsertRowid);
+
+      const insertQuestion = db.prepare(`
+        INSERT INTO english_questions (material_id, question_number, title, option_a, option_b, option_c, option_d, correct_answer, explanation)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      for (const q of data.questions) {
+        insertQuestion.run(
+          materialId,
+          q.question_number,
+          q.title,
+          q.option_a,
+          q.option_b,
+          q.option_c,
+          q.option_d,
+          q.correct_answer,
+          q.explanation || ''
+        );
+      }
+
+      return { success: true, materialId };
+    } catch (err: any) {
+      console.error('addEnglishReading error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // 获取考研英语单词图片列表
+  ipcMain.handle('word:getImages', () => {
+    try {
+      const wordDir = 'D:\\考研\\英语单词';
+      if (!fs.existsSync(wordDir)) {
+        return { success: false, error: '单词目录不存在: ' + wordDir };
+      }
+      const files = fs.readdirSync(wordDir);
+      const imageFiles = files.filter(file => /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(file));
+
+      // 读取图片并转换为 base64
+      const images = imageFiles.map(file => {
+        const filePath = path.join(wordDir, file);
+        const ext = path.extname(file).toLowerCase();
+        let mimeType = 'image/jpeg';
+        if (ext === '.png') mimeType = 'image/png';
+        else if (ext === '.gif') mimeType = 'image/gif';
+        else if (ext === '.bmp') mimeType = 'image/bmp';
+        else if (ext === '.webp') mimeType = 'image/webp';
+
+        const buffer = fs.readFileSync(filePath);
+        const base64 = buffer.toString('base64');
+        return `data:${mimeType};base64,${base64}`;
+      });
+
+      return { success: true, images };
+    } catch (err: any) {
+      console.error('getWordImages error:', err);
+      return { success: false, error: err.message };
     }
   });
 

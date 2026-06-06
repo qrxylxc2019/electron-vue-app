@@ -99,6 +99,13 @@ const electronAPI = {
 
   // DeepSeek 本地版
   testDeepseekLocalToken: (token: string) => ipcRenderer.invoke('deepseekLocal:testToken', token),
+
+  // 英语阅读
+  getEnglishReadings: (dirId: number) => ipcRenderer.invoke('english:getReadings', dirId),
+  addEnglishReading: (data: any) => ipcRenderer.invoke('english:addReading', data),
+
+  // 考研英语单词
+  getWordImages: () => ipcRenderer.invoke('word:getImages'),
 };
 
 // 暴露给渲染进程的 API
