@@ -451,6 +451,22 @@ onMounted(() => {
   margin-bottom: 10px;
 }
 
+.add-material-btn {
+  background-color: #8b9a6d;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 44px;
+}
+
+.add-material-btn:hover {
+  background-color: #8b9a6d;
+}
+
 .progress-bar {
   display: flex;
   align-items: center;
@@ -581,86 +597,83 @@ onMounted(() => {
 
 .confirm-btn {
   margin-top: 10px;
-  background: #8b9a6d;
-  border-color: #8b9a6d;
+  background-color: #8b9a6d;
   color: #fff;
   border: none;
   border-radius: 12px;
-  padding: 18px 20px;
-  font-size: 16px;
+  padding: 12px 20px;
+  font-size: 15px;
   transition: all 0.2s ease;
   height: auto;
-  min-height: 56px;
-  width: 100%;
+  min-height: 44px;
   margin-left: 0;
 }
 
 .confirm-btn:hover {
-  background: #8b9a6d;
+  background-color: #8b9a6d;
 }
 
 .ai-explain-section {
-  display: flex;
-  gap: 10px;
   margin-top: 20px;
-  flex-wrap: wrap;
+  display: flex;
+  justify-content: flex-start;
+  gap: 12px;
 }
 
 .ai-explain-btn {
-  background: #8b9a6d;
-  border-color: #8b9a6d;
+  background-color: #8b9a6d;
   color: #fff;
   border: none;
   border-radius: 12px;
-  padding: 18px 20px;
+  padding: 16px 32px;
   font-size: 16px;
   transition: all 0.2s ease;
+  min-height: 52px;
   height: auto;
-  min-height: 56px;
-  width: 100%;
   margin-left: 0;
 }
 
 .ai-explain-btn:hover {
-  background: #8b9a6d;
+  background-color: #8b9a6d;
 }
 
 .next-question-btn {
-  background: #c4a882;
-  border-color: #c4a882;
+  background-color: #c4a882;
   color: #fff;
   border: none;
   border-radius: 12px;
-  padding: 18px 20px;
-  font-size: 16px;
+  padding: 12px 20px;
+  font-size: 15px;
   transition: all 0.2s ease;
   height: auto;
-  min-height: 56px;
-  width: 100%;
+  min-height: 44px;
   margin-left: 0;
 }
 
-.next-question-btn:hover {
-  background: #c4a882;
+.next-question-btn:hover:not(:disabled) {
+  background-color: #c4a882;
+}
+
+.next-question-btn:disabled {
+  background-color: #c0c4cc;
+  cursor: not-allowed;
 }
 
 .delete-question-btn {
-  background: #e8686a;
-  border-color: #e8686a;
+  background-color: #F56C6C;
   color: #fff;
   border: none;
   border-radius: 12px;
-  padding: 18px 20px;
-  font-size: 16px;
+  padding: 12px 20px;
+  font-size: 15px;
   transition: all 0.2s ease;
   height: auto;
-  min-height: 56px;
-  width: 100%;
+  min-height: 44px;
   margin-left: 0;
 }
 
 .delete-question-btn:hover {
-  background: #e8686a;
+  background-color: #f78989;
 }
 
 .answer-result {
