@@ -1,5 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
-import DirectoryList from '../views/DirectoryList.vue';
+import DirectoryList from '../views/Learn/DirectoryList.vue';
 import Quiz from '../views/Learn/Quiz.vue';
 import CaseQuiz from '../views/Learn/CaseQuiz.vue';
 import AIQuiz from '../views/Learn/AIQuiz.vue';
@@ -8,6 +8,7 @@ import Translate from '../views/Learn/Translate.vue';
 import Article from '../views/Learn/Article.vue';
 import Cloze from '../views/Learn/Cloze.vue';
 import Shuxue from '../views/Learn/Shuxue.vue';
+import Plan from '../views/Plan/Plan.vue';
 
 const routes = [
   { path: '/', name: 'Home', component: DirectoryList },
@@ -19,6 +20,7 @@ const routes = [
   { path: '/article/:directoryId', name: 'Article', component: Article, props: true },
   { path: '/cloze/:directoryId', name: 'Cloze', component: Cloze, props: true },
   { path: '/shuxue/:directoryId', name: 'Shuxue', component: Shuxue, props: true },
+  { path: '/plan', name: 'Plan', component: Plan },
 ];
 
 const router = createRouter({

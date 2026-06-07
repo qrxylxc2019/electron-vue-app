@@ -259,6 +259,39 @@ function initDatabase() {
       )
     `);
 
+    // plan 表
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS plan (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        plan TEXT,
+        date TEXT,
+        status TEXT,
+        plantype TEXT,
+        type TEXT,
+        subjectid INTEGER,
+        subjecttreeid INTEGER,
+        preplanid INTEGER,
+        planfinishtime TEXT,
+        finishtime TEXT,
+        top INTEGER DEFAULT 0,
+        todayPlan INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // marquee 表
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS marquee (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        text TEXT NOT NULL,
+        sort_order INTEGER DEFAULT 0,
+        is_enabled INTEGER DEFAULT 1,
+        create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // API 设置已改为前端本地存储 + 后端硬编码，无需数据库表
 
     console.log('Database initialized successfully');
@@ -1955,6 +1988,155 @@ ipcMain.handle('english:explainQuestion', async (_event, data: any) => {
   }
 
   return { success: true };
+});
+
+// ========== plan 表 IPC ==========
+ipcMain.handle('plan:getAll', () => {
+  if (!db) return [];
+  try {
+    const stmt = db.prepare('SELECT * FROM plan ORDER BY top DESC, id DESC');
+    return stmt.all();
+  } catch (err) {
+    console.error('plan:getAll error:', err);
+    return [];
+  }
+});
+
+ipcMain.handle('plan:getById', (_event, id: number) => {
+  if (!db) return null;
+  try {
+    const stmt = db.prepare('SELECT * FROM plan WHERE id = ?');
+    return stmt.get(id);
+  } catch (err) {
+    console.error('plan:getById error:', err);
+    return null;
+  }
+});
+
+ipcMain.handle('plan:add', (_event, data: any) => {
+  if (!db) return null;
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO plan (plan, date, status, plantype, type, subjectid, subjecttreeid, preplanid, planfinishtime, finishtime, top, todayPlan)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(
+      data.plan ?? null,
+      data.date ?? null,
+      data.status ?? null,
+      data.plantype ?? null,
+      data.type ?? null,
+      data.subjectid ?? null,
+      data.subjecttreeid ?? null,
+      data.preplanid ?? null,
+      data.planfinishtime ?? null,
+      data.finishtime ?? null,
+      data.top ?? 0,
+      data.todayPlan ?? 0
+    );
+    return { id: result.lastInsertRowid, ...data };
+  } catch (err) {
+    console.error('plan:add error:', err);
+    return null;
+  }
+});
+
+ipcMain.handle('plan:update', (_event, id: number, data: any) => {
+  if (!db) return false;
+  try {
+    const fields: string[] = [];
+    const values: any[] = [];
+    if (data.plan !== undefined) { fields.push('plan = ?'); values.push(data.plan); }
+    if (data.date !== undefined) { fields.push('date = ?'); values.push(data.date); }
+    if (data.status !== undefined) { fields.push('status = ?'); values.push(data.status); }
+    if (data.plantype !== undefined) { fields.push('plantype = ?'); values.push(data.plantype); }
+    if (data.type !== undefined) { fields.push('type = ?'); values.push(data.type); }
+    if (data.subjectid !== undefined) { fields.push('subjectid = ?'); values.push(data.subjectid); }
+    if (data.subjecttreeid !== undefined) { fields.push('subjecttreeid = ?'); values.push(data.subjecttreeid); }
+    if (data.preplanid !== undefined) { fields.push('preplanid = ?'); values.push(data.preplanid); }
+    if (data.planfinishtime !== undefined) { fields.push('planfinishtime = ?'); values.push(data.planfinishtime); }
+    if (data.finishtime !== undefined) { fields.push('finishtime = ?'); values.push(data.finishtime); }
+    if (data.top !== undefined) { fields.push('top = ?'); values.push(data.top); }
+    if (data.todayPlan !== undefined) { fields.push('todayPlan = ?'); values.push(data.todayPlan); }
+    if (fields.length === 0) return false;
+    values.push(id);
+    const stmt = db.prepare(`UPDATE plan SET ${fields.join(', ')} WHERE id = ?`);
+    const result = stmt.run(...values);
+    return result.changes > 0;
+  } catch (err) {
+    console.error('plan:update error:', err);
+    return false;
+  }
+});
+
+ipcMain.handle('plan:delete', (_event, id: number) => {
+  if (!db) return false;
+  try {
+    const stmt = db.prepare('DELETE FROM plan WHERE id = ?');
+    const result = stmt.run(id);
+    return result.changes > 0;
+  } catch (err) {
+    console.error('plan:delete error:', err);
+    return false;
+  }
+});
+
+// ========== marquee 表 IPC ==========
+ipcMain.handle('marquee:getAll', () => {
+  if (!db) return [];
+  try {
+    const stmt = db.prepare('SELECT * FROM marquee WHERE is_enabled = 1 ORDER BY sort_order, id');
+    return stmt.all();
+  } catch (err) {
+    console.error('marquee:getAll error:', err);
+    return [];
+  }
+});
+
+ipcMain.handle('marquee:add', (_event, data: any) => {
+  if (!db) return null;
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO marquee (text, sort_order, is_enabled)
+      VALUES (?, ?, ?)
+    `);
+    const result = stmt.run(data.text, data.sort_order ?? 0, data.is_enabled ?? 1);
+    return { id: result.lastInsertRowid, ...data };
+  } catch (err) {
+    console.error('marquee:add error:', err);
+    return null;
+  }
+});
+
+ipcMain.handle('marquee:update', (_event, id: number, data: any) => {
+  if (!db) return false;
+  try {
+    const fields: string[] = [];
+    const values: any[] = [];
+    if (data.text !== undefined) { fields.push('text = ?'); values.push(data.text); }
+    if (data.sort_order !== undefined) { fields.push('sort_order = ?'); values.push(data.sort_order); }
+    if (data.is_enabled !== undefined) { fields.push('is_enabled = ?'); values.push(data.is_enabled); }
+    if (fields.length === 0) return false;
+    values.push(id);
+    const stmt = db.prepare(`UPDATE marquee SET ${fields.join(', ')} WHERE id = ?`);
+    const result = stmt.run(...values);
+    return result.changes > 0;
+  } catch (err) {
+    console.error('marquee:update error:', err);
+    return false;
+  }
+});
+
+ipcMain.handle('marquee:delete', (_event, id: number) => {
+  if (!db) return false;
+  try {
+    const stmt = db.prepare('DELETE FROM marquee WHERE id = ?');
+    const result = stmt.run(id);
+    return result.changes > 0;
+  } catch (err) {
+    console.error('marquee:delete error:', err);
+    return false;
+  }
 });
 
 // API 设置已改为前端本地存储，IPC 接口保留空实现以兼容旧代码

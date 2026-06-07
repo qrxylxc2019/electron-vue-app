@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿// 类型声明
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿// 类型声明
 export interface Directory {
   id: number;
   name: string;
@@ -87,6 +87,35 @@ export interface AIChatMessage {
   content: string;
 }
 
+// 计划
+export interface Plan {
+  id: number;
+  plan: string | null;
+  date: string | null;
+  status: string | null;
+  plantype: string | null;
+  type: string | null;
+  subjectid: number | null;
+  subjecttreeid: number | null;
+  preplanid: number | null;
+  planfinishtime: string | null;
+  finishtime: string | null;
+  top: number;
+  todayPlan: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// 跑马灯
+export interface Marquee {
+  id: number;
+  text: string;
+  sort_order: number;
+  is_enabled: number;
+  create_time: string;
+  update_time: string;
+}
+
 // 扩展 Window 接口
 declare global {
   interface Window {
@@ -171,6 +200,17 @@ declare global {
       deleteClozeMaterial: (id: number) => Promise<{ success: boolean; error?: string }>;
       updateClozeQuestion: (id: number, data: any) => Promise<{ success: boolean; error?: string }>;
       deleteClozeQuestion: (id: number) => Promise<{ success: boolean; error?: string }>;
+      // 计划
+      getPlans: () => Promise<Plan[]>;
+      getPlanById: (id: number) => Promise<Plan | null>;
+      addPlan: (data: Partial<Plan>) => Promise<Plan | null>;
+      updatePlan: (id: number, data: Partial<Plan>) => Promise<boolean>;
+      deletePlan: (id: number) => Promise<boolean>;
+      // 跑马灯
+      getMarquees: () => Promise<Marquee[]>;
+      addMarquee: (data: Partial<Marquee>) => Promise<Marquee | null>;
+      updateMarquee: (id: number, data: Partial<Marquee>) => Promise<boolean>;
+      deleteMarquee: (id: number) => Promise<boolean>;
     };
   }
 }

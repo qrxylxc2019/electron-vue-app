@@ -125,6 +125,19 @@ const electronAPI = {
   deleteClozeMaterial: (id: number) => ipcRenderer.invoke('cloze:deleteMaterial', id),
   updateClozeQuestion: (id: number, data: any) => ipcRenderer.invoke('cloze:updateQuestion', id, data),
   deleteClozeQuestion: (id: number) => ipcRenderer.invoke('cloze:deleteQuestion', id),
+
+  // 计划
+  getPlans: () => ipcRenderer.invoke('plan:getAll'),
+  getPlanById: (id: number) => ipcRenderer.invoke('plan:getById', id),
+  addPlan: (data: any) => ipcRenderer.invoke('plan:add', data),
+  updatePlan: (id: number, data: any) => ipcRenderer.invoke('plan:update', id, data),
+  deletePlan: (id: number) => ipcRenderer.invoke('plan:delete', id),
+
+  // 跑马灯
+  getMarquees: () => ipcRenderer.invoke('marquee:getAll'),
+  addMarquee: (data: any) => ipcRenderer.invoke('marquee:add', data),
+  updateMarquee: (id: number, data: any) => ipcRenderer.invoke('marquee:update', id, data),
+  deleteMarquee: (id: number) => ipcRenderer.invoke('marquee:delete', id),
 };
 
 // 暴露给渲染进程的 API
