@@ -846,6 +846,20 @@ const enterQuiz = (directoryId: number) => {
     return;
   }
 
+  // 数学科目进入数学页面
+  if (dir?.name === '数学') {
+    router.push({
+      name: 'Shuxue',
+      params: { directoryId: directoryId.toString() },
+      query: {
+        mode: quizSettings.value.mode,
+        count: quizSettings.value.count.toString(),
+        repeat: quizSettings.value.repeat.toString()
+      }
+    });
+    return;
+  }
+
   router.push({
     name: 'Quiz',
     params: { directoryId: directoryId.toString() },
