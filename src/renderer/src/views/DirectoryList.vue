@@ -20,6 +20,14 @@
           <el-icon><Plus /></el-icon>新增科目
         </el-button>
         <el-button
+          v-if="isSelecting"
+          class="cancel-select-btn"
+          @click="cancelSelect"
+        >
+          <el-icon><Close /></el-icon>
+          退出选择
+        </el-button>
+        <el-button
           :class="isSelecting ? 'delete-btn' : 'select-btn'"
           @click="handleSelectClick"
         >
@@ -915,9 +923,8 @@ onMounted(async () => {
 <style scoped>
 .directory-list {
   padding: 40px 2vw;
-  width: 100%;
+  width: 90%;
   margin: 0 auto;
-  max-width: 1200px;
 }
 
 .header {
@@ -1071,6 +1078,22 @@ h1 {
 .header-actions .delete-btn:hover {
   background-color: #f56c6c;
   color: #fff;
+}
+
+.header-actions .cancel-select-btn {
+  background-color: transparent;
+  color: #1a1a1a;
+  border: 1.5px solid #e8e4df;
+  border-radius: 12px;
+  padding: 22px 32px;
+  font-size: 18px;
+  transition: all 0.2s ease;
+  min-height: 56px;
+}
+
+.header-actions .cancel-select-btn:hover {
+  border-color: #c4a882;
+  background-color: #fdfbf8;
 }
 
 /* 选择模式下的卡片样式 */
