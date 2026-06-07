@@ -290,6 +290,15 @@ const openAIChatDrawer = () => {
 
 const goBack = () => router.push('/')
 
+// 数组随机打乱
+function shuffleArray<T>(array: T[]): T[] {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[array[i], array[j]] = [array[j], array[i]]
+  }
+  return array
+}
+
 // 打开批量新增题目弹窗
 const openAddQuestionDialog = () => {
   addQuestionDialogVisible.value = true
@@ -403,12 +412,13 @@ const saveNewQuestions = async () => {
         continue
       }
 
-      // 模拟保存，实际应调用 API
-      questions.value.push({
-        id: Date.now() + Math.random(),
-        ...parsed
-      })
-      totalAdded++
+      const result = await window.electronAPI.addQuestion(parsed)
+      if (result) {
+        questions.value.push(result)
+        totalAdded++
+      } else {
+        ElMessage.error('部分题目保存失败')
+      }
     }
 
     ElMessage.success(`成功保存 ${totalAdded} 道题目`)
@@ -421,8 +431,41 @@ const saveNewQuestions = async () => {
 }
 
 onMounted(() => {
-  // 加载数据
+  loadQuestions()
 })
+
+const loadQuestions = async () => {
+  try {
+    let qs = await window.electronAPI.getQuestions(parseInt(props.directoryId))
+    qs = qs || []
+
+    // 处理出题设置参数
+    const mode = route.query.mode as string
+    const count = parseInt(route.query.count as string) || qs.length
+    const repeat = parseInt(route.query.repeat as string) || 1
+
+    // 先随机打乱
+    qs = shuffleArray([...qs])
+
+    if (mode === 'random' && count < qs.length) {
+      qs = qs.slice(0, count)
+    }
+
+    if (repeat > 1) {
+      const baseQuestions = [...qs]
+      const repeated: any[] = []
+      for (let i = 0; i < repeat; i++) {
+        repeated.push(...shuffleArray([...baseQuestions]))
+      }
+      qs = repeated
+    }
+
+    questions.value = qs
+  } catch (error) {
+    console.error('加载题目失败:', error)
+    ElMessage.error('加载题目失败')
+  }
+}
 </script>
 
 <style scoped>
