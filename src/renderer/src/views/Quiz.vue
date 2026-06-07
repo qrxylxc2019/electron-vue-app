@@ -24,262 +24,278 @@
     <div class="quiz-main">
       <!-- 左侧：题目内容 -->
       <div class="quiz-left">
-          <el-card class="question-card">
-            <template #header>
-              <div class="question-header">
-                <div class="header-left">
-                  <el-tag :type="questionTypeTag.type">
-                    {{ questionTypeTag.text }}
-                  </el-tag>
-                  <!-- 高项科目筛选按钮 -->
-                  <template v-if="directoryName === '高项'">
-                    <el-button
-                      v-if="!isFiltering"
-                      class="filter-btn"
-                      @click="openFilterDialog"
-                    >
-                      <el-icon><Filter /></el-icon>
-                      筛选
-                    </el-button>
-                    <el-button
-                      v-else
-                      class="exit-filter-btn"
-                      type="warning"
-                      @click="exitFilter"
-                    >
-                      <el-icon><Close /></el-icon>
-                      退出筛选
-                    </el-button>
-                  </template>
-                </div>
-                <div class="header-actions">
+        <el-card class="question-card">
+          <template #header>
+            <div class="question-header">
+              <div class="header-left">
+                <el-tag :type="questionTypeTag.type">
+                  {{ questionTypeTag.text }}
+                </el-tag>
+                <!-- 高项科目筛选按钮 -->
+                <template v-if="directoryName === '高项'">
                   <el-button
-                    class="copy-btn"
-                    size="small"
-                    @click="copyQuestionContent"
-                    :title="copySuccess ? '已复制' : '复制题目'"
+                    v-if="!isFiltering"
+                    class="filter-btn"
+                    @click="openFilterDialog"
                   >
-                    <el-icon :size="18">
-                      <Check v-if="copySuccess" style="color: #67c23a;" />
-                      <DocumentCopy v-else />
-                    </el-icon>
+                    <el-icon><Filter /></el-icon>
+                    筛选
                   </el-button>
-                  <!-- 答对/答错结果 -->
-                  <div v-if="showAnswer" class="answer-status">
-                    <el-icon :class="isCorrect ? 'correct-icon' : 'wrong-icon'">
-                      <CircleCheck v-if="isCorrect" />
-                      <CircleClose v-else />
-                    </el-icon>
-                    <span :class="isCorrect ? 'correct-text' : 'wrong-text'">
-                      {{ isCorrect ? '答对了！' : '答错了！' }}
-                    </span>
-                    <span class="correct-answer">正确答案：{{ currentQuestion.correct_answer }}</span>
-                  </div>
-                </div>
+                  <el-button
+                    v-else
+                    class="exit-filter-btn"
+                    type="warning"
+                    @click="exitFilter"
+                  >
+                    <el-icon><Close /></el-icon>
+                    退出筛选
+                  </el-button>
+                </template>
               </div>
-            </template>
-
-            <!-- 题目显示/编辑 -->
-            <div v-if="!isEditingQuestionTitle" class="question-title markdown-body" v-html="renderMarkdown(currentQuestion.title)"></div>
-            <div
-              v-else
-              ref="questionTitleEditorRef"
-              class="question-title-editor"
-              contenteditable="true"
-              v-html="getQuestionTitleEditHtml()"
-              @paste="handleQuestionTitlePaste"
-            ></div>
-
-            <!-- 题目编辑按钮（仅高项科目显示） -->
-            <div v-if="directoryName === '高项'" class="question-edit-actions">
-              <el-button
-                v-if="!isEditingQuestionTitle"
-                class="edit-question-btn"
-                size="small"
-                text
-                @click="startEditQuestionTitle"
-              >
-                <el-icon :size="14"><EditPen /></el-icon>
-                编辑题目
-              </el-button>
-              <el-button
-                v-else
-                class="save-question-btn"
-                size="small"
-                type="primary"
-                text
-                @click="saveQuestionTitle"
-              >
-                <el-icon :size="14"><CircleCheck /></el-icon>
-                保存题目
-              </el-button>
-            </div>
-
-            <!-- 选择题选项 -->
-            <div v-if="currentQuestion.question_type === 'single' || currentQuestion.question_type === 'multiple'" class="options-list">
-              <div
-                v-for="option in optionsList"
-                :key="option.key"
-                class="option-row"
-                :class="{ 
-                  'selected': currentQuestion.question_type === 'multiple' ? selectedAnswers.has(option.key) : selectedAnswer === option.key, 
-                  'deleted': option.deleted,
-                  'correct': showAnswer && isCorrectOption(option.key),
-                  'wrong': showAnswer && isWrongOption(option.key)
-                }"
-              >
-                <div
-                  class="delete-btn"
-                  @click.stop="toggleDelete(option.key)"
+              <div class="header-actions">
+                <el-button
+                  class="copy-btn"
+                  size="small"
+                  @click="copyQuestionContent"
+                  :title="copySuccess ? '已复制' : '复制题目'"
                 >
-                  <el-icon><Delete /></el-icon>
-                </div>
-                <div
-                  class="option-item"
-                  @click="selectOption(option.key)"
-                >
-                  <span class="option-key">{{ option.key }}.</span>
-                  <span class="option-text markdown-body" :class="{ 'strikethrough': option.deleted }" v-html="renderMarkdown(option.text || '')"></span>
-                  <!-- 答案对错的图标显示 -->
-                  <el-icon v-if="showAnswer && isCorrectOption(option.key)" class="result-icon correct-icon"><CircleCheck /></el-icon>
-                  <el-icon v-if="showAnswer && isWrongOption(option.key)" class="result-icon wrong-icon"><CircleClose /></el-icon>
-                </div>
-              </div>
-              <!-- 多选题确认按钮 -->
-              <el-button
-                v-if="currentQuestion.question_type === 'multiple' && !showAnswer"
-                class="confirm-btn"
-                @click="confirmMultipleAnswer"
-              >
-                确认答案
-              </el-button>
-            </div>
-
-            <!-- 文章题：按段落显示，带隐藏/显示按钮 -->
-            <div v-else-if="currentQuestion.question_type === 'write'" class="write-content">
-              <div
-                v-for="(paragraph, index) in writeParagraphs"
-                :key="index"
-                class="paragraph-block"
-              >
-                  <div class="paragraph-row">
-                    <div
-                      class="paragraph-item"
-                      :class="{ 'hidden': hiddenParagraphs.has(index) }"
-                    >
-                      <!-- 显示模式 -->
-                      <div v-if="!isEditingParagraph(index)">
-                        <p class="paragraph-text markdown-body" v-html="renderMarkdown(paragraph)"></p>
-                      </div>
-                      <!-- 编辑模式 -->
-                      <div
-                        v-else
-                        :ref="el => setParagraphEditorRef(el, index)"
-                        class="paragraph-editor"
-                        contenteditable="true"
-                        v-html="getParagraphEditHtml(index)"
-                        @paste="handleParagraphPaste($event, index)"
-                      ></div>
-                    </div>
-                    <div class="paragraph-actions">
-                      <el-button
-                        v-if="!isEditingParagraph(index)"
-                        class="edit-btn"
-                        size="small"
-                        @click="startEditParagraph(index)"
-                        title="编辑段落"
-                      >
-                        <el-icon :size="16"><EditPen /></el-icon>
-                      </el-button>
-                      <el-button
-                        v-if="isEditingParagraph(index)"
-                        class="save-btn"
-                        size="small"
-                        type="primary"
-                        @click="saveParagraph(index)"
-                        title="保存段落"
-                      >
-                        <el-icon :size="16"><CircleCheck /></el-icon>
-                      </el-button>
-                      <el-button
-                        class="toggle-btn"
-                        size="small"
-                        @click="toggleParagraph(index)"
-                      >
-                        {{ hiddenParagraphs.has(index) ? '显示' : '隐藏' }}
-                      </el-button>
-                    </div>
-                  </div>
-                </div>
-            </div>
-
-            <!-- 判断题选项 -->
-            <div v-else class="options-list judge-options">
-              <div
-                v-for="option in judgeOptions"
-                :key="option.key"
-                class="option-row"
-                :class="{ 'selected': selectedAnswer === option.key, 'deleted': option.deleted }"
-              >
-                <div
-                  class="delete-btn"
-                  @click.stop="toggleDelete(option.key)"
-                >
-                  <el-icon><Delete /></el-icon>
-                </div>
-                <div
-                  class="option-item"
-                  @click="selectOption(option.key)"
-                >
-                  <span class="option-text" :class="{ 'strikethrough': option.deleted }">
-                    {{ option.text }}
+                  <el-icon :size="18">
+                    <Check v-if="copySuccess" style="color: #67c23a;" />
+                    <DocumentCopy v-else />
+                  </el-icon>
+                </el-button>
+                <!-- 答对/答错结果 -->
+                <div v-if="showAnswer" class="answer-status">
+                  <el-icon :class="isCorrect ? 'correct-icon' : 'wrong-icon'">
+                    <CircleCheck v-if="isCorrect" />
+                    <CircleClose v-else />
+                  </el-icon>
+                  <span :class="isCorrect ? 'correct-text' : 'wrong-text'">
+                    {{ isCorrect ? '答对了！' : '答错了！' }}
                   </span>
+                  <span class="correct-answer">正确答案：{{ currentQuestion.correct_answer }}</span>
                 </div>
               </div>
             </div>
+          </template>
 
-            <!-- AI 讲解按钮和同类题按钮 -->
-            <div class="ai-explain-section">
-              <el-button
-                class="ai-explain-btn"
-                @click="openAIChatDrawer"
+          <!-- 题目显示/编辑 -->
+          <div v-if="!isEditingQuestionTitle" class="question-title markdown-body" v-html="renderMarkdown(currentQuestion.title)"></div>
+          <div
+            v-else
+            ref="questionTitleEditorRef"
+            class="question-title-editor"
+            contenteditable="true"
+            v-html="getQuestionTitleEditHtml()"
+            @paste="handleQuestionTitlePaste"
+          ></div>
+
+          <!-- 题目编辑按钮（仅高项科目显示） -->
+          <div v-if="directoryName === '高项'" class="question-edit-actions">
+            <el-button
+              v-if="!isEditingQuestionTitle"
+              class="edit-question-btn"
+              size="small"
+              text
+              @click="startEditQuestionTitle"
+            >
+              <el-icon :size="14"><EditPen /></el-icon>
+              编辑题目
+            </el-button>
+            <el-button
+              v-else
+              class="save-question-btn"
+              size="small"
+              type="primary"
+              text
+              @click="saveQuestionTitle"
+            >
+              <el-icon :size="14"><CircleCheck /></el-icon>
+              保存题目
+            </el-button>
+          </div>
+
+          <!-- 选择题选项 -->
+          <div v-if="currentQuestion.question_type === 'single' || currentQuestion.question_type === 'multiple'" class="options-list">
+            <div
+              v-for="option in optionsList"
+              :key="option.key"
+              class="option-row"
+              :class="{ 
+                'selected': currentQuestion.question_type === 'multiple' ? selectedAnswers.has(option.key) : selectedAnswer === option.key, 
+                'deleted': option.deleted,
+                'correct': showAnswer && isCorrectOption(option.key),
+                'wrong': showAnswer && isWrongOption(option.key)
+              }"
+            >
+              <div
+                class="delete-btn"
+                @click.stop="toggleDelete(option.key)"
               >
-                <el-icon><Cpu /></el-icon>
-                AI讲解
-              </el-button>
-              <el-button
-                class="next-question-btn"
-                @click="nextQuestion"
+                <el-icon><Delete /></el-icon>
+              </div>
+              <div
+                class="option-item"
+                @click="selectOption(option.key)"
               >
-                下一题 <el-icon><ArrowRight /></el-icon>
-              </el-button>
-              
-              
-              <el-button
-                class="similar-btn"
-                @click="openSimilarDrawer"
-              >
-                <el-icon><Collection /></el-icon>
-                同类题
-                <el-tag v-if="similarCount > 0" type="danger" size="small" class="similar-count">{{ similarCount }}</el-tag>
-              </el-button>
-              <el-button
-                class="delete-question-btn"
-                @click="deleteCurrentQuestion"
-              >
-                <el-icon><Delete /></el-icon> 删除题目
-              </el-button>
+                <span class="option-key">{{ option.key }}.</span>
+                <span class="option-text markdown-body" :class="{ 'strikethrough': option.deleted }" v-html="renderMarkdown(option.text || '')"></span>
+                <!-- 答案对错的图标显示 -->
+                <el-icon v-if="showAnswer && isCorrectOption(option.key)" class="result-icon correct-icon"><CircleCheck /></el-icon>
+                <el-icon v-if="showAnswer && isWrongOption(option.key)" class="result-icon wrong-icon"><CircleClose /></el-icon>
+              </div>
             </div>
+            <!-- 多选题确认按钮 -->
+            <el-button
+              v-if="currentQuestion.question_type === 'multiple' && !showAnswer"
+              class="confirm-btn"
+              @click="confirmMultipleAnswer"
+            >
+              确认答案
+            </el-button>
+          </div>
 
-            <!-- 答案显示 -->
-            <div v-if="showAnswer" class="answer-result">
-              <el-divider />
-              <div v-if="currentQuestion.explanation" class="explanation-line markdown-body" v-html="renderMarkdown('**解析：**' + currentQuestion.explanation)"></div>
+          <!-- 文章题：按段落显示，带隐藏/显示按钮 -->
+          <div v-else-if="currentQuestion.question_type === 'write'" class="write-content">
+            <div
+              v-for="(paragraph, index) in writeParagraphs"
+              :key="index"
+              class="paragraph-block"
+            >
+                <div class="paragraph-row">
+                  <div
+                    class="paragraph-item"
+                    :class="{ 'hidden': hiddenParagraphs.has(index) }"
+                  >
+                    <!-- 显示模式 -->
+                    <div v-if="!isEditingParagraph(index)">
+                      <p class="paragraph-text markdown-body" v-html="renderMarkdown(paragraph)"></p>
+                    </div>
+                    <!-- 编辑模式 -->
+                    <div
+                      v-else
+                      :ref="el => setParagraphEditorRef(el, index)"
+                      class="paragraph-editor"
+                      contenteditable="true"
+                      v-html="getParagraphEditHtml(index)"
+                      @paste="handleParagraphPaste($event, index)"
+                    ></div>
+                  </div>
+                  <div class="paragraph-actions">
+                    <el-button
+                      v-if="!isEditingParagraph(index)"
+                      class="edit-btn"
+                      size="small"
+                      @click="startEditParagraph(index)"
+                      title="编辑段落"
+                    >
+                      <el-icon :size="16"><EditPen /></el-icon>
+                    </el-button>
+                    <el-button
+                      v-if="isEditingParagraph(index)"
+                      class="save-btn"
+                      size="small"
+                      type="primary"
+                      @click="saveParagraph(index)"
+                      title="保存段落"
+                    >
+                      <el-icon :size="16"><CircleCheck /></el-icon>
+                    </el-button>
+                    <el-button
+                      class="toggle-btn"
+                      size="small"
+                      @click="toggleParagraph(index)"
+                    >
+                      {{ hiddenParagraphs.has(index) ? '显示' : '隐藏' }}
+                    </el-button>
+                  </div>
+                </div>
+              </div>
+          </div>
+
+          <!-- 判断题选项 -->
+          <div v-else class="options-list judge-options">
+            <div
+              v-for="option in judgeOptions"
+              :key="option.key"
+              class="option-row"
+              :class="{ 'selected': selectedAnswer === option.key, 'deleted': option.deleted }"
+            >
+              <div
+                class="delete-btn"
+                @click.stop="toggleDelete(option.key)"
+              >
+                <el-icon><Delete /></el-icon>
+              </div>
+              <div
+                class="option-item"
+                @click="selectOption(option.key)"
+              >
+                <span class="option-text" :class="{ 'strikethrough': option.deleted }">
+                  {{ option.text }}
+                </span>
+              </div>
             </div>
-          </el-card>
-        </div>
+          </div>
 
+          <!-- AI 讲解按钮和同类题按钮 -->
+          <div class="ai-explain-section">
+            <el-button
+              class="ai-explain-btn"
+              @click="openAIChatDrawer"
+            >
+              <el-icon><Cpu /></el-icon>
+              AI讲解
+            </el-button>
+            <el-button
+              class="next-question-btn"
+              @click="nextQuestion"
+            >
+              下一题 <el-icon><ArrowRight /></el-icon>
+            </el-button>
+            
+            
+            <el-button
+              class="similar-btn"
+              @click="openSimilarDrawer"
+            >
+              <el-icon><Collection /></el-icon>
+              同类题
+              <el-tag v-if="similarCount > 0" type="danger" size="small" class="similar-count">{{ similarCount }}</el-tag>
+            </el-button>
+            <el-button
+              class="delete-question-btn"
+              @click="deleteCurrentQuestion"
+            >
+              <el-icon><Delete /></el-icon> 删除题目
+            </el-button>
+          </div>
+
+          <!-- 答案显示 -->
+          <div v-if="showAnswer" class="answer-result">
+            <el-divider />
+            <div v-if="currentQuestion.explanation" class="explanation-line markdown-body" v-html="renderMarkdown('**解析：**' + currentQuestion.explanation)"></div>
+          </div>
+        </el-card>
       </div>
+
+      <!-- 右侧：DeepSeek 网页 -->
+      <div class="quiz-right">
+        <div class="webview-header">
+          <el-icon class="webview-icon"><Cpu /></el-icon>
+          <span class="webview-title">DeepSeek AI 助手</span>
+          <el-button class="webview-refresh-btn" size="small" @click="refreshWebview" title="刷新">
+            <el-icon><Refresh /></el-icon>
+          </el-button>
+        </div>
+        <webview
+          ref="deepseekWebviewRef"
+          class="deepseek-webview"
+          src="https://chat.deepseek.com"
+          allowpopups
+        ></webview>
+      </div>
+    </div>
     </div>
 
     <el-empty v-else description="暂无题目" />
@@ -693,7 +709,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { marked } from 'marked';
 import type { Question, Article, QuestionType, OptionWithState } from '../types';
-import { Cpu, Collection, Delete, ArrowRight, Loading, Warning, CircleCheck, CircleClose, Close, Promotion, EditPen, DocumentCopy, Check, Filter, Search, Document, Plus } from '@element-plus/icons-vue';
+import { Cpu, Collection, Delete, ArrowRight, Loading, Warning, CircleCheck, CircleClose, Close, Promotion, EditPen, DocumentCopy, Check, Filter, Search, Document, Plus, Refresh } from '@element-plus/icons-vue';
 
 const API_ORDER_KEY = 'apiProviderOrder';
 
@@ -1014,6 +1030,14 @@ const resetState = () => {
   selectedAnswer.value = '';
   showAnswer.value = false;
   deletedOptions.value.clear();
+};
+
+// DeepSeek webview 引用和刷新
+const deepseekWebviewRef = ref<any>(null);
+const refreshWebview = () => {
+  if (deepseekWebviewRef.value) {
+    deepseekWebviewRef.value.loadURL('https://chat.deepseek.com');
+  }
 };
 
 // 返回首页
@@ -2381,7 +2405,7 @@ onMounted(() => {
 }
 
 .quiz-left {
-  flex: 1;
+  width: 50%;
   min-width: 0;
   height: 100%;
   overflow-y: auto;
@@ -2394,11 +2418,55 @@ onMounted(() => {
 }
 
 .quiz-right {
-  width: 120px;
-  flex-shrink: 0;
+  width: 50%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: 16px;
+  border: 1px solid #e8e4df;
+  background: #fff;
+  overflow: hidden;
+}
+
+.webview-header {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #e8e4df;
+  background: #fdfbf8;
+  flex-shrink: 0;
+}
+
+.webview-icon {
+  font-size: 18px;
+  color: #4a7c59;
+}
+
+.webview-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+  flex: 1;
+}
+
+.webview-refresh-btn {
+  padding: 6px;
+  border: none;
+  background: transparent;
+  color: #9a9590;
+}
+
+.webview-refresh-btn:hover {
+  color: #1a1a1a;
+  background: #f5f3f0;
+}
+
+.deepseek-webview {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
 }
 
 /* 高项论文文章列表 */
