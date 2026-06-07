@@ -41,6 +41,8 @@ body {
 .main-content {
   flex: 1;
   min-width: 0;
-  overflow: auto;
+  height: 100vh;
+  overflow-y: auto;
+  margin-left: 200px;
 }
 </style>

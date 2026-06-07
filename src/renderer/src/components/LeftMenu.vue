@@ -4,8 +4,8 @@
       :default-active="activeMenu"
       class="menu-container"
       router
-      background-color="#faf8f5"
-      text-color="#1a1a1a"
+      background-color="#e8e4df"
+      text-color="#3a3a3a"
       active-text-color="#8b9a6d"
     >
       <el-menu-item index="/plan">
@@ -51,14 +51,20 @@ const activeMenu = computed(() => {
 .left-menu {
   width: 200px;
   height: 100vh;
-  background: #faf8f5;
-  border-right: 1px solid #e8e4df;
+  background: #e8e4df;
+  border-right: 1px solid #d5d0c8;
   flex-shrink: 0;
+  position: fixed;
+  left: 0;
+  top: 0;
+  overflow-y: auto;
+  z-index: 10;
 }
 
 .menu-container {
   height: 100%;
   border-right: none;
+  overflow-y: auto;
 }
 
 :deep(.el-menu-item) {
