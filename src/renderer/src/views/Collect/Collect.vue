@@ -372,7 +372,7 @@ import {
   Fold,
   Expand,
 } from '@element-plus/icons-vue'
-import WangEditor from 'wangeditor'
+// editor ref removed - not used with current UI
 
 // 类型定义
 interface Tab {
@@ -424,7 +424,7 @@ const popoverVisible = ref(false)
 const isTableCollapsed = ref(false)
 const isRefreshing = ref(false)
 const aiLoading = ref(false)
-const editor = ref<WangEditor | null>(null)
+const editor = ref<any>(null)
 const collectDisplayPosition = ref<'left' | 'bottom'>('bottom')
 const isLeftSidebarCollapsed = ref(false)
 const settingsDialogVisible = ref(false)
