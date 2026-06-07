@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿<template>
+﻿﻿<template>
   <div class="directory-list">
     <div class="header">
       <h1>选择科目</h1>
@@ -754,10 +754,11 @@ const enterQuiz = (directoryId: number) => {
   const isAIDir = dir?.name === 'ai题目';
   const isClozeDir = dir?.name === '完型填空';
   const isWordDir = dir?.name === '考研英语';
+  const isShuxueDir = dir?.name === '数学';
   const count = isArticleDir ? getArticleCount(directoryId) : isCaseDir ? getCaseCount(directoryId) : getQuestionCount(directoryId);
 
-  // ai题目、考研英语、完型填空允许题目数为0，仍然可以进入页面
-  if (count === 0 && !isAIDir && !isWordDir && !isClozeDir) {
+  // ai题目、考研英语、完型填空、数学允许题目数为0，仍然可以进入页面
+  if (count === 0 && !isAIDir && !isWordDir && !isClozeDir && !isShuxueDir) {
     ElMessage.warning('该科目暂无题目');
     return;
   }
@@ -836,6 +837,20 @@ const enterQuiz = (directoryId: number) => {
   if (isArticleDir) {
     router.push({
       name: 'Article',
+      params: { directoryId: directoryId.toString() },
+      query: {
+        mode: quizSettings.value.mode,
+        count: quizSettings.value.count.toString(),
+        repeat: quizSettings.value.repeat.toString()
+      }
+    });
+    return;
+  }
+
+  // 数学进入数学做题页面
+  if (isShuxueDir) {
+    router.push({
+      name: 'Shuxue',
       params: { directoryId: directoryId.toString() },
       query: {
         mode: quizSettings.value.mode,

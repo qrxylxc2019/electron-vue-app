@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿// 类型声明
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿// 类型声明
 export interface Directory {
   id: number;
   name: string;
@@ -163,6 +163,14 @@ declare global {
 
       // 考研英语单词
       getWordImages: () => Promise<{ success: boolean; images?: string[]; error?: string }>;
+
+      // 完型填空
+      getClozeMaterials: (dirId: number) => Promise<{ success: boolean; materials?: any[]; error?: string }>;
+      addClozeMaterial: (data: any) => Promise<{ success: boolean; materialId?: number; error?: string }>;
+      updateClozeMaterial: (id: number, data: any) => Promise<{ success: boolean; error?: string }>;
+      deleteClozeMaterial: (id: number) => Promise<{ success: boolean; error?: string }>;
+      updateClozeQuestion: (id: number, data: any) => Promise<{ success: boolean; error?: string }>;
+      deleteClozeQuestion: (id: number) => Promise<{ success: boolean; error?: string }>;
     };
   }
 }
