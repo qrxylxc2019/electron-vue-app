@@ -581,9 +581,22 @@ onMounted(() => {
 
 .confirm-btn {
   margin-top: 10px;
-  background-color: #8b9a6d;
+  background: #8b9a6d;
   border-color: #8b9a6d;
   color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 18px 20px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 56px;
+  width: 100%;
+  margin-left: 0;
+}
+
+.confirm-btn:hover {
+  background: #8b9a6d;
 }
 
 .ai-explain-section {
@@ -594,21 +607,60 @@ onMounted(() => {
 }
 
 .ai-explain-btn {
-  background-color: #8b9a6d;
+  background: #8b9a6d;
   border-color: #8b9a6d;
   color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 18px 20px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 56px;
+  width: 100%;
+  margin-left: 0;
+}
+
+.ai-explain-btn:hover {
+  background: #8b9a6d;
 }
 
 .next-question-btn {
-  background-color: #c4a882;
+  background: #c4a882;
   border-color: #c4a882;
   color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 18px 20px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 56px;
+  width: 100%;
+  margin-left: 0;
+}
+
+.next-question-btn:hover {
+  background: #c4a882;
 }
 
 .delete-question-btn {
-  background-color: #e8686a;
+  background: #e8686a;
   border-color: #e8686a;
   color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 18px 20px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 56px;
+  width: 100%;
+  margin-left: 0;
+}
+
+.delete-question-btn:hover {
+  background: #e8686a;
 }
 
 .answer-result {
@@ -672,14 +724,21 @@ onMounted(() => {
 .editor-row {
   display: flex;
   gap: 20px;
+  align-items: stretch;
 }
 
 .editor-left {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .editor-right {
-  width: 280px;
+  width: 320px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .editor-header {
@@ -695,15 +754,26 @@ onMounted(() => {
 }
 
 .format-hint {
-  background: #f5f3f0;
-  border-radius: 10px;
+  background: #f8f7f5;
+  border: 1px solid #e8e4df;
+  border-radius: 12px;
   padding: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 480px;
+  max-height: 520px;
 }
 
 .hint-title {
   font-weight: 600;
   margin-bottom: 10px;
   color: #1a1a1a;
+}
+
+.hint-content {
+  flex: 1;
+  overflow-y: auto;
 }
 
 .hint-content pre {
@@ -714,10 +784,19 @@ onMounted(() => {
   color: #666;
 }
 
+/* 弹窗整体样式统一 */
+:deep(.add-question-dialog) {
+  border-radius: 16px;
+  overflow: hidden;
+  padding: 0 !important;
+  background: #faf9f7;
+}
+
 :deep(.add-question-dialog .el-dialog__header) {
-  background: #f5f3f0;
+  background: #faf9f7;
   border-bottom: 1px solid #e8e4df;
-  padding: 16px 24px;
+  padding: 20px 24px;
+  margin-right: 0;
 }
 
 :deep(.add-question-dialog .el-dialog__title) {
@@ -730,5 +809,26 @@ onMounted(() => {
   background: #faf9f7;
   border-top: 1px solid #e8e4df;
   padding: 16px 24px;
+}
+
+:deep(.add-question-dialog .el-dialog__footer .el-button) {
+  min-height: 44px;
+  padding: 12px 24px;
+  font-size: 15px;
+  border-radius: 10px;
+}
+
+:deep(.add-question-dialog .el-dialog__footer .el-button--primary) {
+  background: #1a1a1a;
+  border-color: #1a1a1a;
+}
+
+:deep(.add-question-dialog .el-dialog__footer .el-button--primary:hover) {
+  background: #333;
+  border-color: #333;
+}
+
+.add-question-form {
+  padding: 20px 24px;
 }
 </style>
