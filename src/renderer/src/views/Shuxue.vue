@@ -568,7 +568,7 @@ const loadQuestions = async () => {
 }
 
 .question-title {
-  font-size: 18px;
+  font-size: 22px;
   line-height: 1.8;
   margin-bottom: 20px;
 }
@@ -622,7 +622,7 @@ const loadQuestions = async () => {
 
 .option-text {
   flex: 1;
-  font-size: 16px;
+  font-size: 20px;
 }
 
 .result-icon {
