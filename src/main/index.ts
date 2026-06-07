@@ -305,6 +305,18 @@ function initDatabase() {
     `);
     console.log('solicit table ensured');
 
+    // 收藏表
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS collect (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT,
+        url TEXT,
+        content TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('collect table ensured');
+
     // API 设置已改为前端本地存储 + 后端硬编码，无需数据库表
 
     console.log('Database initialized successfully');
@@ -2097,6 +2109,117 @@ ipcMain.handle('solicit:delete', (_event, id: number) => {
   } catch (err: any) {
     console.error('solicit:delete error:', err);
     return false;
+  }
+});
+
+// ========== 收藏 (collect) IPC ==========
+
+ipcMain.handle('collect:get', (_event, params: any) => {
+  if (!db) return { list: [], pagination: { total: 0, current: 1, pageNum: 10, totalPages: 0 } };
+  try {
+    const { page = 1, pageNum = 50, conditions = {} } = params;
+    const whereClauses: string[] = [];
+    const values: any[] = [];
+
+    if (conditions.title) {
+      whereClauses.push('title LIKE ?');
+      values.push(`%${conditions.title}%`);
+    }
+    if (conditions.url) {
+      whereClauses.push('url LIKE ?');
+      values.push(`%${conditions.url}%`);
+    }
+
+    const whereStr = whereClauses.length > 0 ? 'WHERE ' + whereClauses.join(' AND ') : '';
+
+    // Count total
+    const countStmt = db.prepare(`SELECT COUNT(*) as total FROM collect ${whereStr}`);
+    const { total } = countStmt.get(...values) as any;
+
+    // Pagination
+    const offset = (page - 1) * pageNum;
+    const dataStmt = db.prepare(`SELECT * FROM collect ${whereStr} ORDER BY id DESC LIMIT ? OFFSET ?`);
+    const list = dataStmt.all(...values, pageNum, offset);
+
+    return {
+      list,
+      pagination: {
+        total,
+        current: page,
+        pageNum,
+        totalPages: Math.ceil(total / pageNum),
+      },
+    };
+  } catch (err: any) {
+    console.error('collect:get error:', err);
+    return { list: [], pagination: { total: 0, current: 1, pageNum: 10, totalPages: 0 } };
+  }
+});
+
+ipcMain.handle('collect:add', (_event, data: any) => {
+  if (!db) return null;
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO collect (title, url, content)
+      VALUES (?, ?, ?)
+    `);
+    const result = stmt.run(
+      data.title || '',
+      data.url || '',
+      data.content || ''
+    );
+    return { id: result.lastInsertRowid, ...data };
+  } catch (err: any) {
+    console.error('collect:add error:', err);
+    return null;
+  }
+});
+
+ipcMain.handle('collect:delete', (_event, id: number) => {
+  if (!db) return false;
+  try {
+    const stmt = db.prepare('DELETE FROM collect WHERE id = ?');
+    const result = stmt.run(id);
+    return result.changes > 0;
+  } catch (err: any) {
+    console.error('collect:delete error:', err);
+    return false;
+  }
+});
+
+// 收藏：根据 URL 获取标题（通过 HTTP 请求抓取网页标题）
+ipcMain.handle('collect:fetchUrlTitle', async (_event, url: string) => {
+  try {
+    const https = await import('https');
+    const http = await import('http');
+    const urlObj = new URL(url);
+    const client = urlObj.protocol === 'https:' ? https : http;
+
+    return new Promise((resolve) => {
+      const req = client.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res: any) => {
+        let data = '';
+        res.on('data', (chunk: string) => { data += chunk; });
+        res.on('end', () => {
+          const titleMatch = data.match(/<title[^>]*>([^<]+)<\/title>/i);
+          if (titleMatch) {
+            resolve({ code: 200, result: { title: titleMatch[1].trim() } });
+          } else {
+            resolve({ code: 404, result: { title: '' } });
+          }
+        });
+      });
+      req.on('error', (err: any) => {
+        console.error('fetchUrlTitle error:', err);
+        resolve({ code: 500, result: { title: '' } });
+      });
+      req.setTimeout(10000, () => {
+        req.destroy();
+        resolve({ code: 500, result: { title: '' } });
+      });
+    });
+  } catch (err: any) {
+    console.error('collect:fetchUrlTitle error:', err);
+    return { code: 500, result: { title: '' } };
   }
 });
 

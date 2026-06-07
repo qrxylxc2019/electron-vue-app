@@ -8,6 +8,10 @@
       text-color="#3a3a3a"
       active-text-color="#8b9a6d"
     >
+      <el-menu-item index="/collect">
+        <el-icon><Star /></el-icon>
+        <span>收藏</span>
+      </el-menu-item>
       <el-menu-item index="/plan">
         <el-icon><Calendar /></el-icon>
         <span>计划</span>
@@ -27,7 +31,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { HomeFilled, Reading, Calendar, EditPen } from '@element-plus/icons-vue'
+import { HomeFilled, Reading, Calendar, EditPen, Star } from '@element-plus/icons-vue'
 
 const route = useRoute()
 
@@ -36,6 +40,9 @@ const activeMenu = computed(() => {
   if (path === '/' || path === '') return '/'
   if (path.startsWith('/learn') || path.startsWith('/quiz') || path.startsWith('/case') || path.startsWith('/ai') || path.startsWith('/english') || path.startsWith('/translate') || path.startsWith('/article') || path.startsWith('/cloze') || path.startsWith('/shuxue')) {
     return '/learn'
+  }
+  if (path.startsWith('/collect')) {
+    return '/collect'
   }
   if (path.startsWith('/plan')) {
     return '/plan'

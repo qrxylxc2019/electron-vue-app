@@ -10,6 +10,7 @@ import Cloze from '../views/Learn/Cloze.vue';
 import Shuxue from '../views/Learn/Shuxue.vue';
 import Plan from '../views/Plan/Plan.vue';
 import Solicit from '../views/Solicit/Solicit.vue';
+import Collect from '../views/Collect/Collect.vue';
 
 const routes = [
   { path: '/', name: 'Home', component: DirectoryList },
@@ -23,6 +24,7 @@ const routes = [
   { path: '/shuxue/:directoryId', name: 'Shuxue', component: Shuxue, props: true },
   { path: '/plan', name: 'Plan', component: Plan },
   { path: '/solicit', name: 'Solicit', component: Solicit },
+  { path: '/collect', name: 'Collect', component: Collect },
 ];
 
 const router = createRouter({

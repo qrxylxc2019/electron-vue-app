@@ -2219,6 +2219,7 @@ section {
   flex-direction: column;
   background-color: #faf8f5;
   color: #1a1a1a;
+  padding:20px;
 }
 
 .tagline {

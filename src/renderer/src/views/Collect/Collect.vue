@@ -373,7 +373,6 @@ import {
   Expand,
 } from '@element-plus/icons-vue'
 import WangEditor from 'wangeditor'
-import axios from 'axios'
 
 // 类型定义
 interface Tab {
@@ -672,17 +671,17 @@ const fetchLearnData = async () => {
   }
 
   try {
-    const res = await axios.post('http://localhost:8000/api/collect/get', params)
-    if (!res.data.result?.list) {
+    const res = await window.electronAPI.getCollectList(params)
+    if (!res?.list) {
       throw new Error('数据格式错误')
     }
-    originalLearnData.value = res.data.result.list
+    originalLearnData.value = res.list
     learnData.value = [...originalLearnData.value]
     pagination.value = {
-      total: res.data.result.pagination.total,
-      current: res.data.result.pagination.current,
-      pageNum: res.data.result.pagination.pageNum,
-      totalPages: res.data.result.pagination.totalPages,
+      total: res.pagination.total,
+      current: res.pagination.current,
+      pageNum: res.pagination.pageNum,
+      totalPages: res.pagination.totalPages,
     }
   } catch (error) {
     console.error('加载数据失败:', error)
@@ -725,7 +724,7 @@ const handleSubmit = async () => {
       url: form.value.url,
     }
 
-    const res = await axios.post('http://localhost:8000/api/collect/add', params)
+    const res = await window.electronAPI.addCollect(params)
 
     form.value = {
       title: '',
@@ -733,8 +732,12 @@ const handleSubmit = async () => {
     }
 
     fetchLearnData()
-    ElMessage.success('保存成功')
-    isCurrentUrlFavorited.value = true
+    if (res) {
+      ElMessage.success('保存成功')
+      isCurrentUrlFavorited.value = true
+    } else {
+      ElMessage.error('保存失败')
+    }
   } catch (error) {
     console.error('保存失败:', error)
     ElMessage.error('保存失败，请稍后重试')
@@ -792,16 +795,17 @@ const fetchUrlTitle = async () => {
   }
 
   try {
-    const response = await axios.post('http://localhost:8000/api/collect/url/fetch', {
-      url: currentTab.value.url,
-    })
+    const response = await window.electronAPI.fetchCollectUrlTitle(currentTab.value.url)
 
-    if (response.data.code === 200 && response.data.result) {
-      form.value.title = response.data.result.title
+    if (response.code === 200 && response.result) {
+      form.value.title = response.result.title
       handleSubmit()
+    } else {
+      ElMessage.warning('未能获取到标题，请手动输入')
     }
   } catch (error) {
     console.error('获取标题失败:', error)
+    ElMessage.warning('获取标题失败，请手动输入')
   }
 }
 
@@ -824,7 +828,7 @@ const handleSearch = async () => {
 
   try {
     const keyword = searchKeyword.value.trim()
-    const res = await axios.post('http://localhost:8000/api/collect/get', {
+    const res = await window.electronAPI.getCollectList({
       page: currentPage.value,
       pageNum: pageSize.value,
       conditions: {
@@ -832,13 +836,13 @@ const handleSearch = async () => {
       },
     })
     console.log('搜索结果:', res)
-    if (res.data.result?.list) {
-      learnData.value = res.data.result.list
+    if (res?.list) {
+      learnData.value = res.list
       pagination.value = {
-        total: res.data.result.pagination.total,
-        current: res.data.result.pagination.current,
-        pageNum: res.data.result.pagination.pageNum,
-        totalPages: res.data.result.pagination.totalPages,
+        total: res.pagination.total,
+        current: res.pagination.current,
+        pageNum: res.pagination.pageNum,
+        totalPages: res.pagination.totalPages,
       }
     }
   } catch (error) {
@@ -862,9 +866,8 @@ const handleDelete = async (row: LearnDataItem) => {
     })
 
     if (result === 'confirm') {
-      const params = { id: row.id }
-      const res = await axios.post('http://localhost:8000/api/collect/delete', params)
-      if (res.data.code === 200) {
+      const success = await window.electronAPI.deleteCollect(row.id)
+      if (success) {
         ElMessage.success('删除成功')
         fetchLearnData()
       } else {
@@ -1045,27 +1048,37 @@ const aiParseUrl = async () => {
 返回格式要求：直接返回一个JSON对象，包含url和title两个字段。
 链接: ${form.value.url}`
 
-    const tokenRes = await axios.post('http://localhost:8000/api/token/getCookieByUrl', { url: 'ds' })
-    const dsToken = tokenRes?.data?.data?.cookie || ''
-    if (!dsToken) throw new Error('未配置 DeepSeek Token')
-
-    const response = await axios.post('http://localhost:8000/api/ds/aiAsk', {
-      prompt: prompt,
-      token: dsToken,
+    // 使用已有的 AI 提取关键词接口（非流式调用）来解析URL标题
+    const result = await window.electronAPI.extractKeywords({
+      paragraph: prompt,
+      providerOrder: ['deepseekLocal', 'modelspace', 'deepseek'],
     })
 
-    console.log('AI解析结果:', response)
-    const res = response.data
-
-    if (res.code === 200 && res.data) {
-      if (res.data.title) {
-        form.value.title = res.data.title
+    console.log('AI解析结果:', result)
+    if (result.success && result.keywords) {
+      // 尝试从AI返回结果中解析标题
+      try {
+        const jsonMatch = result.keywords.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0])
+          if (parsed.title) {
+            form.value.title = parsed.title
+            ElMessage.success('标题解析成功')
+          } else {
+            ElMessage.warning('未能解析到标题')
+          }
+        } else {
+          // 如果不是JSON，直接用返回的文本作为标题
+          form.value.title = result.keywords.trim().substring(0, 200)
+          ElMessage.success('标题解析成功')
+        }
+      } catch {
+        // JSON 解析失败，直接用返回的文本
+        form.value.title = result.keywords.trim().substring(0, 200)
         ElMessage.success('标题解析成功')
-      } else {
-        ElMessage.warning('未能解析到标题')
       }
     } else {
-      ElMessage.error(response.data.message || 'AI解析失败')
+      ElMessage.error(result.error || 'AI解析失败')
     }
   } catch (error) {
     console.error('AI解析失败:', error)
