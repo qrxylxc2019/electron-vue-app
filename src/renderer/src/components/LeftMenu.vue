@@ -8,6 +8,9 @@
       text-color="#3a3a3a"
       active-text-color="#8b9a6d"
     >
+      <div class="menu-logo">
+        <img src="../assets/favicon.ico" alt="logo" />
+      </div>
       <el-menu-item index="/collect">
         <el-icon><Star /></el-icon>
         <span>收藏</span>
@@ -93,5 +96,18 @@ const activeMenu = computed(() => {
 
 :deep(.el-menu-item:hover) {
   background: rgba(139, 154, 109, 0.05) !important;
+}
+
+.menu-logo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px 0;
+}
+
+.menu-logo img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
 }
 </style>
