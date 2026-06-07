@@ -139,6 +139,12 @@ const electronAPI = {
   updateMarquee: (id: number, data: any) => ipcRenderer.invoke('marquee:update', id, data),
   deleteMarquee: (id: number) => ipcRenderer.invoke('marquee:delete', id),
 
+  // 项目
+  getProjectList: (params: any) => ipcRenderer.invoke('project:get', params),
+  addProject: (data: any) => ipcRenderer.invoke('project:add', data),
+  updateProject: (id: number, data: any) => ipcRenderer.invoke('project:update', id, data),
+  deleteProject: (id: number) => ipcRenderer.invoke('project:delete', id),
+
   // 征稿
   getSolicitList: (params: any) => ipcRenderer.invoke('solicit:get', params),
   addSolicit: (data: any) => ipcRenderer.invoke('solicit:add', data),

@@ -265,7 +265,10 @@
                   >保存</el-button
                 >
               </div>
-              <div ref="editorContainer" class="editor-container" ></div>
+              <div class="editor-container">
+                <Toolbar :editor="editorRef" :defaultConfig="toolbarConfig" mode="simple" style="border-bottom: 1px solid #e8e4df" />
+                <Editor v-model="editorHtml" :defaultConfig="editorConfig" mode="simple" style="height: calc(100vh - 260px); overflow-y: auto;" @onCreated="handleEditorCreated" />
+              </div>
             </div>
           </div>
         </div>
@@ -307,8 +310,8 @@
   </section>
 </template>
 <script>
-import WangEditor from "wangeditor"; // 导入 WangEditor
-import { saveAs } from "file-saver"; // 导入 FileSaver.js
+import '@wangeditor/editor/dist/css/style.css'; // 引入 wangEditor css
+import { Editor, Toolbar } from '@wangeditor/editor-for-vue';
 import { ArrowLeft, Calendar, Check, Clock, Delete, Document, Loading, Plus, Refresh } from "@element-plus/icons-vue";
 
 export default {
@@ -320,9 +323,11 @@ export default {
     Clock,
     Delete,
     Document,
+    Editor,
     Loading,
     Plus,
     Refresh,
+    Toolbar,
   },
   directives: {
     pullRefresh: {
@@ -413,7 +418,13 @@ export default {
     return {
       test: "",
       name: "",
-      editor: null,
+      editorRef: null,
+      editorHtml: '',
+      toolbarConfig: {},
+      editorConfig: {
+        placeholder: '请输入内容',
+        MENU_CONF: {},
+      },
       tableData: [],
       filteredTableData: [],
       projectSearchQuery: '',
@@ -461,16 +472,6 @@ export default {
   },
   mounted() {
     try {
-      // 初始化编辑器
-      if (this.$refs.editorContainer) {
-        this.editor = new WangEditor(this.$refs.editorContainer);
-        this.editor.config.uploadImgShowBase64 = true;
-        this.editor.config.menus = [];
-        this.editor.config.showFullScreen = false;
-        this.editor.config.placeholder = "请输入内容";
-        this.editor.create();
-      }
-
       // 设置表格高度
       this.calculateTableHeight();
       window.addEventListener("resize", this.calculateTableHeight);
@@ -483,9 +484,9 @@ export default {
     window.removeEventListener("resize", this.calculateTableHeight);
     
     // 销毁编辑器实例
-    if (this.editor) {
-      this.editor.destroy();
-      this.editor = null;
+    if (this.editorRef) {
+      this.editorRef.destroy();
+      this.editorRef = null;
     }
     
     // 清理所有倒计时定时器
@@ -499,9 +500,9 @@ export default {
   unmounted() {
     try {
       // 清理所有可能的副作用
-      if (this.editor) {
-        this.editor.destroy();
-        this.editor = null;
+      if (this.editorRef) {
+        this.editorRef.destroy();
+        this.editorRef = null;
       }
       
       // 清理定时器等其他资源
@@ -515,9 +516,9 @@ export default {
   beforeRouteLeave(to, from, next) {
     try {
       // 在路由离开前进行清理
-      if (this.editor) {
-        this.editor.destroy();
-        this.editor = null;
+      if (this.editorRef) {
+        this.editorRef.destroy();
+        this.editorRef = null;
       }
       next();
     } catch (error) {
@@ -652,6 +653,11 @@ export default {
     }
   },
   methods: {
+    // 编辑器创建回调
+    handleEditorCreated(editor) {
+      this.editorRef = editor;
+    },
+
     // 执行搜索并显示反馈
     performSearch(query) {
       if (!query || query.trim() === '') {
@@ -710,7 +716,7 @@ export default {
     async getAllProjectData() {
       try {
         this.projectLoading = true;
-        const res = await this.$axios.post("http://localhost:8000/api/project/get", {
+        const res = await window.electronAPI.getProjectList({
           page: this.currentPage,
           pageNum: this.pageNum,
           orderBy: {
@@ -719,17 +725,17 @@ export default {
           },
         });
 
-        console.log("获取到的数据:", res.data);
-        if (res.data.code === 200) {
-          this.tableData = res.data.result.list || [];
-          this.total = res.data.result.pagination?.total || 0;
+        console.log("获取到的数据:", res);
+        if (res && res.list) {
+          this.tableData = res.list || [];
+          this.total = res.pagination?.total || 0;
           this.projectFinished = this.tableData.length >= this.total;
         } else {
-          this.$message.error(res.data.message || "获取数据失败");
+          this.$message.error("获取数据失败");
         }
       } catch (error) {
         console.error("获取数据失败:", error);
-        this.$message.error("获取数据失败: " + (error.response?.data?.detail || error.message));
+        this.$message.error("获取数据失败: " + error.message);
       } finally {
         this.projectLoading = false;
       }
@@ -745,7 +751,7 @@ export default {
 
       this.title = row.project;
       this.currentId = row.id; // 保存当前编辑项的 ID
-      this.editor.txt.html(row.content || "");
+      this.editorHtml = row.content || "";
       this.isEdit = true; // 设置为编辑模式
     },
     // 修改保存方法
@@ -756,32 +762,31 @@ export default {
         return;
       }
 
-      const editorContent = this.editor.txt.html();
+      const editorContent = this.editorHtml;
       if (!editorContent.trim()) {
         this.$message.warning("请输入内容");
         return;
       }
 
       try {
-        let res;
+        let result;
         if (this.isEdit) {
           // 更新
-          res = await this.$axios.post(`http://localhost:8000/api/project/update`, {
-            id: this.currentId,
+          result = await window.electronAPI.updateProject(this.currentId, {
             project: this.title,
             content: editorContent
           });
         } else {
           // 新增
-          res = await this.$axios.post("http://localhost:8000/api/project/add", {
+          result = await window.electronAPI.addProject({
             project: this.title,
             content: editorContent
           });
           this.title = "";
-           this.editor.txt.html("");
+           this.editorHtml = "";
         }
 
-        if (res.data.code === 200) {
+        if (result) {
           this.$message.success(this.isEdit ? "更新成功" : "保存成功");
           this.getAllProjectData();
         } else {
@@ -811,7 +816,7 @@ export default {
       
       // 设置当前编辑状态
       this.title = "";
-      this.editor.txt.html("");
+      this.editorHtml = "";
       this.currentId = tempId;
       this.isEdit = false;
       
@@ -826,17 +831,15 @@ export default {
           type: "warning",
         });
 
-        const res = await this.$axios.post(`http://localhost:8000/api/project/delete`, {
-          id: row.id
-        });
+        const result = await window.electronAPI.deleteProject(row.id);
 
-        if (res.data.code === 200) {
+        if (result) {
           this.$message.success("删除成功");
           this.getAllProjectData();
           // 如果删除的是当前正在编辑的项，清空编辑器
           if (this.currentId === row.id) {
             this.title = ""; // 清空标题
-            this.editor.txt.html(""); // 清空编辑器内容
+            this.editorHtml = ""; // 清空编辑器内容
             this.currentId = ''; // 清空当前编辑项的 ID
             this.isEdit = false; // 设置为新增模式
           }
@@ -866,42 +869,31 @@ export default {
 
       try {
         this.planLoading = true;
-        const res = await this.$axios.post("http://localhost:8000/api/plan/get", {
-          page: this.planCurrentPage,
-          pageNum: this.planPageSize,
-          conditions: {
-            type: "3",
-            status: "0",
-          },
-          orderBy: {
-            column: "id",
-            type: "desc",
-          },
-        });
+        const allPlans = await window.electronAPI.getPlans();
+        // 过滤 type=3 且 status=0 的计划
+        let newData = allPlans.filter(p => p.type === '3' && p.status === '0');
+        // 按 id 倒序
+        newData.sort((a, b) => b.id - a.id);
+        this.planTotal = newData.length;
 
-        if (res.data.code === 200) {
-          const newData = res.data.result.list || [];
-          this.planTotal = res.data.result.pagination?.total || 0;
-          
-          if (isLoadMore) {
-            // 追加新数据
-            this.planData = [...this.planData, ...newData];
-          } else {
-            // 重置数据
-            this.planData = newData;
-            this.planCurrentPage = 1;
-          }
-
-          // 判断是否加载完所有数据
-          this.planFinished = this.planData.length >= this.planTotal;
-          
-          console.log('数据加载状态：', {
-            currentPage: this.planCurrentPage,
-            totalItems: this.planTotal,
-            loadedItems: this.planData.length,
-            isFinished: this.planFinished
-          });
+        if (isLoadMore) {
+          // 追加新数据
+          this.planData = [...this.planData, ...newData];
+        } else {
+          // 重置数据
+          this.planData = newData;
+          this.planCurrentPage = 1;
         }
+
+        // 判断是否加载完所有数据
+        this.planFinished = this.planData.length >= this.planTotal;
+        
+        console.log('数据加载状态：', {
+          currentPage: this.planCurrentPage,
+          totalItems: this.planTotal,
+          loadedItems: this.planData.length,
+          isFinished: this.planFinished
+        });
       } catch (error) {
         console.error('Failed to get project plans:', error);
         this.$message.error('获取计划列表失败');
@@ -933,8 +925,8 @@ export default {
       };
 
       try {
-        const res = await this.$axios.post("http://localhost:8000/api/plan/add", params);
-        if (res.data.code === 200) {
+        const result = await window.electronAPI.addPlan(params);
+        if (result) {
           this.$message.success("添加成功");
           this.projectName = "";
           this.newPlan = "";
@@ -976,14 +968,13 @@ export default {
       }
 
       try {
-        const res = await this.$axios.post("http://localhost:8000/api/plan/update", {
-          id: this.editingPlanId,
+        const success = await window.electronAPI.updatePlan(this.editingPlanId, {
           plan: this.newPlan,
           status: "0",
           type: "3",
         });
 
-        if (res.data.code === 200) {
+        if (success) {
           this.$message.success("更新成功");
           // 重置编辑状态
           this.isEditingPlan = false;
@@ -999,11 +990,11 @@ export default {
             }
           });
         } else {
-          this.$message.error(res.data.message || "更新失败");
+          this.$message.error("更新失败");
         }
       } catch (error) {
         console.error("更新计划失败:", error);
-        this.$message.error("更新失败: " + (error.response?.data?.detail || error.message));
+        this.$message.error("更新失败: " + error.message);
       }
     },
 
@@ -1051,38 +1042,28 @@ export default {
       this.dailyReportVisible = true;
 
       try {
-        const res = await this.$axios.post("http://localhost:8000/api/plan/get", {
-          conditions: {
-            type: "3",
-          },
-          pageNum: 1000 // 设置较大的页面大小以确保获取所有数据
+        const allPlans = await window.electronAPI.getPlans();
+        // 过滤 type=3 的计划
+        const allData = allPlans.filter(p => p.type === '3');
+        
+        // 只过滤有 finishtime 的数据，并且在当月范围内
+        const filteredData = allData.filter(item => {
+          // 必须有 finishtime
+          if (!item.finishtime) {
+            return false;
+          }
+          
+          const itemFinishtime = item.finishtime;
+          
+          // 检查 finishtime 是否在当月范围内
+          return itemFinishtime >= formattedFirstDay && itemFinishtime <= formattedToday;
         });
         
-        if (res.data && res.data.code === 200) {
-          const allData = res.data.result.list || [];
-          
-          // 只过滤有 finishtime 的数据，并且在当月范围内
-          const filteredData = allData.filter(item => {
-            // 必须有 finishtime
-            if (!item.finishtime) {
-              return false;
-            }
-            
-            const itemFinishtime = item.finishtime;
-            
-            // 检查 finishtime 是否在当月范围内
-            return itemFinishtime >= formattedFirstDay && itemFinishtime <= formattedToday;
-          });
-          
 
-          this.monthlyReportData = filteredData;
-          this.dailyReportData = filteredData;
+        this.monthlyReportData = filteredData;
+        this.dailyReportData = filteredData;
 
-          console.log("日报数据:", JSON.stringify(filteredData));
-          
-        } else {
-          this.$message.error(res.data.message || "获取日报数据失败");
-        }
+        console.log("日报数据:", JSON.stringify(filteredData));
       } catch (error) {
         console.error("获取日报数据失败:", error);
         this.$message.error("获取日报数据失败");
@@ -1188,7 +1169,7 @@ export default {
     async getMoreProjectData() {
       try {
         this.projectLoading = true;
-        const res = await this.$axios.post("http://localhost:8000/api/project/get", {
+        const res = await window.electronAPI.getProjectList({
           page: this.currentPage,
           pageNum: this.pageNum,
           orderBy: {
@@ -1197,19 +1178,19 @@ export default {
           },
         });
 
-        if (res.data.code === 200) {
-          const newData = res.data.result.list || [];
+        if (res && res.list) {
+          const newData = res.list || [];
           this.tableData = [...this.tableData, ...newData];
-          this.total = res.data.result.pagination?.total || 0;
+          this.total = res.pagination?.total || 0;
           
           // 判断是否加载完所有数据
           this.projectFinished = this.tableData.length >= this.total;
         } else {
-          this.$message.error(res.data.message || "获取数据失败");
+          this.$message.error("获取数据失败");
         }
       } catch (error) {
         console.error("获取数据失败:", error);
-        this.$message.error("获取数据失败: " + (error.response?.data?.detail || error.message));
+        this.$message.error("获取数据失败: " + error.message);
       } finally {
         this.projectLoading = false;
       }
@@ -1271,9 +1252,9 @@ export default {
           id: row.id
         };
 
-        const res = await this.$axios.post(`http://localhost:8000/api/plan/update`, params);
+        const success = await window.electronAPI.updatePlan(row.id, params);
 
-        if (res.data.code === 200) {
+        if (success) {
           // 直接更新当前行的状态，无需重新请求所有数据
           row.status = newStatus;
           this.$message.success(
@@ -1331,9 +1312,9 @@ export default {
           finishtime: row.status === "1" ? formattedDate : ""
         };
 
-        const res = await this.$axios.post(`http://localhost:8000/api/plan/update`, params);
+        const success = await window.electronAPI.updatePlan(row.id, params);
 
-        if (res.data.code === 200) {
+        if (success) {
           this.$message.success(
             row.status === "1" ? "计划更新完成" : "计划已取消完成"
           );
@@ -1685,10 +1666,11 @@ html:not(.dark) .accent,
 }
 
 .editor-container {
-  height: calc(100vh - 200px);
   margin-top: 10px;
   width: 100%;
-  z-index:0
+  z-index:0;
+  border: 1px solid #e8e4df;
+  border-radius: 4px;
 }
 
 /* WangEditor 内容区域字体样式 */

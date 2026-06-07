@@ -11,13 +11,17 @@
       <div class="menu-logo">
         <img src="../assets/favicon.ico" alt="logo" />
       </div>
+      <el-menu-item index="/plan">
+        <el-icon><Calendar /></el-icon>
+        <span>计划</span>
+      </el-menu-item>
       <el-menu-item index="/collect">
         <el-icon><Star /></el-icon>
         <span>收藏</span>
       </el-menu-item>
-      <el-menu-item index="/plan">
-        <el-icon><Calendar /></el-icon>
-        <span>计划</span>
+      <el-menu-item index="/project">
+        <el-icon><Folder /></el-icon>
+        <span>项目</span>
       </el-menu-item>
       <el-menu-item index="/solicit">
         <el-icon><EditPen /></el-icon>
@@ -34,7 +38,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { HomeFilled, Reading, Calendar, EditPen, Star } from '@element-plus/icons-vue'
+import { HomeFilled, Reading, Calendar, EditPen, Star, Folder } from '@element-plus/icons-vue'
 
 const route = useRoute()
 
@@ -49,6 +53,9 @@ const activeMenu = computed(() => {
   }
   if (path.startsWith('/plan')) {
     return '/plan'
+  }
+  if (path.startsWith('/project')) {
+    return '/project'
   }
   if (path.startsWith('/solicit')) {
     return '/solicit'

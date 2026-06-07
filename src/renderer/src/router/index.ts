@@ -11,6 +11,7 @@ import Shuxue from '../views/Learn/Shuxue.vue';
 import Plan from '../views/Plan/Plan.vue';
 import Solicit from '../views/Solicit/Solicit.vue';
 import Collect from '../views/Collect/Collect.vue';
+import Project from '../views/Project/Project.vue';
 
 const routes = [
   { path: '/', name: 'Home', component: DirectoryList },
@@ -25,6 +26,7 @@ const routes = [
   { path: '/plan', name: 'Plan', component: Plan },
   { path: '/solicit', name: 'Solicit', component: Solicit },
   { path: '/collect', name: 'Collect', component: Collect },
+  { path: '/project', name: 'Project', component: Project },
 ];
 
 const router = createRouter({

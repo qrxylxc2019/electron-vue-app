@@ -317,6 +317,17 @@ function initDatabase() {
     `);
     console.log('collect table ensured');
 
+    // 项目表
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS project (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        project TEXT,
+        content TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('project table ensured');
+
     // API 设置已改为前端本地存储 + 后端硬编码，无需数据库表
 
     console.log('Database initialized successfully');
@@ -1988,6 +1999,101 @@ ipcMain.handle('db:getApiSettings', () => {
 
 ipcMain.handle('db:saveApiSettings', () => {
   return true;
+});
+
+// ========== 项目 (project) IPC ==========
+
+ipcMain.handle('project:get', (_event, params: any) => {
+  if (!db) return { list: [], pagination: { total: 0, current: 1, pageNum: 20, totalPages: 0 } };
+  try {
+    const { page = 1, pageNum = 20, conditions = {}, orderBy } = params;
+    const whereClauses: string[] = [];
+    const values: any[] = [];
+
+    if (conditions.project) {
+      whereClauses.push('project LIKE ?');
+      values.push(`%${conditions.project}%`);
+    }
+
+    const whereStr = whereClauses.length > 0 ? 'WHERE ' + whereClauses.join(' AND ') : '';
+
+    // Count total
+    const countStmt = db.prepare(`SELECT COUNT(*) as total FROM project ${whereStr}`);
+    const { total } = countStmt.get(...values) as any;
+
+    // Order by
+    let orderStr = 'ORDER BY id DESC';
+    if (orderBy && orderBy.column) {
+      const dir = orderBy.type === 'ASC' ? 'ASC' : 'DESC';
+      orderStr = `ORDER BY ${orderBy.column} ${dir}`;
+    }
+
+    // Pagination
+    const offset = (page - 1) * pageNum;
+    const dataStmt = db.prepare(`SELECT * FROM project ${whereStr} ${orderStr} LIMIT ? OFFSET ?`);
+    const list = dataStmt.all(...values, pageNum, offset);
+
+    return {
+      list,
+      pagination: {
+        total,
+        current: page,
+        pageNum,
+        totalPages: Math.ceil(total / pageNum),
+      },
+    };
+  } catch (err: any) {
+    console.error('project:get error:', err);
+    return { list: [], pagination: { total: 0, current: 1, pageNum: 20, totalPages: 0 } };
+  }
+});
+
+ipcMain.handle('project:add', (_event, data: any) => {
+  if (!db) return null;
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO project (project, content)
+      VALUES (?, ?)
+    `);
+    const result = stmt.run(
+      data.project || '',
+      data.content || ''
+    );
+    return { id: result.lastInsertRowid, ...data };
+  } catch (err: any) {
+    console.error('project:add error:', err);
+    return null;
+  }
+});
+
+ipcMain.handle('project:update', (_event, id: number, data: any) => {
+  if (!db) return false;
+  try {
+    const fields: string[] = [];
+    const values: any[] = [];
+    if (data.project !== undefined) { fields.push('project = ?'); values.push(data.project); }
+    if (data.content !== undefined) { fields.push('content = ?'); values.push(data.content); }
+    if (fields.length === 0) return false;
+    values.push(id);
+    const stmt = db.prepare(`UPDATE project SET ${fields.join(', ')} WHERE id = ?`);
+    const result = stmt.run(...values);
+    return result.changes > 0;
+  } catch (err: any) {
+    console.error('project:update error:', err);
+    return false;
+  }
+});
+
+ipcMain.handle('project:delete', (_event, id: number) => {
+  if (!db) return false;
+  try {
+    const stmt = db.prepare('DELETE FROM project WHERE id = ?');
+    const result = stmt.run(id);
+    return result.changes > 0;
+  } catch (err: any) {
+    console.error('project:delete error:', err);
+    return false;
+  }
 });
 
 // ========== 征稿 (solicit) IPC ==========
