@@ -1,10 +1,14 @@
 <template>
-  <div id="app">
-    <router-view />
+  <div id="app" class="app-layout">
+    <LeftMenu />
+    <div class="main-content">
+      <router-view />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import LeftMenu from './components/LeftMenu.vue'
 </script>
 
 <style>
@@ -27,5 +31,16 @@ body {
 
 #app {
   min-height: 100vh;
+}
+
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
 }
 </style>

@@ -1,13 +1,13 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
 import DirectoryList from '../views/DirectoryList.vue';
-import Quiz from '../views/Quiz.vue';
-import CaseQuiz from '../views/CaseQuiz.vue';
-import AIQuiz from '../views/AIQuiz.vue';
-import English from '../views/English.vue';
-import Translate from '../views/Translate.vue';
-import Article from '../views/Article.vue';
-import Cloze from '../views/Cloze.vue';
-import Shuxue from '../views/Shuxue.vue';
+import Quiz from '../views/Learn/Quiz.vue';
+import CaseQuiz from '../views/Learn/CaseQuiz.vue';
+import AIQuiz from '../views/Learn/AIQuiz.vue';
+import English from '../views/Learn/English.vue';
+import Translate from '../views/Learn/Translate.vue';
+import Article from '../views/Learn/Article.vue';
+import Cloze from '../views/Learn/Cloze.vue';
+import Shuxue from '../views/Learn/Shuxue.vue';
 
 const routes = [
   { path: '/', name: 'Home', component: DirectoryList },
