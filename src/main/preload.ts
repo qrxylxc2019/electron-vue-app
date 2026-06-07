@@ -117,6 +117,14 @@ const electronAPI = {
   addTranslate: (data: any) => ipcRenderer.invoke('translate:add', data),
   updateTranslate: (id: number, data: any) => ipcRenderer.invoke('translate:update', id, data),
   deleteTranslate: (id: number) => ipcRenderer.invoke('translate:delete', id),
+
+  // 完型填空
+  getClozeMaterials: (dirId: number) => ipcRenderer.invoke('cloze:getMaterials', dirId),
+  addClozeMaterial: (data: any) => ipcRenderer.invoke('cloze:addMaterial', data),
+  updateClozeMaterial: (id: number, data: any) => ipcRenderer.invoke('cloze:updateMaterial', id, data),
+  deleteClozeMaterial: (id: number) => ipcRenderer.invoke('cloze:deleteMaterial', id),
+  updateClozeQuestion: (id: number, data: any) => ipcRenderer.invoke('cloze:updateQuestion', id, data),
+  deleteClozeQuestion: (id: number) => ipcRenderer.invoke('cloze:deleteQuestion', id),
 };
 
 // 暴露给渲染进程的 API

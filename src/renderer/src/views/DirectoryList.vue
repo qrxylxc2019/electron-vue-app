@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿﻿﻿<template>
   <div class="directory-list">
     <div class="header">
       <h1>选择科目</h1>
@@ -46,7 +46,7 @@
           <el-icon size="56" color="#c4a882"><Folder /></el-icon>
           <span class="directory-name">{{ dir.name }}</span>
           <span class="directory-count">
-            {{ dir.name === '高项论文' || dir.name === 'ai题目' ? getArticleCount(dir.id) : (dir.name === '高项案例' || dir.name === '案例押题') ? getCaseCount(dir.id) : getQuestionCount(dir.id) }} 题
+            {{ dir.name === '高项论文' || dir.name === 'ai题目' ? getArticleCount(dir.id) : (dir.name === '高项案例' || dir.name === '案例押题') ? getCaseCount(dir.id) : (dir.name === '考研英语' || dir.name === '完型填空') ? getClozeCount(dir.id) : getQuestionCount(dir.id) }} 题
           </span>
         </div>
       </div>
@@ -697,6 +697,13 @@ const loadDirectories = async () => {
         } else {
           questionCounts.value[dir.id] = 0;
         }
+      } else if (dir.name === '完型填空') {
+        const result = await window.electronAPI.getClozeMaterials(dir.id);
+        if (result.success) {
+          questionCounts.value[dir.id] = result.materials.length;
+        } else {
+          questionCounts.value[dir.id] = 0;
+        }
       } else if (dir.name === '英语翻译') {
         const result = await window.electronAPI.getTranslateList(dir.id);
         if (result.success) {
@@ -728,16 +735,21 @@ const getCaseCount = (dirId: number) => {
 };
 
 
+const getClozeCount = (dirId: number) => {
+  return questionCounts.value[dirId] || 0;
+};
+
 const enterQuiz = (directoryId: number) => {
   const dir = directories.value.find(d => d.id === directoryId);
   const isArticleDir = dir?.name === '高项论文';
   const isCaseDir = dir?.name === '高项案例' || dir?.name === '案例押题';
   const isAIDir = dir?.name === 'ai题目';
+  const isClozeDir = dir?.name === '完型填空';
   const isWordDir = dir?.name === '考研英语';
   const count = isArticleDir ? getArticleCount(directoryId) : isCaseDir ? getCaseCount(directoryId) : getQuestionCount(directoryId);
 
-  // ai题目和考研英语允许题目数为0，仍然可以进入页面
-  if (count === 0 && !isAIDir && !isWordDir) {
+  // ai题目、考研英语、完型填空允许题目数为0，仍然可以进入页面
+  if (count === 0 && !isAIDir && !isWordDir && !isClozeDir) {
     ElMessage.warning('该科目暂无题目');
     return;
   }
@@ -774,6 +786,20 @@ const enterQuiz = (directoryId: number) => {
   if (dir?.name === '考研英语') {
     router.push({
       name: 'English',
+      params: { directoryId: directoryId.toString() },
+      query: {
+        mode: quizSettings.value.mode,
+        count: quizSettings.value.count.toString(),
+        repeat: quizSettings.value.repeat.toString()
+      }
+    });
+    return;
+  }
+
+  // 完型填空进入完型填空页面
+  if (dir?.name === '完型填空') {
+    router.push({
+      name: 'Cloze',
       params: { directoryId: directoryId.toString() },
       query: {
         mode: quizSettings.value.mode,

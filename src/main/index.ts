@@ -198,6 +198,37 @@ function initDatabase() {
       )
     `);
 
+    // 完型填空材料表
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS cloze_materials (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        directory_id INTEGER NOT NULL,
+        title TEXT,
+        content TEXT NOT NULL,
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (directory_id) REFERENCES directories(id)
+      )
+    `);
+
+    // 完型填空题目表
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS cloze_questions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        material_id INTEGER NOT NULL,
+        question_number INTEGER NOT NULL,
+        option_a TEXT,
+        option_b TEXT,
+        option_c TEXT,
+        option_d TEXT,
+        correct_answer TEXT,
+        explanation TEXT,
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (material_id) REFERENCES cloze_materials(id) ON DELETE CASCADE
+      )
+    `);
+
     // 案例材料表
     db.exec(`
       CREATE TABLE IF NOT EXISTS case_materials (
@@ -447,6 +478,25 @@ function seedDefaultData() {
     console.error('Seed 考研政治 data error:', err);
   }
 
+  // 初始化完型填空科目
+  try {
+    const checkCloze = db.prepare("SELECT id FROM directories WHERE name = '完型填空'");
+    const existingCloze = checkCloze.get();
+
+    let clozeDirId: number;
+    if (!existingCloze) {
+      const insertCloze = db.prepare("INSERT INTO directories (name, sort_order) VALUES (?, ?)");
+      const clozeResult = insertCloze.run('完型填空', 3);
+      clozeDirId = Number(clozeResult.lastInsertRowid);
+      console.log('Created directory: 完型填空, id:', clozeDirId);
+    } else {
+      clozeDirId = (existingCloze as any).id;
+      console.log('Directory 完型填空 already exists, id:', clozeDirId);
+    }
+  } catch (err) {
+    console.error('Seed 完型填空 data error:', err);
+  }
+
   // 初始化考研英语科目
   try {
     const checkEnglish = db.prepare("SELECT id FROM directories WHERE name = '考研英语'");
@@ -672,6 +722,125 @@ function setupIpc() {
       return { success: true };
     } catch (err: any) {
       console.error('[main] deleteEnglishReading error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // ========== 完型填空 IPC ==========
+
+  // 获取完型填空材料列表
+  ipcMain.handle('cloze:getMaterials', (_event, dirId: number) => {
+    if (!db) return { success: false, error: '数据库未初始化' };
+    try {
+      const materialsStmt = db.prepare('SELECT * FROM cloze_materials WHERE directory_id = ? ORDER BY id');
+      const materials = materialsStmt.all(dirId) as any[];
+
+      const questionsStmt = db.prepare('SELECT * FROM cloze_questions WHERE material_id = ? ORDER BY question_number');
+      for (const material of materials) {
+        material.questions = questionsStmt.all(material.id);
+      }
+
+      return { success: true, materials };
+    } catch (err: any) {
+      console.error('cloze:getMaterials error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // 添加完型填空材料
+  ipcMain.handle('cloze:addMaterial', (_event, data: any) => {
+    if (!db) return { success: false, error: '数据库未初始化' };
+    try {
+      const insertMaterial = db.prepare(`
+        INSERT INTO cloze_materials (directory_id, title, content)
+        VALUES (?, ?, ?)
+      `);
+      const materialResult = insertMaterial.run(data.directory_id, data.title || '', data.content);
+      const materialId = Number(materialResult.lastInsertRowid);
+
+      const insertQuestion = db.prepare(`
+        INSERT INTO cloze_questions (material_id, question_number, option_a, option_b, option_c, option_d, correct_answer, explanation)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      for (const q of data.questions) {
+        insertQuestion.run(
+          materialId,
+          q.question_number,
+          q.option_a,
+          q.option_b,
+          q.option_c,
+          q.option_d,
+          q.correct_answer,
+          q.explanation || ''
+        );
+      }
+
+      return { success: true, materialId };
+    } catch (err: any) {
+      console.error('cloze:addMaterial error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // 完型填空：更新材料
+  ipcMain.handle('cloze:updateMaterial', (_event, id: number, data: any) => {
+    if (!db) return { success: false, error: '数据库未初始化' };
+    try {
+      const stmt = db.prepare('UPDATE cloze_materials SET content = ? WHERE id = ?');
+      stmt.run(data.content || '', id);
+      return { success: true };
+    } catch (err: any) {
+      console.error('cloze:updateMaterial error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // 完型填空：删除材料（级联删除小题）
+  ipcMain.handle('cloze:deleteMaterial', (_event, id: number) => {
+    if (!db) return { success: false, error: '数据库未初始化' };
+    try {
+      const stmt = db.prepare('DELETE FROM cloze_materials WHERE id = ?');
+      const result = stmt.run(id);
+      return { success: true };
+    } catch (err: any) {
+      console.error('cloze:deleteMaterial error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // 完型填空：更新小题
+  ipcMain.handle('cloze:updateQuestion', (_event, id: number, data: any) => {
+    if (!db) return { success: false, error: '数据库未初始化' };
+    try {
+      const fields: string[] = [];
+      const values: any[] = [];
+      if (data.option_a !== undefined) { fields.push('option_a = ?'); values.push(data.option_a); }
+      if (data.option_b !== undefined) { fields.push('option_b = ?'); values.push(data.option_b); }
+      if (data.option_c !== undefined) { fields.push('option_c = ?'); values.push(data.option_c); }
+      if (data.option_d !== undefined) { fields.push('option_d = ?'); values.push(data.option_d); }
+      if (data.correct_answer !== undefined) { fields.push('correct_answer = ?'); values.push(data.correct_answer); }
+      if (data.explanation !== undefined) { fields.push('explanation = ?'); values.push(data.explanation); }
+      if (fields.length === 0) return { success: true };
+      values.push(id);
+      const stmt = db.prepare(`UPDATE cloze_questions SET ${fields.join(', ')} WHERE id = ?`);
+      stmt.run(...values);
+      return { success: true };
+    } catch (err: any) {
+      console.error('cloze:updateQuestion error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // 完型填空：删除小题
+  ipcMain.handle('cloze:deleteQuestion', (_event, id: number) => {
+    if (!db) return { success: false, error: '数据库未初始化' };
+    try {
+      const stmt = db.prepare('DELETE FROM cloze_questions WHERE id = ?');
+      const result = stmt.run(id);
+      return { success: true };
+    } catch (err: any) {
+      console.error('cloze:deleteQuestion error:', err);
       return { success: false, error: err.message };
     }
   });

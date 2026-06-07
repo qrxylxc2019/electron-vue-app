@@ -2,7 +2,7 @@
   <div class="english-container">
     <el-page-header @back="goBack" :content="directoryName" />
 
-    <div class="english-content" v-if="currentMaterial">
+    <div class="english-content" >
       <div class="top-toolbar">
         <div class="toolbar-actions">
           <el-button
@@ -18,7 +18,7 @@
             size="small"
             @click="deleteCurrentMaterial"
           >
-            <el-icon><Delete /></el-icon> 删除阅读
+            <el-icon><Delete /></el-icon> 删除材料
           </el-button>
           <el-button
             class="next-material-btn"
@@ -29,22 +29,22 @@
           </el-button>
         </div>
         <div class="progress-bar">
-          <span class="progress-text">阅读 {{ currentMaterialIndex + 1 }} / {{ materials.length }}</span>
+          <span class="progress-text">完型 {{ currentMaterialIndex + 1 }} / {{ materials.length }}</span>
           <el-progress :percentage="materialProgressPercent" :show-text="false" />
         </div>
         
       </div>
 
       <!-- 两栏布局主体：材料与小题各50% -->
-      <div class="english-main-wrapper">
-        <!-- 左侧：阅读材料 -->
+      <div class="english-main-wrapper"  v-if="currentMaterial">
+        <!-- 左侧：完型材料 -->
         <div class="english-left">
           <el-card class="material-card">
             <template #header>
               <div class="material-header">
-                <el-tag type="info">阅读材料</el-tag>
+                <el-tag type="info">完型材料</el-tag>
                 <div class="header-actions">
-                  <span class="material-title">{{ currentMaterial.title || '阅读理解' }}</span>
+                  <span class="material-title">{{ currentMaterial.title || '完型填空' }}</span>
                   <el-button
                     v-if="!isEditingMaterial"
                     class="edit-btn"
@@ -106,43 +106,9 @@
             >
               <template #header>
                 <div class="question-header">
-                  <el-tag type="warning">第 {{ q.question_number }} 题</el-tag>
+                  <el-tag type="warning">第 {{ q.question_number }} 空</el-tag>
                 </div>
               </template>
-
-              <!-- 小题题目显示/编辑 -->
-              <div v-if="!isEditingQuestionTitle(q.id)" class="question-title markdown-body" v-html="renderMarkdown(q.title)"></div>
-              <div
-                v-else
-                :ref="el => setQuestionEditorRef(el, q.id)"
-                class="question-editor"
-                contenteditable="true"
-                v-html="getQuestionEditHtml(q.title)"
-                @paste="handleQuestionPaste($event, q.id)"
-              ></div>
-
-              <!-- 题目编辑按钮 -->
-              <div class="question-edit-actions">
-                <el-button
-                  v-if="!isEditingQuestionTitle(q.id)"
-                  class="edit-question-btn"
-                  size="small"
-                  text
-                  @click="startEditQuestionTitle(q.id, q.title)"
-                >
-                  <el-icon :size="14"><EditPen /></el-icon>
-                </el-button>
-                <el-button
-                  v-else
-                  class="save-question-btn"
-                  size="small"
-                  type="primary"
-                  text
-                  @click="saveQuestionTitle(q.id)"
-                >
-                  <el-icon :size="14"><CircleCheck /></el-icon>
-                </el-button>
-              </div>
 
               <!-- 选项 -->
               <div class="options-list">
@@ -235,18 +201,18 @@
           </div>
 
           <!-- 无小题提示 -->
-          <el-empty v-else description="该阅读材料暂无小题" />
+          <el-empty v-else description="该材料暂无小题" />
         </div>
 
       </div>
+      <el-empty v-else description="暂无完型材料" />
     </div>
-
-    <el-empty v-else description="暂无阅读材料" />
+    
 
     <!-- 新增题目弹窗 -->
     <el-dialog
       v-model="addMaterialDialogVisible"
-      title="新增英语阅读题"
+      title="新增完型填空题"
       width="1100px"
       :close-on-click-modal="true"
       destroy-on-close
@@ -267,34 +233,20 @@
             <div class="format-tip-card">
               <div class="format-content">
                 <pre>【材料】
-阅读材料内容...
+完型填空文章内容...
 【/材料】
 
-【题目1】
-题干：...
-选项A：...
-选项B：...
-选项C：...
-选项D：...
-答案：A
-解析：...
-【/题目1】
+【小题1】
+【选项】[A] 选项1 [B] 选项2 [C] 选项3 [D] 选项4【/选项】
+【答案】C【/答案】
+【解析】解析内容...【/解析】
+【/小题1】
 
-====================
-
-【材料】
-阅读材料内容...
-【/材料】
-
-【题目1】
-题干：...
-选项A：...
-选项B：...
-选项C：...
-选项D：...
-答案：A
-解析：...
-【/题目1】</pre>
+【小题2】
+【选项】[A] 选项1 [B] 选项2 [C] 选项3 [D] 选项4【/选项】
+【答案】A【/答案】
+【解析】解析内容...【/解析】
+【/小题2】</pre>
               </div>
               <el-button
                 class="copy-format-btn"
@@ -462,9 +414,9 @@ import {
 const router = useRouter();
 const route = useRoute();
 const directoryId = computed(() => parseInt(route.params.directoryId as string));
-const directoryName = ref('考研英语');
+const directoryName = ref('完型填空');
 
-// 阅读材料列表
+// 完型材料列表
 const materials = ref<any[]>([]);
 const currentMaterialIndex = ref(0);
 const currentMaterial = computed(() => materials.value[currentMaterialIndex.value] || null);
@@ -583,15 +535,15 @@ const renderMarkdown = (content: string) => {
   return marked.parse(content || '', { async: false }) as string;
 };
 
-// 复制阅读材料与题目到剪贴板
+// 复制完型材料与题目到剪贴板
 const copyMaterialContent = async () => {
   if (!currentMaterial.value) return;
-  let text = `【阅读材料】\n${currentMaterial.value.title}\n\n${currentMaterial.value.content}`;
+  let text = `【完型材料】\n${currentMaterial.value.content}`;
   const questions = currentQuestions.value;
   if (questions.length > 0) {
     text += '\n\n【题目】';
     questions.forEach((q: any) => {
-      text += `\n\n第 ${q.question_number} 题：\n${q.title}`;
+      text += `\n\n第 ${q.question_number} 空：`;
       text += `\nA. ${q.option_a}\nB. ${q.option_b}\nC. ${q.option_c}\nD. ${q.option_d}`;
       text += `\n【正确答案】${q.correct_answer}`;
       if (q.explanation) text += `\n【解析】\n${q.explanation}`;
@@ -620,7 +572,7 @@ function shuffleArray<T>(array: T[]): T[] {
 // 加载数据
 const loadData = async () => {
   try {
-    const result = await window.electronAPI.getEnglishReadings(directoryId.value);
+    const result = await window.electronAPI.getClozeMaterials(directoryId.value);
     if (result.success && result.materials) {
       let mats = result.materials;
 
@@ -652,7 +604,7 @@ const loadData = async () => {
       excludedOptions.value = {};
     }
   } catch (error) {
-    ElMessage.error('加载阅读材料失败');
+    ElMessage.error('加载完型材料失败');
   }
 };
 
@@ -708,7 +660,7 @@ const saveMaterialContent = async () => {
   let content = textarea.value.replace(/\n{3,}/g, '\n\n').trim();
 
   try {
-    const result = await window.electronAPI.updateEnglishReading(currentMaterial.value.id, {
+    const result = await window.electronAPI.updateClozeMaterial(currentMaterial.value.id, {
       title: currentMaterial.value.title, content
     });
     if (result.success) {
@@ -723,20 +675,20 @@ const saveMaterialContent = async () => {
   }
 };
 
-// 删除当前阅读材料
+// 删除当前完型材料
 const deleteCurrentMaterial = async () => {
   if (!currentMaterial.value) return;
   try {
-    await ElMessageBox.confirm('确定要删除这篇阅读材料吗？删除后不可恢复！', '删除确认',
+    await ElMessageBox.confirm('确定要删除这篇完型材料吗？删除后不可恢复！', '删除确认',
       { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' });
     const id = currentMaterial.value.id;
-    console.log('[English] 删除材料, id=', id);
-    const result = await window.electronAPI.deleteEnglishReading(id);
-    console.log('[English] 删除材料结果:', result);
+    console.log('[Cloze] 删除材料, id=', id);
+    const result = await window.electronAPI.deleteClozeMaterial(id);
+    console.log('[Cloze] 删除材料结果:', result);
     if (result.success) {
-      ElMessage.success('阅读材料已删除');
+      ElMessage.success('完型材料已删除');
       materials.value = materials.value.filter(m => m.id !== id);
-      if (materials.value.length === 0) { ElMessage.info('该科目下已无任何阅读材料'); return; }
+      if (materials.value.length === 0) { ElMessage.info('该科目下已无任何完型材料'); return; }
       if (currentMaterialIndex.value >= materials.value.length) {
         currentMaterialIndex.value = materials.value.length - 1;
       }
@@ -745,7 +697,7 @@ const deleteCurrentMaterial = async () => {
       ElMessage.error(result.error || '删除失败');
     }
   } catch (error: any) {
-    console.error('[English] 删除材料异常:', error);
+    console.error('[Cloze] 删除材料异常:', error);
     if (error !== 'cancel') ElMessage.error('删除失败: ' + (error?.message || error));
   }
 };
@@ -755,9 +707,9 @@ const confirmDeleteQuestion = async (q: any) => {
   try {
     await ElMessageBox.confirm('确定要删除这道小题吗？删除后不可恢复！', '删除确认',
       { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' });
-    console.log('[English] 删除小题, id=', q.id);
-    const result = await window.electronAPI.deleteEnglishQuestion(q.id);
-    console.log('[English] 删除小题结果:', result);
+    console.log('[Cloze] 删除小题, id=', q.id);
+    const result = await window.electronAPI.deleteClozeQuestion(q.id);
+    console.log('[Cloze] 删除小题结果:', result);
     if (result.success) {
       ElMessage.success('小题已删除');
       if (currentMaterial.value && currentMaterial.value.questions) {
@@ -770,7 +722,7 @@ const confirmDeleteQuestion = async (q: any) => {
       ElMessage.error(result.error || '删除失败');
     }
   } catch (error: any) {
-    console.error('[English] 删除小题异常:', error);
+    console.error('[Cloze] 删除小题异常:', error);
     if (error !== 'cancel') ElMessage.error('删除失败: ' + (error?.message || error));
   }
 };
@@ -784,34 +736,20 @@ const openAddMaterialDialog = () => {
 // 复制格式模板
 const copyFormatTemplate = async () => {
   const template = `【材料】
-阅读材料内容...
+完型填空文章内容...
 【/材料】
 
-【题目1】
-题干：...
-选项A：...
-选项B：...
-选项C：...
-选项D：...
-答案：A
-解析：...
-【/题目1】
+【小题1】
+【选项】[A] 选项1 [B] 选项2 [C] 选项3 [D] 选项4【/选项】
+【答案】C【/答案】
+【解析】解析内容...【/解析】
+【/小题1】
 
-====================
-
-【材料】
-阅读材料内容...
-【/材料】
-
-【题目1】
-题干：...
-选项A：...
-选项B：...
-选项C：...
-选项D：...
-答案：A
-解析：...
-【/题目1】`;
+【小题2】
+【选项】[A] 选项1 [B] 选项2 [C] 选项3 [D] 选项4【/选项】
+【答案】A【/答案】
+【解析】解析内容...【/解析】
+【/小题2】`;
   try {
     await navigator.clipboard.writeText(template);
     ElMessage.success('格式已复制到剪贴板');
@@ -820,35 +758,51 @@ const copyFormatTemplate = async () => {
   }
 };
 
-// 解析单个材料块
+// 解析单个完型填空材料块
 const parseMaterialBlock = (text: string) => {
   const materialMatch = text.match(/【材料】\s*([\s\S]*?)\s*【\/材料】/);
   if (!materialMatch) return null;
 
   const content = materialMatch[1].trim();
   const questions: any[] = [];
-  const questionRegex = /【题目(\d+)】\s*([\s\S]*?)\s*【\/题目\1】/g;
+
+  // 解析【小题N】...【/小题N】格式
+  const questionRegex = /【小题(\d+)】\s*([\s\S]*?)\s*【\/小题\1】/g;
   let match;
   while ((match = questionRegex.exec(text)) !== null) {
     const questionText = match[2];
-    const titleMatch = questionText.match(/题干：(.*)/);
-    const optionAMatch = questionText.match(/选项A：(.*)/);
-    const optionBMatch = questionText.match(/选项B：(.*)/);
-    const optionCMatch = questionText.match(/选项C：(.*)/);
-    const optionDMatch = questionText.match(/选项D：(.*)/);
-    const answerMatch = questionText.match(/答案：(.*)/);
-    const explanationMatch = questionText.match(/解析：([\s\S]*?)(?=【|$)/);
+    const questionNumber = parseInt(match[1]);
 
-    if (titleMatch && answerMatch) {
+    // 解析选项：【选项】...【/选项】
+    const optionsMatch = questionText.match(/【选项】\s*([\s\S]*?)\s*【\/选项】/);
+    // 解析答案：【答案】...【/答案】
+    const answerMatch = questionText.match(/【答案】\s*([\s\S]*?)\s*【\/答案】/);
+    // 解析解析：【解析】...【/解析】
+    const explanationMatch = questionText.match(/【解析】\s*([\s\S]*?)\s*【\/解析】/);
+
+    let optionA = '', optionB = '', optionC = '', optionD = '';
+    if (optionsMatch) {
+      const optionsText = optionsMatch[1].trim();
+      // 解析 [A] xxx [B] xxx [C] xxx [D] xxx 格式
+      const optAMatch = optionsText.match(/\[A\]\s*([\s\S]*?)(?=\[B\]|$)/);
+      const optBMatch = optionsText.match(/\[B\]\s*([\s\S]*?)(?=\[C\]|$)/);
+      const optCMatch = optionsText.match(/\[C\]\s*([\s\S]*?)(?=\[D\]|$)/);
+      const optDMatch = optionsText.match(/\[D\]\s*([\s\S]*?)$/);
+      optionA = optAMatch ? optAMatch[1].trim() : '';
+      optionB = optBMatch ? optBMatch[1].trim() : '';
+      optionC = optCMatch ? optCMatch[1].trim() : '';
+      optionD = optDMatch ? optDMatch[1].trim() : '';
+    }
+
+    if (optionsMatch && answerMatch) {
       questions.push({
-        question_number: parseInt(match[1]),
-        title: titleMatch[1].trim(),
-        option_a: optionAMatch?.[1].trim() || '',
-        option_b: optionBMatch?.[1].trim() || '',
-        option_c: optionCMatch?.[1].trim() || '',
-        option_d: optionDMatch?.[1].trim() || '',
+        question_number: questionNumber,
+        option_a: optionA,
+        option_b: optionB,
+        option_c: optionC,
+        option_d: optionD,
         correct_answer: answerMatch[1].trim(),
-        explanation: explanationMatch?.[1].trim() || ''
+        explanation: explanationMatch ? explanationMatch[1].trim() : ''
       });
     }
   }
@@ -856,54 +810,47 @@ const parseMaterialBlock = (text: string) => {
   return { content, questions };
 };
 
-// 保存新题目（支持多材料块）
+// 保存新题目
 const saveNewMaterial = async () => {
   const text = newMaterialContent.value.trim();
   if (!text) {
-    ElMessage.warning('请输入阅读内容');
+    ElMessage.warning('请输入完型内容');
     return;
   }
 
-  // 按 ==================== 分割多个材料块
-  const blocks = text.split(/={3,}/).map(b => b.trim()).filter(b => b);
-  if (blocks.length === 0) {
-    ElMessage.warning('未找到有效内容');
+  // 完型填空只有一篇材料，不按 ==================== 分割
+  const parsed = parseMaterialBlock(text);
+  if (!parsed) {
+    ElMessage.warning('格式不正确，请检查【材料】【小题】等标签');
     return;
   }
 
-  let totalQuestions = 0;
-  let lastMaterialId: number | null = null;
+  if (parsed.questions.length === 0) {
+    ElMessage.warning('未解析到任何小题，请检查【小题】格式');
+    return;
+  }
 
   try {
-    for (const block of blocks) {
-      const parsed = parseMaterialBlock(block);
-      if (!parsed) {
-        ElMessage.warning('部分格式不正确，已跳过');
-        continue;
+    const data = JSON.parse(JSON.stringify({
+      directory_id: directoryId.value,
+      title: '',
+      content: parsed.content,
+      questions: parsed.questions
+    }));
+
+    const result = await window.electronAPI.addClozeMaterial(data);
+    if (result.success) {
+      ElMessage.success(`成功保存完型填空，共 ${parsed.questions.length} 道题目`);
+      addMaterialDialogVisible.value = false;
+      newMaterialContent.value = '';
+      await loadData();
+
+      if (result.materialId) {
+        const idx = materials.value.findIndex(m => m.id === result.materialId);
+        if (idx >= 0) currentMaterialIndex.value = idx;
       }
-
-      const data = JSON.parse(JSON.stringify({
-        directory_id: directoryId.value,
-        title: '',
-        content: parsed.content,
-        questions: parsed.questions
-      }));
-
-      const result = await window.electronAPI.addEnglishReading(data);
-      if (result.success) {
-        totalQuestions += parsed.questions.length;
-        if (result.materialId) lastMaterialId = result.materialId;
-      }
-    }
-
-    ElMessage.success(`成功保存 ${blocks.length} 篇阅读，共 ${totalQuestions} 道题目`);
-    addMaterialDialogVisible.value = false;
-    newMaterialContent.value = '';
-    await loadData();
-
-    if (lastMaterialId) {
-      const idx = materials.value.findIndex(m => m.id === lastMaterialId);
-      if (idx >= 0) currentMaterialIndex.value = idx;
+    } else {
+      ElMessage.error(result.error || '保存失败');
     }
   } catch (error) {
     ElMessage.error('保存失败');
@@ -991,8 +938,8 @@ const saveQuestionTitle = async (id: number) => {
   if (!question) return;
 
   try {
-    const result = await window.electronAPI.updateEnglishQuestion(id, {
-      title: newTitle, explanation: question.explanation
+    const result = await window.electronAPI.updateClozeQuestion(id, {
+      explanation: question.explanation
     });
     if (result.success) {
       question.title = newTitle;
@@ -1020,8 +967,8 @@ const saveQuestionExplanation = async (id: number) => {
   if (!question) return;
 
   try {
-    const result = await window.electronAPI.updateEnglishQuestion(id, {
-      title: question.title, explanation: newExplanation
+    const result = await window.electronAPI.updateClozeQuestion(id, {
+      explanation: newExplanation
     });
     if (result.success) {
       question.explanation = newExplanation;
@@ -1050,8 +997,8 @@ const openAIChatDrawerForQuestion = async (q: any) => {
     return;
   }
 
-  let text = `【阅读材料】\n${currentMaterial.value.title}\n\n${currentMaterial.value.content}`;
-  text += `\n\n【第 ${q.question_number} 题】\n${q.title}`;
+  let text = `【完型材料】\n${currentMaterial.value.content}`;
+  text += `\n\n【第 ${q.question_number} 空】`;
   text += `\nA. ${q.option_a}\nB. ${q.option_b}\nC. ${q.option_c}\nD. ${q.option_d}`;
 
   aiChatMessages.value.push({ role: 'user', content: text });
@@ -1133,10 +1080,10 @@ const callEnglishAIExplain = async (isFollowUp = false, userMessage = '', questi
   try {
     const providerOrder = getProviderOrder();
     const result = await window.electronAPI.explainEnglishQuestion({
-      materialTitle: currentMaterial.value.title,
+      materialTitle: '',
       materialContent: currentMaterial.value.content,
       questionNumber: q.question_number,
-      questionTitle: q.title,
+      questionTitle: '',
       optionA: q.option_a,
       optionB: q.option_b,
       optionC: q.option_c,
@@ -1304,7 +1251,7 @@ const callSelectionAI = async (isFollowUp = false, userMessage = '') => {
       messages = [...selectionAIContexts.value[contextKey]];
       messages.push({ role: 'user', content: userMessage });
     } else {
-      const systemPrompt = `你是一位资深的考研英语辅导专家。用户选中了阅读材料中的英文文本（可能是一个单词、短语或句子），请你直接进行翻译和解析，不要要求用户提供更多内容。
+      const systemPrompt = `你是一位资深的考研英语辅导专家。用户选中了完型材料中的英文文本（可能是一个单词、短语或句子），请你直接进行翻译和解析，不要要求用户提供更多内容。
 
 请完成以下任务：
 1. 【翻译】将选中的英文准确翻译成中文。如果是一个单词，给出所有常见释义；如果是短语或句子，给出通顺的中文翻译。
