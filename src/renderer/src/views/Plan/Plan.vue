@@ -51,13 +51,6 @@
               <el-icon :class="{ 'is-loading': aiOptimizing }"><Refresh /></el-icon>
               {{ aiOptimizing ? '优化中...' : 'AI优化' }}
             </el-button>
-            <el-button 
-              type="primary"
-              @click="$emit('close')"
-              title="关闭"
-            >
-              关闭
-            </el-button>
           </div>
         </div>
         <div class="plan-table">
