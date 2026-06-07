@@ -7,7 +7,11 @@
       "Bash(npx *)",
       "WebFetch(domain:github.com)",
       "Bash(gh repo *)",
-      "Bash(gh api *)"
+      "Bash(gh api *)",
+      "Bash(dir /s /b \"D:\\\\python脚本\\\\平板做题软件\\\\electron-vue-app\\\\src\\\\renderer\\\\src\\\\*Latex*\")",
+      "Bash(dir /s /b \"D:\\\\python脚本\\\\平板做题软件\\\\electron-vue-app\\\\src\\\\*Latex*\")",
+      "Bash(git log *)",
+      "Bash(git ls-tree *)"
     ]
   }
 }
