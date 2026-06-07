@@ -199,7 +199,7 @@
           </div>
       </div>
 
-      <div class="main-content">
+      <div class="url-content">
         <!-- 浏览器区域 -->
         <div class="webpage-container">
           <webview
@@ -1458,7 +1458,7 @@ fetchLearnData()
 }
 
 /* 主内容区域布局 */
-.main-content {
+.url-content {
   display: flex;
   flex: 1;
   flex-direction: column;
