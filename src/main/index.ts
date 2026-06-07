@@ -292,6 +292,19 @@ function initDatabase() {
       )
     `);
 
+    // 征稿表
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS solicit (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        content TEXT,
+        time TEXT,
+        url TEXT,
+        type TEXT DEFAULT '1',
+        status TEXT DEFAULT '1'
+      )
+    `);
+    console.log('solicit table ensured');
+
     // API 设置已改为前端本地存储 + 后端硬编码，无需数据库表
 
     console.log('Database initialized successfully');
@@ -1963,6 +1976,197 @@ ipcMain.handle('db:getApiSettings', () => {
 
 ipcMain.handle('db:saveApiSettings', () => {
   return true;
+});
+
+// ========== 征稿 (solicit) IPC ==========
+
+ipcMain.handle('solicit:get', (_event, params: any) => {
+  if (!db) return { list: [], total: 0 };
+  try {
+    const { page = 1, pageNum = 20, conditions = {}, orderBy } = params;
+    const whereClauses: string[] = [];
+    const values: any[] = [];
+
+    if (conditions.type) {
+      whereClauses.push('type = ?');
+      values.push(conditions.type);
+    }
+    if (conditions.content) {
+      whereClauses.push('content LIKE ?');
+      values.push(`%${conditions.content}%`);
+    }
+    if (conditions.status) {
+      whereClauses.push('status = ?');
+      values.push(conditions.status);
+    }
+    if (conditions.startTime) {
+      whereClauses.push('time >= ?');
+      values.push(conditions.startTime);
+    }
+    if (conditions.endTime) {
+      whereClauses.push('time <= ?');
+      values.push(conditions.endTime);
+    }
+    if (conditions.expired === '1') {
+      whereClauses.push("(time < date('now') OR time = '')");
+    } else if (conditions.expired === '0') {
+      whereClauses.push("time >= date('now')");
+    }
+
+    const whereStr = whereClauses.length > 0 ? 'WHERE ' + whereClauses.join(' AND ') : '';
+
+    // Count total
+    const countStmt = db.prepare(`SELECT COUNT(*) as total FROM solicit ${whereStr}`);
+    const { total } = countStmt.get(...values) as any;
+
+    // Order by
+    let orderStr = 'ORDER BY id DESC';
+    if (orderBy && orderBy.column) {
+      const dir = orderBy.type === 'ASC' ? 'ASC' : 'DESC';
+      orderStr = `ORDER BY ${orderBy.column} ${dir}`;
+    }
+
+    // Pagination
+    const offset = (page - 1) * pageNum;
+    const dataStmt = db.prepare(`SELECT * FROM solicit ${whereStr} ${orderStr} LIMIT ? OFFSET ?`);
+    const list = dataStmt.all(...values, pageNum, offset);
+
+    return {
+      list,
+      pagination: {
+        total,
+        current: page,
+        pageNum,
+        totalPages: Math.ceil(total / pageNum),
+      },
+    };
+  } catch (err: any) {
+    console.error('solicit:get error:', err);
+    return { list: [], total: 0 };
+  }
+});
+
+ipcMain.handle('solicit:add', (_event, data: any) => {
+  if (!db) return null;
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO solicit (content, time, url, type, status)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(
+      data.content || '',
+      data.time || '',
+      data.url || '',
+      data.type || '1',
+      data.status || '3'
+    );
+    return { id: result.lastInsertRowid, ...data };
+  } catch (err: any) {
+    console.error('solicit:add error:', err);
+    return null;
+  }
+});
+
+ipcMain.handle('solicit:update', (_event, id: number, data: any) => {
+  if (!db) return false;
+  try {
+    const fields: string[] = [];
+    const values: any[] = [];
+    if (data.content !== undefined) { fields.push('content = ?'); values.push(data.content); }
+    if (data.time !== undefined) { fields.push('time = ?'); values.push(data.time); }
+    if (data.url !== undefined) { fields.push('url = ?'); values.push(data.url); }
+    if (data.type !== undefined) { fields.push('type = ?'); values.push(data.type); }
+    if (data.status !== undefined) { fields.push('status = ?'); values.push(data.status); }
+    if (fields.length === 0) return false;
+    values.push(id);
+    const stmt = db.prepare(`UPDATE solicit SET ${fields.join(', ')} WHERE id = ?`);
+    const result = stmt.run(...values);
+    return result.changes > 0;
+  } catch (err: any) {
+    console.error('solicit:update error:', err);
+    return false;
+  }
+});
+
+ipcMain.handle('solicit:delete', (_event, id: number) => {
+  if (!db) return false;
+  try {
+    const stmt = db.prepare('DELETE FROM solicit WHERE id = ?');
+    const result = stmt.run(id);
+    return result.changes > 0;
+  } catch (err: any) {
+    console.error('solicit:delete error:', err);
+    return false;
+  }
+});
+
+// 征稿 AI 解析：让大模型分析 URL 提取内容和截止时间
+ipcMain.handle('solicit:aiParse', async (_event, url: string) => {
+  const providerOrder = ['deepseekLocal', 'modelspace', 'deepseek'];
+
+  const prompt = PROMPTS.solicitParse(url);
+
+  const result = await callAIWithFallback(
+    providerOrder,
+    async (provider) => {
+      log(`[AI SolicitParse] 使用厂商: ${provider}`);
+
+      // 支持 DeepSeek 本地版
+      if (provider === 'deepseekLocal') {
+        const dsClient = getDeepSeekClient();
+        if (!dsClient) {
+          throw new Error('DeepSeek 本地版客户端未初始化，请先设置 Token');
+        }
+
+        const dsMessages: { role: 'user' | 'assistant'; content: string }[] = [
+          { role: 'user', content: `${prompt.system}\n\n${prompt.user}` }
+        ];
+
+        let content = '';
+        for await (const chunk of dsClient.chatStream(dsMessages, 'deepseek-chat')) {
+          if (chunk.type === 'text' && chunk.content) {
+            content += chunk.content;
+          } else if (chunk.type === 'error') {
+            throw new Error(chunk.content || 'DeepSeek 聊天失败');
+          }
+        }
+        return content.trim();
+      }
+
+      const client = getOpenAIClient(provider);
+      const model = getCurrentModel(provider);
+
+      const response = await client.chat.completions.create({
+        model,
+        messages: [
+          { role: 'system', content: prompt.system },
+          { role: 'user', content: prompt.user },
+        ],
+        stream: false,
+        temperature: 0.3,
+        max_tokens: 1024,
+      });
+
+      return (response.choices[0]?.message?.content || '').trim();
+    }
+  );
+
+  if (!result.success) {
+    console.error('solicit:aiParse error:', result.error);
+    return { success: false, error: result.error };
+  }
+
+  // 解析 AI 返回的 JSON
+  try {
+    const jsonMatch = result.data.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      return { success: false, error: 'AI 返回格式不正确，未找到 JSON' };
+    }
+    const parsed = JSON.parse(jsonMatch[0]);
+    return { success: true, data: { content: parsed.content || '', time: parsed.time || '' } };
+  } catch (e: any) {
+    return { success: false, error: `JSON 解析失败: ${e.message}` };
+  }
 });
 
 // AI 提取段落关键词

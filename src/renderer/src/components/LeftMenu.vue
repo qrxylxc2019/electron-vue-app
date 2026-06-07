@@ -12,6 +12,10 @@
         <el-icon><Calendar /></el-icon>
         <span>计划</span>
       </el-menu-item>
+      <el-menu-item index="/solicit">
+        <el-icon><EditPen /></el-icon>
+        <span>征稿</span>
+      </el-menu-item>
       <el-menu-item index="/">
         <el-icon><HomeFilled /></el-icon>
         <span>科目列表</span>
@@ -23,7 +27,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { HomeFilled, Reading, Calendar } from '@element-plus/icons-vue'
+import { HomeFilled, Reading, Calendar, EditPen } from '@element-plus/icons-vue'
 
 const route = useRoute()
 
@@ -35,6 +39,9 @@ const activeMenu = computed(() => {
   }
   if (path.startsWith('/plan')) {
     return '/plan'
+  }
+  if (path.startsWith('/solicit')) {
+    return '/solicit'
   }
   return path
 })

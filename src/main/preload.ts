@@ -138,6 +138,13 @@ const electronAPI = {
   addMarquee: (data: any) => ipcRenderer.invoke('marquee:add', data),
   updateMarquee: (id: number, data: any) => ipcRenderer.invoke('marquee:update', id, data),
   deleteMarquee: (id: number) => ipcRenderer.invoke('marquee:delete', id),
+
+  // 征稿
+  getSolicitList: (params: any) => ipcRenderer.invoke('solicit:get', params),
+  addSolicit: (data: any) => ipcRenderer.invoke('solicit:add', data),
+  updateSolicit: (id: number, data: any) => ipcRenderer.invoke('solicit:update', id, data),
+  deleteSolicit: (id: number) => ipcRenderer.invoke('solicit:delete', id),
+  solicitAiParse: (url: string) => ipcRenderer.invoke('solicit:aiParse', url),
 };
 
 // 暴露给渲染进程的 API

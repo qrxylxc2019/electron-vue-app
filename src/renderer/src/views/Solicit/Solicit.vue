@@ -388,10 +388,7 @@ export default {
     },
     async handleStatusChange(row, newStatus) {
       try {
-        await this.$axios.post("http://localhost:8000/api/solicit/update", {
-          id: row.id,
-          status: newStatus
-        });
+        await window.electronAPI.updateSolicit(row.id, { status: newStatus });
         // 更新成功后，更新行的状态（确保转换为字符串）
         row.status = String(newStatus);
         row.editingStatus = undefined;
@@ -412,20 +409,15 @@ export default {
           conditions: { type: this.activeTab },
           orderBy: { column: 'time', type: 'ASC' }
         };
-        const res = await this.$axios.post("http://localhost:8000/api/solicit/get", params);
-        if (res.data.result?.list) {
-          const rawData = res.data.result.list;
+        const result = await window.electronAPI.getSolicitList(params);
+        if (result && result.list) {
+          const rawData = result.list;
           // Ensure status field exists and set proper structure for each row
           this.tableData = rawData.map(item => ({
             ...item,
             status: String(item.status || '1') // Convert to string for CSS classes
           }));
-          this.pagination = {
-            total: res.data.result.pagination.total,
-            current: res.data.result.pagination.current,
-            pageNum: res.data.result.pagination.pageNum,
-            totalPages: res.data.result.pagination.totalPages
-          };
+          this.pagination = result.pagination;
         }
       } catch (error) {
         console.error("加载数据失败:", error);
@@ -439,42 +431,42 @@ export default {
       this.loading = true;
       try {
         const conditions = { type: this.activeTab };
-        
+
         // 关键词搜索
         if (this.searchKeyword.trim()) {
           conditions.content = this.searchKeyword.trim();
         }
-        
+
         // 投稿状态筛选
         if (this.filterStatus) {
           conditions.status = this.filterStatus;
         }
-        
+
         // 时间范围筛选
         if (this.filterDateRange && this.filterDateRange.length === 2) {
           conditions.startTime = this.filterDateRange[0];
           conditions.endTime = this.filterDateRange[1];
         }
-        
+
         // 是否过期筛选
         if (this.filterExpired !== "") {
           conditions.expired = this.filterExpired;
         }
-        
-        const res = await this.$axios.post("http://localhost:8000/api/solicit/get", {
+
+        const result = await window.electronAPI.getSolicitList({
           page: this.currentPage,
           pageNum: this.pageSize,
           conditions,
           orderBy: { column: 'time', type: 'ASC' }
         });
-        if (res.data.result?.list) {
-          const rawData = res.data.result.list;
+        if (result && result.list) {
+          const rawData = result.list;
           // Ensure status field exists and set proper structure for each row
           this.tableData = rawData.map(item => ({
             ...item,
             status: String(item.status || '1') // Convert to string for CSS classes
           }));
-          this.pagination = res.data.result.pagination;
+          this.pagination = result.pagination;
         }
       } catch (error) {
         console.error("搜索失败:", error);
@@ -500,8 +492,7 @@ export default {
       }
       try {
         if (this.isEdit) {
-          await this.$axios.post("http://localhost:8000/api/solicit/update", {
-            id: this.form.id,
+          await window.electronAPI.updateSolicit(this.form.id, {
             content: this.form.content,
             time: this.form.time,
             url: this.form.url,
@@ -510,7 +501,7 @@ export default {
           });
           this.$message.success("更新成功");
         } else {
-          await this.$axios.post("http://localhost:8000/api/solicit/add", {
+          await window.electronAPI.addSolicit({
             content: this.form.content,
             time: this.form.time,
             url: this.form.url,
@@ -533,7 +524,7 @@ export default {
           cancelButtonText: "取消",
           type: "warning"
         });
-        await this.$axios.post("http://localhost:8000/api/solicit/delete", { id: row.id });
+        await window.electronAPI.deleteSolicit(row.id);
         this.$message.success("删除成功");
         this.fetchData();
       } catch (error) {
@@ -608,21 +599,14 @@ export default {
       }
       this.aiLoading = true;
       try {
-        const tokenRes = await this.$axios.post('http://localhost:8000/api/token/getCookieByUrl', { url: 'ds' });
-        const dsToken = tokenRes?.data?.data?.cookie || '';
-        if (!dsToken) throw new Error('未配置 DeepSeek Token');
-
-        const res = await this.$axios.post("http://localhost:8000/api/ds/solicitAichat", {
-          url: this.form.url,
-          token: dsToken
-        });
-        if (res.data.code === 200 && res.data.data) {
-          const { content, time } = res.data.data;
+        const result = await window.electronAPI.solicitAiParse(this.form.url);
+        if (result && result.success && result.data) {
+          const { content, time } = result.data;
           if (content) this.form.content = content;
           if (time) this.form.time = time;
           this.$message.success("AI 解析成功");
         } else {
-          this.$message.error(res.data.message || "AI 解析失败");
+          this.$message.error(result?.error || "AI 解析失败");
         }
       } catch (error) {
         console.error("AI 解析失败:", error);
