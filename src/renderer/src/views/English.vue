@@ -39,6 +39,7 @@
       <div class="english-main-wrapper">
         <!-- 左侧：阅读材料 -->
         <div class="english-left">
+          <div class="material-scroll-area">
           <el-card class="material-card">
             <template #header>
               <div class="material-header">
@@ -94,6 +95,68 @@
               @paste="handleEditorPaste"
             ></div>
           </el-card>
+          </div>
+
+          <!-- AI 解析面板 -->
+          <div v-if="selectionPanelVisible" class="ai-selection-panel" :class="{ 'ai-panel-expanded': selectionPanelMode === 'analysis' }">
+            <div class="ai-panel-header">
+              <div class="ai-panel-selected-text" v-if="selectedText">
+                <span class="ai-panel-label">选中：</span>
+                <span class="ai-panel-text">{{ selectedText }}</span>
+              </div>
+              <el-icon class="ai-panel-close" @click="closeSelectionPanel"><Close /></el-icon>
+            </div>
+            <div class="ai-panel-actions" v-if="!selectionChatMessages.length && !selectionAILoading">
+              <el-button
+                               class="ai-translate-btn"
+                               :loading="selectionAILoading && selectionPanelMode === 'translate'"
+                               @click="callSelectionPanelAI('translate')"
+              >
+                AI翻译
+              </el-button>
+              <el-button
+                               class="ai-analysis-btn"
+                               :loading="selectionAILoading && selectionPanelMode === 'analysis'"
+                               @click="callSelectionPanelAI('analysis')"
+              >
+                完整解析
+              </el-button>
+            </div>
+            <div class="ai-panel-messages" ref="aiPanelMessagesRef">
+              <div
+                v-for="(msg, index) in selectionChatMessages"
+                :key="index"
+                class="ai-panel-message"
+                :class="msg.role"
+              >
+                <div v-if="msg.role === 'assistant'" class="ai-panel-markdown markdown-body" v-html="renderMarkdown(msg.content)"></div>
+              </div>
+              <div v-if="selectionAILoading" class="ai-panel-message assistant">
+                <el-icon class="is-loading"><Loading /></el-icon>
+              </div>
+              <div v-if="selectionAIError" class="ai-panel-message assistant error">
+                <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:inherit;">{{ selectionAIError }}</pre>
+              </div>
+            </div>
+            <div v-if="selectionChatMessages.length" class="ai-panel-input-area">
+              <el-input
+                v-model="selectionUserInput"
+                type="textarea"
+                :rows="1"
+                placeholder="继续提问..."
+                class="ai-panel-input"
+                @keydown.enter.prevent="sendSelectionPanelChatMessage"
+              />
+              <el-button
+                class="ai-panel-send-btn"
+                :loading="selectionAILoading"
+                :disabled="!selectionUserInput.trim()"
+                @click="sendSelectionPanelChatMessage"
+              >
+                <el-icon><Promotion /></el-icon>
+              </el-button>
+            </div>
+          </div>
         </div>
 
         <!-- 中间：所有小题内容 -->
@@ -315,65 +378,6 @@
       </template>
     </el-dialog>
 
-    <!-- 选中文本 AI 悬浮窗 -->
-    <div
-      v-if="selectionPopupVisible"
-      class="selection-popup"
-      :style="{ left: selectionPopupPos.x + 'px', top: selectionPopupPos.y + 'px' }"
-    >
-      <div class="selection-popup-content">
-        <div class="popup-header" @mousedown="startDragPopup">
-          <span class="popup-title">AI 翻译解析</span>
-          <el-icon class="popup-close" @click="closeSelectionPopup"><Close /></el-icon>
-        </div>
-        <div class="popup-messages" ref="popupMessagesRef">
-          <div
-            v-for="(msg, index) in selectionChatMessages"
-            :key="index"
-            class="popup-message"
-            :class="msg.role"
-          >
-            <div v-if="msg.role === 'assistant'" class="ai-markdown" v-html="renderMarkdown(msg.content)"></div>
-          </div>
-          <div v-if="selectionAILoading" class="popup-message assistant">
-            <el-icon class="is-loading"><Loading /></el-icon>
-          </div>
-          <div v-if="selectionAIError" class="popup-message assistant error">
-            <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:inherit;">{{ selectionAIError }}</pre>
-          </div>
-        </div>
-        <!-- 底部操作区：显示 AI 翻译按钮 -->
-        <div class="popup-action-area">
-          <div v-if="selectedText" class="selected-text-inline">选中的内容：{{ selectedText }}</div>
-          <el-button
-            class="popup-ai-btn"
-            type="primary"
-            :loading="selectionAILoading"
-            @click="callSelectionAI(false, '')"
-          >
-            AI 翻译
-          </el-button>
-        </div>
-        <div v-if="selectionChatMessages.length" class="popup-input-area">
-          <el-input
-            v-model="selectionUserInput"
-            type="textarea"
-            :rows="1"
-            placeholder="继续提问..."
-            class="popup-input"
-            @keydown.enter.prevent="sendSelectionChatMessage"
-          />
-          <el-button
-            class="popup-send-btn"
-            :loading="selectionAILoading"
-            :disabled="!selectionUserInput.trim()"
-            @click="sendSelectionChatMessage"
-          >
-            <el-icon><Promotion /></el-icon>
-          </el-button>
-        </div>
-      </div>
-    </div>
 
     <!-- AI 讲解抽屉 -->
     <div
@@ -513,26 +517,25 @@ let aiUnsubscribers: (() => void)[] = [];
 const englishAIContexts = ref<Record<string, Array<{role: string; content: string}>>>({});
 const currentAIQuestion = ref<any | null>(null);
 
-// 材料选中文本 AI 悬浮窗状态
+// 材料选中文本 AI 解析面板状态
 const materialContentRef = ref<HTMLDivElement | null>(null);
-const selectionPopupVisible = ref(false);
-const selectionPopupPos = ref({ x: 0, y: 0 });
+const selectionPanelVisible = ref(false);
+const selectionPanelMode = ref<'translate' | 'analysis'>('translate');
 const selectedText = ref('');
-const selectionAIResult = ref('');
 const selectionAILoading = ref(false);
 const selectionAIError = ref('');
 const selectionChatMessages = ref<Array<{role: 'user' | 'assistant'; content: string; provider?: string}>>([]);
 const selectionUserInput = ref('');
 let selectionAIUnsubscribers: (() => void)[] = [];
 const selectionAIContexts = ref<Record<string, Array<{role: string; content: string}>>>({});
-const popupMessagesRef = ref<HTMLDivElement | null>(null);
+const aiPanelMessagesRef = ref<HTMLDivElement | null>(null);
 
-// 悬浮窗消息滚动到底部
-const scrollPopupToBottom = () => {
+// 面板消息滚动到底部
+const scrollPanelToBottom = () => {
   nextTick(() => {
     setTimeout(() => {
-      if (popupMessagesRef.value) {
-        popupMessagesRef.value.scrollTop = popupMessagesRef.value.scrollHeight;
+      if (aiPanelMessagesRef.value) {
+        aiPanelMessagesRef.value.scrollTop = aiPanelMessagesRef.value.scrollHeight;
       }
     }, 50);
   });
@@ -1180,8 +1183,8 @@ watch(currentMaterial, () => {
   editingMaterialContent.value = '';
   editingQuestionTitleId.value = null;
   editingQuestionExplanationId.value = null;
-  // 清空选中文本悬浮窗
-  closeSelectionPopup();
+  // 清空选中文本AI面板
+  closeSelectionPanel();
 });
 
 // 处理材料文本选中
@@ -1195,53 +1198,17 @@ const handleMaterialTextSelect = () => {
     return;
   }
   selectedText.value = text;
-  // 只有第一次显示时才定位到选中位置，已显示时保持当前位置
-  if (!selectionPopupVisible.value) {
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-    selectionPopupPos.value = {
-      x: rect.right + window.scrollX,
-      y: rect.top + window.scrollY - 40,
-    };
-  }
-  selectionPopupVisible.value = true;
-  // 新选中文本时，只更新选中的文本，不清空之前的聊天记录
-  // 用户可以看到之前的对话，点击 AI 翻译后会基于新文本进行新的解析
+  selectionPanelVisible.value = true;
+  // 新选中文本时，清空之前的对话记录
+  selectionChatMessages.value = [];
+  selectionAIError.value = '';
+  selectionPanelMode.value = 'translate';
 };
 
-// 悬浮窗拖动
-const isDraggingPopup = ref(false);
-const dragOffset = ref({ x: 0, y: 0 });
-
-const startDragPopup = (e: MouseEvent) => {
-  isDraggingPopup.value = true;
-  dragOffset.value = {
-    x: e.clientX - selectionPopupPos.value.x,
-    y: e.clientY - selectionPopupPos.value.y,
-  };
-  document.addEventListener('mousemove', onDragPopup);
-  document.addEventListener('mouseup', stopDragPopup);
-};
-
-const onDragPopup = (e: MouseEvent) => {
-  if (!isDraggingPopup.value) return;
-  selectionPopupPos.value = {
-    x: e.clientX - dragOffset.value.x,
-    y: e.clientY - dragOffset.value.y,
-  };
-};
-
-const stopDragPopup = () => {
-  isDraggingPopup.value = false;
-  document.removeEventListener('mousemove', onDragPopup);
-  document.removeEventListener('mouseup', stopDragPopup);
-};
-
-// 关闭选中文本悬浮窗
-const closeSelectionPopup = () => {
-  selectionPopupVisible.value = false;
+// 关闭 AI 解析面板
+const closeSelectionPanel = () => {
+  selectionPanelVisible.value = false;
   selectedText.value = '';
-  selectionAIResult.value = '';
   selectionAIError.value = '';
   selectionChatMessages.value = [];
   selectionUserInput.value = '';
@@ -1250,9 +1217,10 @@ const closeSelectionPopup = () => {
   selectionAIUnsubscribers = [];
 };
 
-// 调用 AI 翻译并解析选中文本
-const callSelectionAI = async (isFollowUp = false, userMessage = '') => {
+// 调用 AI 翻译或完整解析
+const callSelectionPanelAI = async (mode: 'translate' | 'analysis') => {
   if (!selectedText.value) return;
+  selectionPanelMode.value = mode;
   selectionAILoading.value = true;
   selectionAIError.value = '';
 
@@ -1278,13 +1246,13 @@ const callSelectionAI = async (isFollowUp = false, userMessage = '') => {
     } else {
       selectionChatMessages.value.push({ role: 'assistant', content: assistantContent, provider: currentProvider || undefined });
     }
-    scrollPopupToBottom();
+    scrollPanelToBottom();
   });
   selectionAIUnsubscribers.push(unsubChunk);
 
   const unsubDone = window.electronAPI.onAIStreamDone(() => {
     selectionAILoading.value = false;
-    const key = `selection_${selectedText.value}`;
+    const key = `selection_${selectedText.value}_${mode}`;
     selectionAIContexts.value[key] = selectionChatMessages.value.map(m => ({ role: m.role, content: m.content }));
   });
   selectionAIUnsubscribers.push(unsubDone);
@@ -1297,14 +1265,18 @@ const callSelectionAI = async (isFollowUp = false, userMessage = '') => {
 
   try {
     const providerOrder = getProviderOrder();
-    const contextKey = `selection_${selectedText.value}`;
     let messages: Array<{role: string; content: string}> = [];
 
-    if (isFollowUp && selectionAIContexts.value[contextKey]) {
-      messages = [...selectionAIContexts.value[contextKey]];
-      messages.push({ role: 'user', content: userMessage });
+    let systemPrompt = '';
+    if (mode === 'translate') {
+      systemPrompt = `你是一位资深的考研英语辅导专家。用户选中了阅读材料中的英文文本，请你直接将其翻译成中文。
+
+要求：
+- 如果是单词，给出所有常见释义和词性。
+- 如果是短语或句子，给出通顺的中文翻译。
+- 回答简洁，只输出翻译结果，不需要额外解析。`;
     } else {
-      const systemPrompt = `你是一位资深的考研英语辅导专家。用户选中了阅读材料中的英文文本（可能是一个单词、短语或句子），请你直接进行翻译和解析，不要要求用户提供更多内容。
+      systemPrompt = `你是一位资深的考研英语辅导专家。用户选中了阅读材料中的英文文本（可能是一个单词、短语或句子），请你直接进行翻译和解析，不要要求用户提供更多内容。
 
 请完成以下任务：
 1. 【翻译】将选中的英文准确翻译成中文。如果是一个单词，给出所有常见释义；如果是短语或句子，给出通顺的中文翻译。
@@ -1312,14 +1284,16 @@ const callSelectionAI = async (isFollowUp = false, userMessage = '') => {
 3. 【解析】如果是句子，分析语法结构、关键短语、句间逻辑关系。
 
 请用清晰的中文回答，结构分明。`;
-      const userPrompt = `请翻译并解析以下选中的文本：\n\n${selectedText.value}`;
-      messages = [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ];
-      selectionChatMessages.value.push({ role: 'user', content: userPrompt });
-      scrollPopupToBottom();
     }
+    const userPrompt = mode === 'translate'
+      ? `请翻译以下选中的文本：\n\n${selectedText.value}`
+      : `请翻译并解析以下选中的文本：\n\n${selectedText.value}`;
+    messages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ];
+    selectionChatMessages.value.push({ role: 'user', content: userPrompt });
+    scrollPanelToBottom();
 
     const result = await window.electronAPI.explainEnglishQuestion({
       materialTitle: currentMaterial.value?.title || '',
@@ -1332,10 +1306,9 @@ const callSelectionAI = async (isFollowUp = false, userMessage = '') => {
       optionD: '',
       correctAnswer: '',
       explanation: '',
-      isFollowUp,
-      userMessage: isFollowUp ? userMessage : '',
+      isFollowUp: false,
+      userMessage: '',
       providerOrder,
-      // 覆盖默认提示词，使用选中文本的专用提示词
       _overrideMessages: messages,
     });
 
@@ -1350,13 +1323,93 @@ const callSelectionAI = async (isFollowUp = false, userMessage = '') => {
 };
 
 // 发送选中文本的追问
-const sendSelectionChatMessage = async () => {
+const sendSelectionPanelChatMessage = async () => {
   if (!selectionUserInput.value.trim() || selectionAILoading.value) return;
   const userMessage = selectionUserInput.value.trim();
   selectionUserInput.value = '';
   selectionChatMessages.value.push({ role: 'user', content: userMessage });
-  scrollPopupToBottom();
-  await callSelectionAI(true, userMessage);
+  scrollPanelToBottom();
+
+  // 追问逻辑
+  selectionAILoading.value = true;
+  selectionAIError.value = '';
+
+  selectionAIUnsubscribers.forEach(fn => fn());
+  selectionAIUnsubscribers = [];
+
+  let assistantContent = '';
+  let currentProvider = '';
+
+  const unsubProviderSwitch = window.electronAPI.onAIProviderSwitch((provider: string) => {
+    currentProvider = provider === 'modelspace' ? 'ModelSpace' : provider === 'deepseek' ? 'DeepSeek' : provider;
+    const lastMsg = selectionChatMessages.value[selectionChatMessages.value.length - 1];
+    if (lastMsg && lastMsg.role === 'assistant') lastMsg.provider = currentProvider;
+  });
+  selectionAIUnsubscribers.push(unsubProviderSwitch);
+
+  const unsubChunk = window.electronAPI.onAIStreamChunk((content: string) => {
+    assistantContent += content;
+    const lastMsg = selectionChatMessages.value[selectionChatMessages.value.length - 1];
+    if (lastMsg && lastMsg.role === 'assistant') {
+      lastMsg.content = assistantContent;
+      if (currentProvider && !lastMsg.provider) lastMsg.provider = currentProvider;
+    } else {
+      selectionChatMessages.value.push({ role: 'assistant', content: assistantContent, provider: currentProvider || undefined });
+    }
+    scrollPanelToBottom();
+  });
+  selectionAIUnsubscribers.push(unsubChunk);
+
+  const unsubDone = window.electronAPI.onAIStreamDone(() => {
+    selectionAILoading.value = false;
+    const key = `selection_${selectedText.value}_${selectionPanelMode.value}`;
+    selectionAIContexts.value[key] = selectionChatMessages.value.map(m => ({ role: m.role, content: m.content }));
+  });
+  selectionAIUnsubscribers.push(unsubDone);
+
+  const unsubError = window.electronAPI.onAIStreamError((error: string) => {
+    selectionAILoading.value = false;
+    selectionAIError.value = error;
+  });
+  selectionAIUnsubscribers.push(unsubError);
+
+  try {
+    const providerOrder = getProviderOrder();
+    const contextKey = `selection_${selectedText.value}_${selectionPanelMode.value}`;
+    let messages: Array<{role: string; content: string}> = [];
+
+    if (selectionAIContexts.value[contextKey]) {
+      messages = [...selectionAIContexts.value[contextKey]];
+      messages.push({ role: 'user', content: userMessage });
+    } else {
+      messages.push({ role: 'user', content: userMessage });
+    }
+
+    const result = await window.electronAPI.explainEnglishQuestion({
+      materialTitle: currentMaterial.value?.title || '',
+      materialContent: currentMaterial.value?.content || '',
+      questionNumber: 0,
+      questionTitle: '',
+      optionA: '',
+      optionB: '',
+      optionC: '',
+      optionD: '',
+      correctAnswer: '',
+      explanation: '',
+      isFollowUp: true,
+      userMessage,
+      providerOrder,
+      _overrideMessages: messages,
+    });
+
+    if (!result.success && result.error) {
+      selectionAILoading.value = false;
+      selectionAIError.value = result.error;
+    }
+  } catch (err: any) {
+    selectionAILoading.value = false;
+    selectionAIError.value = err.message || '调用失败';
+  }
 };
 
 onMounted(() => {
@@ -1437,12 +1490,20 @@ onMounted(() => {
   width: 50%;
   min-width: 0;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.material-scroll-area {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
-.english-left::-webkit-scrollbar {
+.material-scroll-area::-webkit-scrollbar {
   display: none;
 }
 
@@ -2333,197 +2394,161 @@ onMounted(() => {
   color: #9a9590;
 }
 
-/* 选中文本 AI 悬浮窗 */
-.selection-popup {
-  position: fixed;
-  z-index: 3000;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+/* AI 解析面板样式 */
+.ai-selection-panel {
+  margin-top: 16px;
+  border-radius: 16px;
   border: 1px solid #e8e4df;
-  max-width: 480px;
-  min-width: 200px;
-  animation: popupFadeIn 0.2s ease;
-}
-
-@keyframes popupFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.selection-ai-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-size: 14px;
-  white-space: nowrap;
-}
-
-.selection-popup-content {
+  background: #fff;
   display: flex;
   flex-direction: column;
-  max-height: 600px;
-  width: 520px;
+  max-height: 200px;
+  transition: max-height 0.3s ease;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
-.popup-header {
+.ai-selection-panel.ai-panel-expanded {
+  max-height: 390px;
+}
+
+.ai-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  border-bottom: 1px solid #e8e4df;
+  border-bottom: 1px solid #f0ece7;
   flex-shrink: 0;
-  cursor: move;
-  user-select: none;
-  background: #fdfbf8;
-  border-radius: 12px 12px 0 0;
+  gap: 12px;
 }
 
-.popup-title {
-  font-size: 15px;
-  font-weight: 600;
+.ai-panel-selected-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.ai-panel-label {
+  font-size: 13px;
+  color: #9a9590;
+  flex-shrink: 0;
+}
+
+.ai-panel-text {
+  font-size: 14px;
   color: #1a1a1a;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.popup-close {
+.ai-panel-close {
   font-size: 18px;
   color: #9a9590;
   cursor: pointer;
   transition: color 0.2s;
+  flex-shrink: 0;
 }
 
-.popup-close:hover {
+.ai-panel-close:hover {
   color: #1a1a1a;
 }
 
-.popup-messages {
+.ai-panel-actions {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  flex-shrink: 0;
+}
+
+.ai-translate-btn {
+  flex: 1;
+  background-color: #c4a882;
+  border-color: #c4a882;
+  color: #fff;
+  border-radius: 10px;
+  font-size: 15px;
+  height: 40px;
+  min-height: 40px;
+}
+
+.ai-translate-btn:hover {
+  background-color: #a08060;
+  border-color: #a08060;
+  color: #fff;
+}
+
+.ai-analysis-btn {
+  flex: 1;
+  background-color: #4a7c59;
+  border-color: #4a7c59;
+  color: #fff;
+  border-radius: 10px;
+  font-size: 15px;
+  height: 40px;
+  min-height: 40px;
+}
+
+.ai-analysis-btn:hover {
+  background-color: #3d6b4a;
+  border-color: #3d6b4a;
+  color: #fff;
+}
+
+.ai-panel-messages {
   flex: 1;
   overflow-y: auto;
   padding: 12px 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: #f8f7f5;
-  min-height: 100px;
+  min-height: 0;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
-.popup-messages::-webkit-scrollbar {
+.ai-panel-messages::-webkit-scrollbar {
   display: none;
 }
 
-.popup-message {
+.ai-panel-message {
   display: flex;
 }
 
-.popup-message.assistant {
+.ai-panel-message.assistant {
   justify-content: flex-start;
 }
 
-.popup-message.assistant .ai-markdown {
-  background: #fff;
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid #e8e4df;
-  font-size: 14px;
+.ai-panel-message .ai-panel-markdown {
+  font-size: 15px;
   line-height: 1.7;
   color: #333;
   max-width: 100%;
 }
 
-/* 悬浮窗内 Markdown 样式 */
-.popup-message.assistant .ai-markdown :deep(h1),
-.popup-message.assistant .ai-markdown :deep(h2),
-.popup-message.assistant .ai-markdown :deep(h3),
-.popup-message.assistant .ai-markdown :deep(h4) {
-  margin-top: 12px;
+.ai-panel-message .ai-panel-markdown :deep(p) {
   margin-bottom: 8px;
+}
+
+.ai-panel-message .ai-panel-markdown :deep(strong) {
   color: #1a1a1a;
   font-weight: 600;
 }
 
-.popup-message.assistant .ai-markdown :deep(p) {
+.ai-panel-message .ai-panel-markdown :deep(ul),
+.ai-panel-message .ai-panel-markdown :deep(ol) {
   margin-bottom: 8px;
-}
-
-.popup-message.assistant .ai-markdown :deep(strong) {
-  color: #1a1a1a;
-  font-weight: 600;
-}
-
-.popup-message.assistant .ai-markdown :deep(code) {
-  background: #f0ece7;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
-  font-size: 13px;
-}
-
-.popup-message.assistant .ai-markdown :deep(pre) {
-  background: #f5f3f0;
-  padding: 12px;
-  border-radius: 8px;
-  overflow-x: auto;
-  margin-bottom: 10px;
-}
-
-.popup-message.assistant .ai-markdown :deep(pre code) {
-  background: transparent;
-  padding: 0;
-}
-
-.popup-message.assistant .ai-markdown :deep(ul),
-.popup-message.assistant .ai-markdown :deep(ol) {
-  margin-bottom: 10px;
   padding-left: 20px;
 }
 
-.popup-message.assistant .ai-markdown :deep(li) {
+.ai-panel-message .ai-panel-markdown :deep(li) {
   margin-bottom: 4px;
 }
 
-.popup-message.assistant .ai-markdown :deep(blockquote) {
-  border-left: 4px solid #c4a882;
-  padding-left: 12px;
-  margin-left: 0;
-  color: #666;
-  font-style: italic;
-}
-
-.popup-message.assistant .ai-markdown :deep(hr) {
-  border: none;
-  border-top: 1px solid #e8e4df;
-  margin: 12px 0;
-}
-
-.popup-message.assistant .ai-markdown :deep(table) {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 10px;
-}
-
-.popup-message.assistant .ai-markdown :deep(th),
-.popup-message.assistant .ai-markdown :deep(td) {
-  border: 1px solid #e8e4df;
-  padding: 6px 10px;
-  text-align: left;
-}
-
-.popup-message.assistant .ai-markdown :deep(th) {
-  background: #f5f3f0;
-  font-weight: 600;
-}
-
-.popup-message.assistant.error pre {
+.ai-panel-message.assistant.error pre {
   background: #fef0f0;
   color: #f56c6c;
   padding: 10px 12px;
@@ -2531,106 +2556,27 @@ onMounted(() => {
   font-size: 13px;
 }
 
-/* 选中的文本展示 */
-.popup-selected-text {
-  padding: 12px 14px;
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #e8e4df;
-}
-
-.selected-text-label {
-  font-size: 12px;
-  color: #9a9590;
-  margin-bottom: 6px;
-}
-
-.selected-text-content {
-  font-size: 14px;
-  color: #1a1a1a;
-  line-height: 1.6;
-  max-height: 200px;
-  overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.selected-text-content::-webkit-scrollbar {
-  display: none;
-}
-
-/* AI 翻译按钮区域 */
-.popup-action-area {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  border-top: 1px solid #e8e4df;
-  background: #fff;
-  flex-shrink: 0;
-  border-radius: 0 0 12px 12px;
-}
-
-.selected-text-inline {
-  font-size: 13px;
-  color: #666;
-  line-height: 1.4;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.popup-ai-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 20px;
-  font-size: 14px;
-  flex-shrink: 0;
-  background: #c4a882;
-  border-color: #c4a882;
-  color: #fff;
-}
-
-.popup-ai-btn:hover {
-  background: #a08060;
-  border-color: #a08060;
-  color: #fff;
-}
-
-.popup-ai-btn.is-loading,
-.popup-ai-btn:active {
-  background: #c4a882;
-  border-color: #c4a882;
-  color: #fff;
-}
-
-.popup-input-area {
+.ai-panel-input-area {
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  padding: 10px 14px;
-  border-top: 1px solid #e8e4df;
-  background: #fff;
+  padding: 10px 16px;
+  border-top: 1px solid #f0ece7;
   flex-shrink: 0;
-  border-radius: 0 0 12px 12px;
 }
 
-.popup-input {
+.ai-panel-input {
   flex: 1;
 }
 
-.popup-input :deep(.el-textarea__inner) {
+.ai-panel-input :deep(.el-textarea__inner) {
   border-radius: 8px;
   resize: none;
   font-size: 14px;
   padding: 8px 12px;
 }
 
-.popup-send-btn {
+.ai-panel-send-btn {
   padding: 8px;
   border: none;
   background: #c4a882;
@@ -2640,11 +2586,11 @@ onMounted(() => {
   transition: background 0.2s;
 }
 
-.popup-send-btn:hover {
+.ai-panel-send-btn:hover {
   background: #a08060;
 }
 
-.popup-send-btn:disabled {
+.ai-panel-send-btn:disabled {
   background: #d0ccc8;
   cursor: not-allowed;
 }
