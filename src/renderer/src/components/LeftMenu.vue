@@ -88,6 +88,7 @@ const activeMenu = computed(() => {
 :deep(.el-menu-item.is-active) {
   background: rgba(139, 154, 109, 0.1) !important;
   font-weight: 600;
+  border-left: 5px solid #8b9a6d;
 }
 
 :deep(.el-menu-item:hover) {
