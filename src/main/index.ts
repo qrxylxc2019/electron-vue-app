@@ -2114,7 +2114,7 @@ ipcMain.handle('project:delete', (_event, id: number) => {
 ipcMain.handle('monthplan:getByYear', (_event, year: number) => {
   if (!db) return { success: false, error: '数据库未初始化' };
   try {
-    const stmt = db.prepare('SELECT * FROM monthplan WHERE year = ? ORDER BY month, id');
+    const stmt = db.prepare('SELECT * FROM monthplan WHERE CAST(year AS INTEGER) = CAST(? AS INTEGER) ORDER BY month, id');
     const list = stmt.all(year) as any[];
     return { success: true, list };
   } catch (err: any) {
