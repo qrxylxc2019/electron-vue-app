@@ -106,7 +106,18 @@ const activeMenu = computed(() => {
 :deep(.el-menu-item.is-active) {
   background: rgba(139, 154, 109, 0.1) !important;
   font-weight: 600;
-  border-left: 5px solid #8b9a6d;
+  position: relative;
+}
+
+:deep(.el-menu-item.is-active)::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  background: #8b9a6d;
+  border-radius: 0 3px 3px 0;
 }
 
 :deep(.el-menu-item:hover) {
