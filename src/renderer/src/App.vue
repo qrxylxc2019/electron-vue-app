@@ -1,14 +1,20 @@
 <template>
   <div id="app" class="app-layout">
-    <LeftMenu />
-    <div class="main-content">
+    <LeftMenu @collapseChange="onMenuCollapse" />
+    <div class="main-content" :class="{ collapsed: isMenuCollapsed }">
       <router-view />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import LeftMenu from './components/LeftMenu.vue'
+
+const isMenuCollapsed = ref(false)
+const onMenuCollapse = (collapsed: boolean) => {
+  isMenuCollapsed.value = collapsed
+}
 </script>
 
 <style>
@@ -44,5 +50,10 @@ body {
   height: 100vh;
   overflow-y: auto;
   margin-left: 200px;
+  transition: margin-left 0.3s ease;
+}
+
+.main-content.collapsed {
+  margin-left: 64px;
 }
 </style>

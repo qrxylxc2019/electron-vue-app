@@ -47,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { HomeFilled, Calendar, EditPen, Star, Folder, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 
@@ -57,6 +57,12 @@ const isCollapsed = ref(false)
 const toggleCollapse = () => {
   isCollapsed.value = !isCollapsed.value
 }
+
+// Emit collapse state change so App.vue can adjust main-content margin
+const emit = defineEmits(['collapseChange'])
+watch(isCollapsed, (val) => {
+  emit('collapseChange', val)
+})
 
 const activeMenu = computed(() => {
   const path = route.path
