@@ -1,51 +1,62 @@
 <template>
-  <div class="left-menu">
+  <div class="left-menu" :class="{ collapsed: isCollapsed }">
     <el-menu
       :default-active="activeMenu"
       class="menu-container"
+      :class="{ collapsed: isCollapsed }"
       router
+      :collapse="isCollapsed"
       background-color="#e8e4df"
       text-color="#3a3a3a"
       active-text-color="#8b9a6d"
     >
-      <div class="menu-logo">
+      <div class="menu-logo" :class="{ collapsed: isCollapsed }">
         <img src="../assets/favicon.ico" alt="logo" />
       </div>
       <el-menu-item index="/plan">
         <el-icon><Calendar /></el-icon>
-        <span>计划</span>
+        <template #title><span>计划</span></template>
       </el-menu-item>
       <el-menu-item index="/yearplan">
         <el-icon><Calendar /></el-icon>
-        <span>月计划</span>
+        <template #title><span>月计划</span></template>
       </el-menu-item>
       <el-menu-item index="/collect">
         <el-icon><Star /></el-icon>
-        <span>收藏</span>
+        <template #title><span>收藏</span></template>
       </el-menu-item>
       <el-menu-item index="/project">
         <el-icon><Folder /></el-icon>
-        <span>项目</span>
+        <template #title><span>项目</span></template>
       </el-menu-item>
-      
+
       <el-menu-item index="/solicit">
         <el-icon><EditPen /></el-icon>
-        <span>征稿</span>
+        <template #title><span>征稿</span></template>
       </el-menu-item>
       <el-menu-item index="/">
         <el-icon><HomeFilled /></el-icon>
-        <span>科目列表</span>
+        <template #title><span>科目列表</span></template>
       </el-menu-item>
     </el-menu>
+    <div class="collapse-btn" @click="toggleCollapse">
+      <el-icon v-if="isCollapsed"><ArrowRight /></el-icon>
+      <el-icon v-else><ArrowLeft /></el-icon>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { HomeFilled, Reading, Calendar, EditPen, Star, Folder } from '@element-plus/icons-vue'
+import { HomeFilled, Calendar, EditPen, Star, Folder, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 
 const route = useRoute()
+const isCollapsed = ref(false)
+
+const toggleCollapse = () => {
+  isCollapsed.value = !isCollapsed.value
+}
 
 const activeMenu = computed(() => {
   const path = route.path
@@ -82,25 +93,49 @@ const activeMenu = computed(() => {
   position: fixed;
   left: 0;
   top: 0;
-  overflow-y: auto;
   z-index: 10;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s ease;
+}
+
+.left-menu.collapsed {
+  width: 64px;
 }
 
 .menu-container {
-  height: 100%;
+  flex: 1;
   border-right: none;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
-:deep(.el-menu-item) {
+.menu-container:not(.collapsed) :deep(.el-menu-item) {
   font-size: 16px;
   height: 56px;
   line-height: 56px;
 }
 
-:deep(.el-menu-item .el-icon) {
+.menu-container.collapsed :deep(.el-menu-item) {
+  font-size: 12px;
+  height: 64px;
+  line-height: 1.2;
+  padding: 8px 0 !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.menu-container:not(.collapsed) :deep(.el-menu-item .el-icon) {
   font-size: 20px;
   margin-right: 12px;
+}
+
+.menu-container.collapsed :deep(.el-menu-item .el-icon) {
+  font-size: 20px;
+  margin-right: 0;
 }
 
 :deep(.el-menu-item.is-active) {
@@ -129,11 +164,54 @@ const activeMenu = computed(() => {
   justify-content: center;
   align-items: center;
   padding: 20px 0;
+  transition: padding 0.3s ease;
+}
+
+.menu-logo.collapsed {
+  padding: 12px 0;
 }
 
 .menu-logo img {
   width: 48px;
   height: 48px;
   object-fit: contain;
+  transition: width 0.3s ease, height 0.3s ease;
+}
+
+.menu-logo.collapsed img {
+  width: 36px;
+  height: 36px;
+}
+
+.collapse-btn {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #6b6560;
+  font-size: 16px;
+  border-top: 1px solid #d5d0c8;
+  transition: all 0.2s ease;
+}
+
+.collapse-btn:hover {
+  background: rgba(139, 154, 109, 0.1);
+  color: #8b9a6d;
+}
+
+/* Collapsed menu item title styling */
+.menu-container.collapsed :deep(.el-menu-item span) {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+/* Override el-menu collapse styles */
+.menu-container.collapsed :deep(.el-tooltip__trigger) {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 8px 0 !important;
 }
 </style>
