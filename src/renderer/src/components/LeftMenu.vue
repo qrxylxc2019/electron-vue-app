@@ -15,6 +15,10 @@
         <el-icon><Calendar /></el-icon>
         <span>计划</span>
       </el-menu-item>
+      <el-menu-item index="/yearplan">
+        <el-icon><Calendar /></el-icon>
+        <span>月计划</span>
+      </el-menu-item>
       <el-menu-item index="/collect">
         <el-icon><Star /></el-icon>
         <span>收藏</span>
@@ -23,6 +27,7 @@
         <el-icon><Folder /></el-icon>
         <span>项目</span>
       </el-menu-item>
+      
       <el-menu-item index="/solicit">
         <el-icon><EditPen /></el-icon>
         <span>征稿</span>
@@ -59,6 +64,9 @@ const activeMenu = computed(() => {
   }
   if (path.startsWith('/solicit')) {
     return '/solicit'
+  }
+  if (path.startsWith('/yearplan')) {
+    return '/yearplan'
   }
   return path
 })

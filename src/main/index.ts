@@ -328,6 +328,19 @@ function initDatabase() {
     `);
     console.log('project table ensured');
 
+    // 年度月计划表
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS monthplan (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        plan TEXT NOT NULL,
+        month INTEGER NOT NULL,
+        year INTEGER NOT NULL,
+        status INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('monthplan table ensured');
+
     // API 设置已改为前端本地存储 + 后端硬编码，无需数据库表
 
     console.log('Database initialized successfully');
@@ -2093,6 +2106,72 @@ ipcMain.handle('project:delete', (_event, id: number) => {
   } catch (err: any) {
     console.error('project:delete error:', err);
     return false;
+  }
+});
+
+// ========== 年度月计划 (monthplan) IPC ==========
+
+ipcMain.handle('monthplan:getByYear', (_event, year: number) => {
+  if (!db) return { success: false, error: '数据库未初始化' };
+  try {
+    const stmt = db.prepare('SELECT * FROM monthplan WHERE year = ? ORDER BY month, id');
+    const list = stmt.all(year) as any[];
+    return { success: true, list };
+  } catch (err: any) {
+    console.error('monthplan:getByYear error:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('monthplan:add', (_event, data: any) => {
+  if (!db) return { success: false, error: '数据库未初始化' };
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO monthplan (plan, month, year, status)
+      VALUES (?, ?, ?, ?)
+    `);
+    const result = stmt.run(
+      data.plan,
+      data.month,
+      data.year,
+      data.status ?? 0
+    );
+    return { success: true, id: result.lastInsertRowid };
+  } catch (err: any) {
+    console.error('monthplan:add error:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('monthplan:update', (_event, id: number, data: any) => {
+  if (!db) return { success: false, error: '数据库未初始化' };
+  try {
+    const fields: string[] = [];
+    const values: any[] = [];
+    if (data.plan !== undefined) { fields.push('plan = ?'); values.push(data.plan); }
+    if (data.month !== undefined) { fields.push('month = ?'); values.push(data.month); }
+    if (data.year !== undefined) { fields.push('year = ?'); values.push(data.year); }
+    if (data.status !== undefined) { fields.push('status = ?'); values.push(data.status); }
+    if (fields.length === 0) return { success: true };
+    values.push(id);
+    const stmt = db.prepare(`UPDATE monthplan SET ${fields.join(', ')} WHERE id = ?`);
+    stmt.run(...values);
+    return { success: true };
+  } catch (err: any) {
+    console.error('monthplan:update error:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('monthplan:delete', (_event, id: number) => {
+  if (!db) return { success: false, error: '数据库未初始化' };
+  try {
+    const stmt = db.prepare('DELETE FROM monthplan WHERE id = ?');
+    stmt.run(id);
+    return { success: true };
+  } catch (err: any) {
+    console.error('monthplan:delete error:', err);
+    return { success: false, error: err.message };
   }
 });
 

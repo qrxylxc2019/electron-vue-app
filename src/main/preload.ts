@@ -152,6 +152,12 @@ const electronAPI = {
   deleteSolicit: (id: number) => ipcRenderer.invoke('solicit:delete', id),
   solicitAiParse: (url: string) => ipcRenderer.invoke('solicit:aiParse', url),
 
+  // 年度月计划
+  getMonthPlansByYear: (year: number) => ipcRenderer.invoke('monthplan:getByYear', year),
+  addMonthPlan: (data: any) => ipcRenderer.invoke('monthplan:add', data),
+  updateMonthPlan: (id: number, data: any) => ipcRenderer.invoke('monthplan:update', id, data),
+  deleteMonthPlan: (id: number) => ipcRenderer.invoke('monthplan:delete', id),
+
   // 收藏
   getCollectList: (params: any) => ipcRenderer.invoke('collect:get', params),
   addCollect: (data: any) => ipcRenderer.invoke('collect:add', data),

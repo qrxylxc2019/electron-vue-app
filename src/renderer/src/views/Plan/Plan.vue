@@ -1325,7 +1325,7 @@ export default {
     calculateTableHeight() {
       try {
         const windowHeight = window.innerHeight;
-        const otherElementsHeight = 399;
+        const otherElementsHeight = 499;
         this.tableHeight = windowHeight - otherElementsHeight;
       } catch (error) {
         console.error('Error calculating table height:', error);
@@ -2270,7 +2270,6 @@ html:not(.dark) .accent,
 
 .container {
   display: flex;
-  margin-bottom: 16px;
   flex: 1;
   height: 100%;
   background-color: #faf8f5;

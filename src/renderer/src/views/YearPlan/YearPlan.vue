@@ -81,7 +81,6 @@
 </template>
 
 <script>
-import axios from "axios";
 import { Delete } from "@element-plus/icons-vue";
 export default {
   name: "YearPlan",
@@ -126,11 +125,8 @@ export default {
     },
     async deletePlan(row) {
       try {
-        const res = await axios.post("http://localhost:8000/api/yearPlan/delete", {
-          id: row.id
-        });
-        
-        if (res.data.code === 200) {
+        const res = await window.electronAPI.deleteMonthPlan(row.id);
+        if (res.success) {
           this.$message.success("删除成功");
           this.getPlanList();
         } else {
@@ -143,16 +139,12 @@ export default {
     },
     async getPlanList() {
       try {
-        const res = await axios.post("http://localhost:8000/api/yearPlan/get", {
-          conditions: {
-            year: this.currentYear, // 添加年份条件
-          },
-        });
-        console.log("getPlanList ", res.data);
-        if (res.data.code == 200) {
+        const res = await window.electronAPI.getMonthPlansByYear(this.currentYear);
+        console.log("getPlanList ", res);
+        if (res.success) {
           // 重置计划列表
           this.planList = new Array(12).fill().map(() => []);
-          res.data.result.list.forEach((item) => {
+          res.list.forEach((item) => {
             const monthIndex = item.month - 1;
             if (monthIndex >= 0 && monthIndex < 12) {
               this.planList[monthIndex].push(item);
@@ -169,16 +161,15 @@ export default {
     async addPlan(monthIndex) {
       if (this.planData[monthIndex].trim()) {
         try {
-          // 调用年度计划API
-          const res = await axios.post("http://localhost:8000/api/yearPlan/add", {
+          const res = await window.electronAPI.addMonthPlan({
             plan: this.planData[monthIndex].trim(),
             month: monthIndex + 1,
             year: this.currentYear,
-            status: 0, // 默认状态为0
+            status: 0,
           });
           
           console.log(res);
-          if (res.data.code === 200) {
+          if (res.success) {
             this.$message.success("保存计划成功");
             // 更新界面显示
             this.getPlanList();
@@ -194,15 +185,14 @@ export default {
     },
     async updatePlan(planItem, newContent) {
       try {
-        const res = await axios.post("http://localhost:8000/api/yearPlan/update", {
-          id: planItem.id,
+        const res = await window.electronAPI.updateMonthPlan(planItem.id, {
           plan: newContent,
           month: planItem.month,
           year: planItem.year,
           status: planItem.status
         });
         
-        if (res.data.code === 200) {
+        if (res.success) {
           this.$message.success("更新计划成功");
           this.getPlanList();
         } else {

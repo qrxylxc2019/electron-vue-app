@@ -12,6 +12,7 @@ import Plan from '../views/Plan/Plan.vue';
 import Solicit from '../views/Solicit/Solicit.vue';
 import Collect from '../views/Collect/Collect.vue';
 import Project from '../views/Project/Project.vue';
+import YearPlan from '../views/YearPlan/YearPlan.vue';
 
 const routes = [
   { path: '/', name: 'Home', component: DirectoryList },
@@ -27,6 +28,7 @@ const routes = [
   { path: '/solicit', name: 'Solicit', component: Solicit },
   { path: '/collect', name: 'Collect', component: Collect },
   { path: '/project', name: 'Project', component: Project },
+  { path: '/yearplan', name: 'YearPlan', component: YearPlan },
 ];
 
 const router = createRouter({
