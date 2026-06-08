@@ -2,7 +2,7 @@
   <section id="hero">
     <div class="container">
       <!-- 新增计划列表 -->
-      <div class="plan-column" :class="{ 'plan-column-hidden': !isPlanColumnVisible }">
+      <div class="plan-column">
         <div class="top-div">
 
           <div v-if="inlineWarningMessage" class="inline-warning-wrap">
@@ -276,7 +276,7 @@
       </div>
 
       <!-- 详情 -->
-      <div v-if="showSubPlanPanel" class="subplan-panel" :style="subPlanPanelStyle">
+      <div class="subplan-panel">
         <div class="subplan-header">
           <span class="subplan-title">详情</span>
           <el-icon class="subplan-refresh" @click.stop="refreshSubPlanList" title="刷新"><Refresh /></el-icon>
@@ -2347,7 +2347,7 @@ html:not(.dark) .accent,
 
 .plan-column {
   position: relative;
-  width: 100%;
+  width: 50%;
   display: flex;
   flex-direction: column;
   padding: 10px 0;
@@ -2356,7 +2356,6 @@ html:not(.dark) .accent,
   transition: all 0.3s ease-in-out;
   overflow: visible;
 }
-
 
 
 .plan-table{
@@ -2876,27 +2875,22 @@ font-weight: 600;
 }
 
 .subplan-panel {
-  position: absolute;
-  top: 0;
-  left: 100%;
-  width: 490px;
+  width: 50%;
   height: 100%;
   background: #faf8f5;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: slideIn 0.3s ease;
   border-left: 1px solid #e8e4df;
   z-index: 10;
-  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.05);
 }
 
-@keyframes slideIn {
+@keyframes fadeIn {
   from {
-    transform: translateX(-100%);
+    opacity: 0;
   }
   to {
-    transform: translateX(0);
+    opacity: 1;
   }
 }
 
