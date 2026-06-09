@@ -288,18 +288,30 @@ onMounted(() => {
   height: 100vh;
   padding: 20px;
   box-sizing: border-box;
-  background: #f5f7fa;
+  background: #faf8f5;
 }
 
 .search-bar {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  padding: 0 20px;
+  height: 60px;
+  background: #fff;
+  border-radius: 12px;
+  border-bottom: 1px solid #e8e4df;
 }
 
 .search-input {
   width: 300px;
+}
+
+.search-input :deep(.el-input__wrapper) {
+  border-radius: 10px;
+  background-color: #f5f3f0;
+  border: 1px solid #e8e4df;
+  box-shadow: none !important;
 }
 
 .image-grid {
@@ -310,15 +322,18 @@ onMounted(() => {
   gap: 20px;
   overflow-y: auto;
   padding: 10px;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e8e4df;
 }
 
 .image-item {
   background: #fff;
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e8e4df;
   height: 280px;
   position: relative;
 }
@@ -359,7 +374,7 @@ onMounted(() => {
 .image-name {
   padding: 10px;
   font-size: 14px;
-  color: #303133;
+  color: #1a1a1a;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -374,8 +389,8 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #f5f7fa;
-  color: #909399;
+  background: #faf8f5;
+  color: #6b6560;
 }
 
 .loading-icon {
@@ -409,11 +424,27 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   background: #fff;
-  border-radius: 8px;
-  margin-top: 20px;
+  border-radius: 12px;
+  margin-top: 16px;
+  border: 1px solid #e8e4df;
 }
 
 /* 预览弹窗 */
+.preview-dialog :deep(.el-dialog) {
+  border-radius: 12px;
+}
+
+.preview-dialog :deep(.el-dialog__header) {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e8e4df;
+}
+
+.preview-dialog :deep(.el-dialog__title) {
+  color: #6b6560;
+  font-weight: 500;
+  font-size: 18px;
+}
+
 .preview-dialog :deep(.el-dialog__body) {
   padding: 0;
   max-height: 75vh;
@@ -424,7 +455,7 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  background: #000;
+  background: #1a1a1a;
   min-height: 200px;
 }
 

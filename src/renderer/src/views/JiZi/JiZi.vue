@@ -153,7 +153,7 @@ const downloadImage = () => {
   padding: 20px;
   gap: 20px;
   box-sizing: border-box;
-  background: #f5f7fa;
+  background: #faf8f5;
 }
 
 .jizi-left {
@@ -167,16 +167,16 @@ const downloadImage = () => {
 
 .input-section {
   background: #fff;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border: 1px solid #e8e4df;
 }
 
 .settings-section {
   background: #fff;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border: 1px solid #e8e4df;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -190,21 +190,21 @@ const downloadImage = () => {
 
 .setting-label {
   font-size: 14px;
-  color: #606266;
+  color: #6b6560;
 }
 
 .char-list {
   background: #fff;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border: 1px solid #e8e4df;
   flex: 1;
   overflow-y: auto;
 }
 
 .char-list-title {
   font-size: 14px;
-  color: #909399;
+  color: #6b6560;
   margin-bottom: 10px;
 }
 
@@ -218,10 +218,10 @@ const downloadImage = () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  border: 1px solid #ebeef5;
-  border-radius: 6px;
+  border: 1px solid #e8e4df;
+  border-radius: 8px;
   overflow: hidden;
-  background: #fafafa;
+  background: #faf8f5;
 }
 
 .char-item.missing {
@@ -252,7 +252,7 @@ const downloadImage = () => {
 
 .char-label {
   font-size: 12px;
-  color: #606266;
+  color: #6b6560;
   padding: 4px 0;
   text-align: center;
 }
@@ -262,8 +262,8 @@ const downloadImage = () => {
   display: flex;
   flex-direction: column;
   background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border-radius: 12px;
+  border: 1px solid #e8e4df;
   overflow: hidden;
 }
 
@@ -272,10 +272,10 @@ const downloadImage = () => {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid #e8e4df;
   font-size: 15px;
   font-weight: 500;
-  color: #303133;
+  color: #3d3d3a;
 }
 
 .preview-area {
