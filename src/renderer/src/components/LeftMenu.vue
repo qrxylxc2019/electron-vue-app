@@ -36,7 +36,7 @@
       <el-sub-menu index="/summary">
         <template #title>
           <el-icon><Collection /></el-icon>
-          <span>学习汇总</span>
+          <span>信息汇总</span>
         </template>
         <el-menu-item index="/collect">
           <el-icon><Star /></el-icon>
@@ -68,11 +68,17 @@
         </el-menu-item>
       </el-sub-menu>
 
-      <!-- 一级：科目列表 -->
-      <el-menu-item index="/">
-        <el-icon><HomeFilled /></el-icon>
-        <template #title><span>科目列表</span></template>
-      </el-menu-item>
+      <!-- 一级：学习（二级：科目列表） -->
+      <el-sub-menu index="/study">
+        <template #title>
+          <el-icon><Reading /></el-icon>
+          <span>学习</span>
+        </template>
+        <el-menu-item index="/">
+          <el-icon><HomeFilled /></el-icon>
+          <template #title><span>科目列表</span></template>
+        </el-menu-item>
+      </el-sub-menu>
     </el-menu>
     <div class="collapse-btn" @click="toggleCollapse">
       <el-icon v-if="isCollapsed"><ArrowRight /></el-icon>
@@ -84,7 +90,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { HomeFilled, Calendar, EditPen, Star, Folder, Notebook, ChatDotRound, Key, Collection, Cpu, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import { HomeFilled, Calendar, EditPen, Star, Folder, Notebook, ChatDotRound, Key, Collection, Cpu, Reading, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const isCollapsed = ref(false)
