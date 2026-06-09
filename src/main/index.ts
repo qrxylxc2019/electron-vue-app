@@ -3035,7 +3035,25 @@ ipcMain.handle('xinxi:startCrawler', async () => {
 
   crawlerStatus = { running: true, progress: 0, message: '开始爬取数据...', total_count: 0 };
 
-  const scriptPath = path.join(__dirname, '..', '..', 'src', 'main', 'xinxi', 'xuexi_crawler.py');
+  // 使用 app.getAppPath() 获取项目根目录，在开发和打包环境都适用
+  const appPath = app.getAppPath();
+  const isDev = !app.isPackaged;
+  let scriptPath: string;
+  
+  if (isDev) {
+    // 开发环境：脚本在 src/main/xinxi/ 下
+    scriptPath = path.join(appPath, 'src', 'main', 'xinxi', 'xuexi_crawler.py');
+  } else {
+    // 生产环境：脚本在 resources/app.asar 外，或打包到 resources/ 下
+    scriptPath = path.join(process.resourcesPath, 'app', 'src', 'main', 'xinxi', 'xuexi_crawler.py');
+    // 如果上面的路径不存在，尝试另一个可能的路径
+    if (!fs.existsSync(scriptPath)) {
+      scriptPath = path.join(process.resourcesPath, 'src', 'main', 'xinxi', 'xuexi_crawler.py');
+    }
+  }
+
+  log(`Crawler script path: ${scriptPath}`);
+  log(`Script exists: ${fs.existsSync(scriptPath)}`);
 
   // 如果脚本不存在，返回错误
   if (!fs.existsSync(scriptPath)) {
@@ -3043,9 +3061,14 @@ ipcMain.handle('xinxi:startCrawler', async () => {
     return { code: 500, message: '爬虫脚本不存在: ' + scriptPath };
   }
 
+  // 获取数据库路径并传递给 Python 脚本
+  const dbPath = getDbPath();
+  const env = { ...process.env, ELECTRON_DB_PATH: dbPath };
+
   // 启动 Python 爬虫进程
   const pythonProcess = spawn('python', [scriptPath], {
-    cwd: path.dirname(scriptPath)
+    cwd: path.dirname(scriptPath),
+    env
   });
 
   let output = '';
@@ -3070,7 +3093,12 @@ ipcMain.handle('xinxi:startCrawler', async () => {
   });
 
   pythonProcess.stderr.on('data', (data) => {
-    console.error('Crawler stderr:', data.toString());
+    const text = data.toString();
+    console.error('Crawler stderr:', text);
+    // 将 stderr 的关键信息也更新到状态消息中
+    if (text.includes('Error') || text.includes('error') || text.includes('出错')) {
+      crawlerStatus.message = text.trim().substring(0, 200);
+    }
   });
 
   pythonProcess.on('close', (code) => {
@@ -3078,6 +3106,12 @@ ipcMain.handle('xinxi:startCrawler', async () => {
     crawlerStatus.progress = 100;
     crawlerStatus.message = `爬取完成，共获取 ${crawlerStatus.total_count} 条数据`;
     console.log(`Crawler process exited with code ${code}`);
+  });
+
+  pythonProcess.on('error', (err) => {
+    crawlerStatus.running = false;
+    crawlerStatus.message = `启动爬虫失败: ${err.message}`;
+    console.error('Crawler process error:', err);
   });
 
   return { code: 200, message: '爬虫任务已启动', result: crawlerStatus };
