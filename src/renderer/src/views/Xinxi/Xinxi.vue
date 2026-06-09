@@ -38,7 +38,7 @@
       :data="articles"
       v-loading="loadingArticles"
       stripe
-      style="width: 100%;height:619px"
+      style="width: 100%; height: calc(100vh - 180px)"
     >
       <el-table-column type="index" label="序号" width="100" />
       <el-table-column label="标题" min-width="300">
