@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu } from 'electron';
 import path from 'path';
 import Database from 'better-sqlite3';
 import { OpenAI } from 'openai';
@@ -1303,6 +1303,11 @@ function createWindow() {
       webviewTag: true
     }
   });
+
+  // 禁用 Alt 键显示菜单栏
+  mainWindow.setMenuBarVisibility(false);
+  // 移除所有菜单（包括 Alt 键触发的菜单）
+  Menu.setApplicationMenu(null);
 
   // 默认最大化窗口
   mainWindow.maximize();
