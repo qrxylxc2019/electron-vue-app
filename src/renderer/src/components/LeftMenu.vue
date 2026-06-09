@@ -23,7 +23,7 @@
       </el-menu-item>
       <el-menu-item index="/collect">
         <el-icon><Star /></el-icon>
-        <template #title><span>收藏</span></template>
+        <template #title><span>信息收藏</span></template>
       </el-menu-item>
       <el-menu-item index="/project">
         <el-icon><Folder /></el-icon>
