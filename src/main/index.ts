@@ -1280,6 +1280,9 @@ function createWindow() {
     }
   });
 
+  // 默认最大化窗口
+  mainWindow.maximize();
+
   const isDev = !app.isPackaged;
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');

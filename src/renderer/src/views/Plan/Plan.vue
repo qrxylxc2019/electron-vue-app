@@ -280,7 +280,6 @@
         <div class="subplan-header">
           <span class="subplan-title">详情</span>
           <el-icon class="subplan-refresh" @click.stop="refreshSubPlanList" title="刷新"><Refresh /></el-icon>
-          <el-button type="primary" @click.stop="closeSubPlanPanel">关闭</el-button>
         </div>
         <div class="subplan-content">
           <!-- 主计划编辑区域 -->
