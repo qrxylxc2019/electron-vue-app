@@ -519,11 +519,12 @@ const batchCrawlWeixinArticles = async () => {
   // }
 
   try {
-    const response = await axios.get('http://localhost:8000/api/weixin/rss/subscriptions', {
-      params: { limit: 9999, offset: 0 }
+    const response = await api.getWxaccountList({
+      page: 1,
+      pageNum: 9999
     })
-    if (response.data.success) {
-      allSubscriptions = response.data.result.list
+    if (response.code === 200) {
+      allSubscriptions = response.result.list
     }
   } catch (error) {
     console.error('获取订阅列表失败:', error)
@@ -821,14 +822,14 @@ const generateQrcode = async () => {
 const getSubscriptions = async () => {
   loading.value = true
   try {
-    const offset = (currentPage.value - 1) * pageSize.value
-    const response = await axios.get('http://localhost:8000/api/weixin/rss/subscriptions', {
-      params: { limit: pageSize.value, offset }
+    const response = await api.getWxaccountList({
+      page: currentPage.value,
+      pageNum: pageSize.value
     })
 
-    if (response.data.success) {
-      subscriptions.value = response.data.result.list
-      total.value = response.data.result.total
+    if (response.code === 200) {
+      subscriptions.value = response.result.list
+      total.value = response.result.pagination.total
     }
   } catch (error) {
     ElMessage.error('获取订阅列表失败')
@@ -937,9 +938,9 @@ const handleAddSubscription = async () => {
 
   submitting.value = true
   try {
-    const response = await axios.post('http://localhost:8000/api/weixin/rss/subscriptions', form.value)
+    const response = await api.addWxaccount(form.value)
 
-    if (response.data.success) {
+    if (response.code === 200) {
       ElMessage.success('添加成功')
       resetForm()
       getSubscriptions()
@@ -961,9 +962,9 @@ const deleteSubscription = async (id) => {
       type: 'warning'
     })
 
-    const response = await axios.delete(`http://localhost:8000/api/weixin/rss/subscriptions/${id}`)
+    const response = await api.deleteWxaccount(id)
 
-    if (response.data.success) {
+    if (response.code === 200) {
       ElMessage.success('删除成功')
       getSubscriptions()
     }
@@ -995,13 +996,13 @@ const handleEditSubscription = async () => {
   }
   editing.value = true
   try {
-    const response = await axios.put(`http://localhost:8000/api/weixin/rss/subscriptions/${editForm.value.id}`, {
+    const response = await api.updateWxaccount(editForm.value.id, {
       mp_name: editForm.value.mp_name,
       mp_id: editForm.value.mp_id,
       mp_cover: editForm.value.mp_cover,
       mp_intro: editForm.value.mp_intro
     })
-    if (response.data.success) {
+    if (response.code === 200) {
       ElMessage.success('编辑成功')
       showEditModal.value = false
       getSubscriptions()

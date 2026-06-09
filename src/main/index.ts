@@ -382,6 +382,22 @@ function initDatabase() {
     `);
     console.log('xinxi table ensured');
 
+    // wxaccount 表（微信公众号订阅）
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS wxaccount (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        mp_name TEXT NOT NULL,
+        mp_id TEXT NOT NULL UNIQUE,
+        mp_cover TEXT,
+        mp_intro TEXT,
+        faker_id TEXT,
+        status INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('wxaccount table ensured');
+
     // API 设置已改为前端本地存储 + 后端硬编码，无需数据库表
 
     console.log('Database initialized successfully');
@@ -3141,6 +3157,109 @@ ipcMain.handle('xinxi:add', async (_event, data: any) => {
     return { code: 200, result: { id: result.lastInsertRowid } };
   } catch (err: any) {
     console.error('xinxi:add error:', err);
+    return { code: 500, message: err.message };
+  }
+});
+
+// ==================== wxaccount 微信公众号订阅 ====================
+
+// 查询订阅列表
+ipcMain.handle('wxaccount:get', async (_event, params: any) => {
+  if (!db) return { code: 500, message: '数据库未初始化' };
+  try {
+    const { page = 1, pageNum = 10, keyword = '' } = params || {};
+    const offset = (page - 1) * pageNum;
+
+    let whereClause = '1=1';
+    const queryParams: any[] = [];
+
+    if (keyword) {
+      whereClause += ' AND (mp_name LIKE ? OR mp_id LIKE ?)';
+      queryParams.push(`%${keyword}%`, `%${keyword}%`);
+    }
+
+    const countStmt = db.prepare(`SELECT COUNT(*) as total FROM wxaccount WHERE ${whereClause}`);
+    const countResult = countStmt.get(...queryParams) as { total: number };
+    const total = countResult?.total || 0;
+
+    const listStmt = db.prepare(`
+      SELECT * FROM wxaccount
+      WHERE ${whereClause}
+      ORDER BY updated_at DESC
+      LIMIT ? OFFSET ?
+    `);
+    const list = listStmt.all(...queryParams, pageNum, offset);
+
+    return { code: 200, result: { list, pagination: { total, page, pageNum } } };
+  } catch (err: any) {
+    console.error('wxaccount:get error:', err);
+    return { code: 500, message: err.message };
+  }
+});
+
+// 添加订阅
+ipcMain.handle('wxaccount:add', async (_event, data: any) => {
+  if (!db) return { code: 500, message: '数据库未初始化' };
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO wxaccount (mp_name, mp_id, mp_cover, mp_intro, faker_id, status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(
+      data.mp_name || '',
+      data.mp_id || '',
+      data.mp_cover || null,
+      data.mp_intro || null,
+      data.faker_id || null,
+      data.status || 1
+    );
+    return { code: 200, result: { id: result.lastInsertRowid } };
+  } catch (err: any) {
+    console.error('wxaccount:add error:', err);
+    return { code: 500, message: err.message };
+  }
+});
+
+// 更新订阅
+ipcMain.handle('wxaccount:update', async (_event, id: number, data: any) => {
+  if (!db) return { code: 500, message: '数据库未初始化' };
+  try {
+    const stmt = db.prepare(`
+      UPDATE wxaccount SET
+        mp_name = ?,
+        mp_id = ?,
+        mp_cover = ?,
+        mp_intro = ?,
+        faker_id = ?,
+        status = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+    const result = stmt.run(
+      data.mp_name || '',
+      data.mp_id || '',
+      data.mp_cover || null,
+      data.mp_intro || null,
+      data.faker_id || null,
+      data.status || 1,
+      id
+    );
+    return { code: 200, result: { changes: result.changes } };
+  } catch (err: any) {
+    console.error('wxaccount:update error:', err);
+    return { code: 500, message: err.message };
+  }
+});
+
+// 删除订阅
+ipcMain.handle('wxaccount:delete', async (_event, id: number) => {
+  if (!db) return { code: 500, message: '数据库未初始化' };
+  try {
+    const stmt = db.prepare('DELETE FROM wxaccount WHERE id = ?');
+    const result = stmt.run(id);
+    return { code: 200, result: { changes: result.changes } };
+  } catch (err: any) {
+    console.error('wxaccount:delete error:', err);
     return { code: 500, message: err.message };
   }
 });

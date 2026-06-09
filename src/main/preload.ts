@@ -194,6 +194,12 @@ const electronAPI = {
   getXinxiList: (params: any) => ipcRenderer.invoke('xinxi:getList', params),
   clearXinxi: () => ipcRenderer.invoke('xinxi:clear'),
   addXinxi: (data: any) => ipcRenderer.invoke('xinxi:add', data),
+
+  // 微信公众号订阅
+  getWxaccountList: (params: any) => ipcRenderer.invoke('wxaccount:get', params),
+  addWxaccount: (data: any) => ipcRenderer.invoke('wxaccount:add', data),
+  updateWxaccount: (id: number, data: any) => ipcRenderer.invoke('wxaccount:update', id, data),
+  deleteWxaccount: (id: number) => ipcRenderer.invoke('wxaccount:delete', id),
 };
 
 // 暴露给渲染进程的 API
