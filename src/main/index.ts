@@ -2929,10 +2929,15 @@ ipcMain.handle('handwriting:get', async (_event, params: any) => {
       .map((file, index) => {
         const filePath = path.join(HANDWRITING_DIR, file);
         const stats = fs.statSync(filePath);
+        // 读取文件为 base64
+        const buffer = fs.readFileSync(filePath);
+        const ext = path.extname(file).toLowerCase().replace('.', '');
+        const mimeType = ext === 'jpg' ? 'jpeg' : ext;
+        const base64 = `data:image/${mimeType};base64,${buffer.toString('base64')}`;
         return {
           id: index + 1,
           name: path.basename(file, path.extname(file)),
-          url: filePath,
+          url: base64,
           size: stats.size,
         };
       });

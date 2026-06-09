@@ -124,13 +124,9 @@ const currentIndex = ref(0)
 
 let searchTimeout: number | null = null
 
-// 获取图片完整URL（本地文件路径转 file:// 协议）
+// 获取图片完整URL（现在直接返回 base64 数据）
 const getImageUrl = (url: string | undefined) => {
   if (!url) return ''
-  // 如果是本地绝对路径，转为 file:// 协议
-  if (url.startsWith('D:') || url.startsWith('C:')) {
-    return 'file:///' + url.replace(/\\/g, '/')
-  }
   return url
 }
 
