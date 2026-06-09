@@ -3111,7 +3111,7 @@ ipcMain.handle('xinxi:clear', async () => {
   if (!db) return { code: 500, message: '数据库未初始化' };
   try {
     db.exec('DELETE FROM xinxi');
-    db.exec('DELETE FROM sqlite_sequence WHERE name="xinxi"');
+    db.exec("DELETE FROM sqlite_sequence WHERE name='xinxi'");
     return { code: 200, message: '数据表已清空' };
   } catch (err: any) {
     console.error('xinxi:clear error:', err);
