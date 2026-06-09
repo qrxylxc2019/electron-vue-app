@@ -18,6 +18,7 @@ import Claude from '../views/Claude/Claude.vue';
 import Token from '../views/Token/Index.vue';
 import JiZi from '../views/JiZi/JiZi.vue';
 import HandWriting from '../views/HandWriting/HandWriting.vue';
+import Xinxi from '../views/Xinxi/Xinxi.vue';
 
 const routes = [
   { path: '/', name: 'Home', component: DirectoryList },
@@ -39,6 +40,7 @@ const routes = [
   { path: '/token', name: 'Token', component: Token },
   { path: '/jizi', name: 'JiZi', component: JiZi },
   { path: '/handwriting', name: 'HandWriting', component: HandWriting },
+  { path: '/xinxi', name: 'Xinxi', component: Xinxi },
 ];
 
 const router = createRouter({

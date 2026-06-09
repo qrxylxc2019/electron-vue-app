@@ -187,6 +187,13 @@ const electronAPI = {
   // 书法图片
   getHandwritingList: (params: any) => ipcRenderer.invoke('handwriting:get', params),
   deleteHandwriting: (name: string) => ipcRenderer.invoke('handwriting:delete', name),
+
+  // 学习信息
+  startXinxiCrawler: () => ipcRenderer.invoke('xinxi:startCrawler'),
+  getXinxiStatus: () => ipcRenderer.invoke('xinxi:getStatus'),
+  getXinxiList: (params: any) => ipcRenderer.invoke('xinxi:getList', params),
+  clearXinxi: () => ipcRenderer.invoke('xinxi:clear'),
+  addXinxi: (data: any) => ipcRenderer.invoke('xinxi:add', data),
 };
 
 // 暴露给渲染进程的 API

@@ -392,7 +392,8 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Search, Close, Key, List } from '@element-plus/icons-vue'
 import axios from 'axios'
-import request from '@/utils/request'
+
+const api = (window as any).electronAPI
 
 // 数据
 const articles = ref([])
@@ -465,18 +466,18 @@ const form = ref({
 const startCrawler = async () => {
   try {
     // 先清空数据表
-    const clearResponse = await axios.post('http://localhost:8000/api/xuexi/clear')
-    if (clearResponse.data.code === 200) {
+    const clearRes = await api.clearXinxi()
+    if (clearRes.code === 200) {
       ElMessage.success('已清空旧数据')
     } else {
-      ElMessage.warning('清空数据失败: ' + clearResponse.data.message)
+      ElMessage.warning('清空数据失败: ' + clearRes.message)
     }
 
-    const response = await axios.post('http://localhost:8000/api/xuexi/get', {})
-    if (response.data.code === 200) {
-      crawlerRunning.value = response.data.result.running
-      crawlerProgress.value = response.data.result.progress
-      statusMessage.value = response.data.result.status_message
+    const response = await api.startXinxiCrawler()
+    if (response.code === 200) {
+      crawlerRunning.value = response.result.running
+      crawlerProgress.value = response.result.progress
+      statusMessage.value = response.result.message
       startStatusPolling()
       ElMessage.success('爬虫任务已开始')
     }
@@ -489,9 +490,9 @@ const startCrawler = async () => {
 // 通用方法：根据 url 获取 cookie
 const getCookieByUrl = async (url) => {
   try {
-    const res = await request.post('http://localhost:8000/api/token/getCookieByUrl', { url })
-    if (res.code === 200 && res.data && res.data.cookie) {
-      return res.data.cookie
+    const res = await api.getTokenList({ url })
+    if (res.code === 200 && res.result && res.result.list && res.result.list.length > 0) {
+      return res.result.list[0].token || ''
     }
     return ''
   } catch (error) {
@@ -597,12 +598,12 @@ const startStatusPolling = () => {
 
   statusTimer = setInterval(async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/xuexi/status')
-      if (response.data.code === 200) {
-        const result = response.data.result
+      const response = await api.getXinxiStatus()
+      if (response.code === 200) {
+        const result = response.result
         crawlerRunning.value = result.running
         crawlerProgress.value = result.progress
-        statusMessage.value = result.status_message
+        statusMessage.value = result.message
 
         // 实时刷新文章列表（爬取中每500ms刷新一次）
         if (result.running) {
@@ -621,7 +622,7 @@ const startStatusPolling = () => {
         }
       }
     } catch (error) {
-      console.error('��取状态失败:', error)
+      console.error('获取状态失败:', error)
     }
   }, 500)
 }
@@ -649,23 +650,21 @@ const stopCrawler = () => {
   handleQueryArticles()
 }
 
-// 查询文章列表（只查询 xuexi 表）
+// 查询文章列表（只查询 xinxi 表）
 const handleQueryArticles = async () => {
   loadingArticles.value = true
   try {
     const keyword = articleKeyword.value.trim()
-    const conditions = keyword ? { title: keyword } : {}
 
-    const response = await axios.post('http://localhost:8000/api/xuexi/list', {
+    const response = await api.getXinxiList({
       page: articlePage.value,
       pageNum: articlePageSize.value,
-      conditions,
-      orderBy: { publish_time: 'desc' }
+      keyword
     })
 
-    if (response.data.code === 200) {
-      articles.value = response.data.result.list.filter(item => item.title)
-      articleTotal.value = response.data.result.pagination.total
+    if (response.code === 200) {
+      articles.value = response.result.list.filter(item => item.title)
+      articleTotal.value = response.result.pagination.total
     }
   } catch (error) {
     ElMessage.error('查询文章失败')
@@ -688,7 +687,7 @@ const openArticle = (url) => {
 // 收藏文章
 const collectArticle = async (row) => {
   try {
-    const res = await request.post('http://localhost:8000/api/collect/add', {
+    const res = await api.addCollect({
       title: row.title,
       url: row.url
     })
@@ -746,12 +745,12 @@ const handleSaveAuth = async () => {
     const response = await axios.post('http://localhost:8000/api/weixin/rss/auth/save', authForm.value)
 
     if (response.data.success) {
-      await request.post('http://localhost:8000/api/token/add', {
+      await api.addToken({
         url: 'wx_cookie',
         token: authForm.value.cookie
       })
 
-      await request.post('http://localhost:8000/api/token/add', {
+      await api.addToken({
         url: 'wx_token',
         token: authForm.value.token
       })

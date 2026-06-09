@@ -46,7 +46,7 @@
         </el-menu-item>
       </el-sub-menu>
 
-      <!-- 一级：学习汇总（二级：信息收藏、项目、笔记） -->
+      <!-- 一级：学习汇总（二级：信息收藏、项目、笔记、信息查询） -->
       <el-sub-menu index="/summary">
         <template #title>
           <el-icon><Collection /></el-icon>
@@ -63,6 +63,10 @@
         <el-menu-item index="/note">
           <el-icon><Notebook /></el-icon>
           <template #title><span>笔记</span></template>
+        </el-menu-item>
+        <el-menu-item index="/xinxi">
+          <el-icon><Document /></el-icon>
+          <template #title><span>信息查询</span></template>
         </el-menu-item>
       </el-sub-menu>
 
@@ -104,7 +108,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { HomeFilled, Calendar, EditPen, Star, Folder, Notebook, ChatDotRound, Key, Collection, Cpu, Reading, ArrowLeft, ArrowRight, Edit, Grid, Picture } from '@element-plus/icons-vue'
+import { HomeFilled, Calendar, EditPen, Star, Folder, Notebook, ChatDotRound, Key, Collection, Cpu, Reading, ArrowLeft, ArrowRight, Edit, Grid, Picture, Document } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const isCollapsed = ref(false)
@@ -142,6 +146,9 @@ const activeMenu = computed(() => {
   }
   if (path.startsWith('/handwriting')) {
     return '/handwriting'
+  }
+  if (path.startsWith('/xinxi')) {
+    return '/xinxi'
   }
   if (path.startsWith('/yearplan')) {
     return '/yearplan'

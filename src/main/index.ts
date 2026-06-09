@@ -365,6 +365,23 @@ function initDatabase() {
     `);
     console.log('token table ensured');
 
+    // xinxi 表（学习信息爬虫数据）
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS xinxi (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT,
+        publish_time INTEGER,
+        mp_name TEXT,
+        url TEXT,
+        article_id TEXT,
+        mp_id TEXT,
+        pic_url TEXT,
+        description TEXT,
+        create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('xinxi table ensured');
+
     // API 设置已改为前端本地存储 + 后端硬编码，无需数据库表
 
     console.log('Database initialized successfully');
@@ -2980,6 +2997,150 @@ ipcMain.handle('handwriting:delete', async (_event, name: string) => {
     return { code: 404, message: '文件不存在' };
   } catch (err: any) {
     console.error('handwriting:delete error:', err);
+    return { code: 500, message: err.message };
+  }
+});
+
+// ==================== xinxi 学习信息 ====================
+import { spawn } from 'child_process';
+
+let crawlerStatus = {
+  running: false,
+  progress: 0,
+  message: '',
+  total_count: 0
+};
+
+// 启动爬虫（调用 Python 脚本）
+ipcMain.handle('xinxi:startCrawler', async () => {
+  if (crawlerStatus.running) {
+    return { code: 200, message: '爬虫任务正在运行中', result: crawlerStatus };
+  }
+
+  crawlerStatus = { running: true, progress: 0, message: '开始爬取数据...', total_count: 0 };
+
+  const scriptPath = path.join(__dirname, '..', '..', 'src', 'main', 'xinxi', 'xuexi_crawler.py');
+
+  // 如果脚本不存在，返回错误
+  if (!fs.existsSync(scriptPath)) {
+    crawlerStatus.running = false;
+    return { code: 500, message: '爬虫脚本不存在: ' + scriptPath };
+  }
+
+  // 启动 Python 爬虫进程
+  const pythonProcess = spawn('python', [scriptPath], {
+    cwd: path.dirname(scriptPath)
+  });
+
+  let output = '';
+  pythonProcess.stdout.on('data', (data) => {
+    const text = data.toString();
+    output += text;
+    console.log('Crawler stdout:', text);
+
+    // 尝试解析进度信息
+    const progressMatch = text.match(/进度:(\d+)/);
+    if (progressMatch) {
+      crawlerStatus.progress = parseInt(progressMatch[1]);
+    }
+    const countMatch = text.match(/共获取 (\d+) 条/);
+    if (countMatch) {
+      crawlerStatus.total_count = parseInt(countMatch[1]);
+    }
+    const msgMatch = text.match(/消息:(.+)/);
+    if (msgMatch) {
+      crawlerStatus.message = msgMatch[1].trim();
+    }
+  });
+
+  pythonProcess.stderr.on('data', (data) => {
+    console.error('Crawler stderr:', data.toString());
+  });
+
+  pythonProcess.on('close', (code) => {
+    crawlerStatus.running = false;
+    crawlerStatus.progress = 100;
+    crawlerStatus.message = `爬取完成，共获取 ${crawlerStatus.total_count} 条数据`;
+    console.log(`Crawler process exited with code ${code}`);
+  });
+
+  return { code: 200, message: '爬虫任务已启动', result: crawlerStatus };
+});
+
+// 获取爬虫状态
+ipcMain.handle('xinxi:getStatus', async () => {
+  return { code: 200, result: crawlerStatus };
+});
+
+// 查询 xinxi 表数据
+ipcMain.handle('xinxi:getList', async (_event, params: any) => {
+  if (!db) return { code: 500, message: '数据库未初始化' };
+  try {
+    const { page = 1, pageNum = 20, keyword = '' } = params || {};
+    const offset = (page - 1) * pageNum;
+
+    let whereClause = '1=1';
+    const queryParams: any[] = [];
+
+    if (keyword) {
+      whereClause += ' AND (title LIKE ? OR mp_name LIKE ?)';
+      queryParams.push(`%${keyword}%`, `%${keyword}%`);
+    }
+
+    const countStmt = db.prepare(`SELECT COUNT(*) as total FROM xinxi WHERE ${whereClause}`);
+    const countResult = countStmt.get(...queryParams) as { total: number };
+    const total = countResult?.total || 0;
+
+    const listStmt = db.prepare(`
+      SELECT * FROM xinxi
+      WHERE ${whereClause}
+      ORDER BY publish_time DESC
+      LIMIT ? OFFSET ?
+    `);
+    const list = listStmt.all(...queryParams, pageNum, offset);
+
+    return { code: 200, result: { list, pagination: { total, page, pageNum } } };
+  } catch (err: any) {
+    console.error('xinxi:getList error:', err);
+    return { code: 500, message: err.message };
+  }
+});
+
+// 清空 xinxi 表
+ipcMain.handle('xinxi:clear', async () => {
+  if (!db) return { code: 500, message: '数据库未初始化' };
+  try {
+    db.exec('DELETE FROM xinxi');
+    db.exec('DELETE FROM sqlite_sequence WHERE name="xinxi"');
+    return { code: 200, message: '数据表已清空' };
+  } catch (err: any) {
+    console.error('xinxi:clear error:', err);
+    return { code: 500, message: err.message };
+  }
+});
+
+// 添加单条 xinxi 数据（爬虫脚本调用）
+ipcMain.handle('xinxi:add', async (_event, data: any) => {
+  if (!db) return { code: 500, message: '数据库未初始化' };
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO xinxi (title, publish_time, mp_name, url, article_id, mp_id, pic_url, description)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(
+      data.title || '',
+      data.publish_time || null,
+      data.mp_name || '',
+      data.url || '',
+      data.article_id || null,
+      data.mp_id || null,
+      data.pic_url || null,
+      data.description || null
+    );
+    crawlerStatus.total_count += 1;
+    return { code: 200, result: { id: result.lastInsertRowid } };
+  } catch (err: any) {
+    console.error('xinxi:add error:', err);
     return { code: 500, message: err.message };
   }
 });
