@@ -13,6 +13,7 @@ import Solicit from '../views/Solicit/Solicit.vue';
 import Collect from '../views/Collect/Collect.vue';
 import Project from '../views/Project/Project.vue';
 import YearPlan from '../views/YearPlan/YearPlan.vue';
+import Note from '../views/Note/Note.vue';
 
 const routes = [
   { path: '/', name: 'Home', component: DirectoryList },
@@ -29,6 +30,7 @@ const routes = [
   { path: '/collect', name: 'Collect', component: Collect },
   { path: '/project', name: 'Project', component: Project },
   { path: '/yearplan', name: 'YearPlan', component: YearPlan },
+  { path: '/note', name: 'Note', component: Note },
 ];
 
 const router = createRouter({

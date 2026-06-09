@@ -34,6 +34,10 @@
         <el-icon><EditPen /></el-icon>
         <template #title><span>征稿</span></template>
       </el-menu-item>
+      <el-menu-item index="/note">
+        <el-icon><Notebook /></el-icon>
+        <template #title><span>笔记</span></template>
+      </el-menu-item>
       <el-menu-item index="/">
         <el-icon><HomeFilled /></el-icon>
         <template #title><span>科目列表</span></template>
@@ -49,7 +53,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { HomeFilled, Calendar, EditPen, Star, Folder, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import { HomeFilled, Calendar, EditPen, Star, Folder, Notebook, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const isCollapsed = ref(false)
@@ -84,6 +88,9 @@ const activeMenu = computed(() => {
   }
   if (path.startsWith('/yearplan')) {
     return '/yearplan'
+  }
+  if (path.startsWith('/note')) {
+    return '/note'
   }
   return path
 })

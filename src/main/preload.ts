@@ -163,6 +163,13 @@ const electronAPI = {
   addCollect: (data: any) => ipcRenderer.invoke('collect:add', data),
   deleteCollect: (id: number) => ipcRenderer.invoke('collect:delete', id),
   fetchCollectUrlTitle: (url: string) => ipcRenderer.invoke('collect:fetchUrlTitle', url),
+
+  // 笔记
+  getNoteList: (params: any) => ipcRenderer.invoke('note:get', params),
+  getNoteById: (id: number) => ipcRenderer.invoke('note:getById', id),
+  addNote: (data: any) => ipcRenderer.invoke('note:add', data),
+  updateNote: (id: number, data: any) => ipcRenderer.invoke('note:update', id, data),
+  deleteNote: (id: number) => ipcRenderer.invoke('note:delete', id),
 };
 
 // 暴露给渲染进程的 API

@@ -2560,6 +2560,118 @@ ipcMain.handle('deepseekLocal:testToken', async (_event, token: string) => {
   }
 });
 
+// ========== 笔记 (note) IPC ==========
+
+ipcMain.handle('note:get', (_event, params: any) => {
+  if (!db) return { list: [], pagination: { total: 0, current: 1, pageNum: 20, totalPages: 0 } };
+  try {
+    const { page = 1, pageNum = 20, conditions = {}, orderBy } = params;
+    const whereClauses: string[] = [];
+    const values: any[] = [];
+
+    if (conditions.title) {
+      whereClauses.push('title LIKE ?');
+      values.push(`%${conditions.title}%`);
+    }
+    if (conditions.content) {
+      whereClauses.push('content LIKE ?');
+      values.push(`%${conditions.content}%`);
+    }
+
+    const whereStr = whereClauses.length > 0 ? 'WHERE ' + whereClauses.join(' AND ') : '';
+
+    // Count total
+    const countStmt = db.prepare(`SELECT COUNT(*) as total FROM note ${whereStr}`);
+    const { total } = countStmt.get(...values) as any;
+
+    // Order by
+    let orderStr = 'ORDER BY id DESC';
+    if (orderBy && orderBy.column) {
+      const dir = orderBy.type === 'ASC' ? 'ASC' : 'DESC';
+      orderStr = `ORDER BY ${orderBy.column} ${dir}`;
+    }
+
+    // Pagination
+    const offset = (page - 1) * pageNum;
+    const dataStmt = db.prepare(`SELECT * FROM note ${whereStr} ${orderStr} LIMIT ? OFFSET ?`);
+    const list = dataStmt.all(...values, pageNum, offset);
+
+    return {
+      list,
+      pagination: {
+        total,
+        current: page,
+        pageNum,
+        totalPages: Math.ceil(total / pageNum),
+      },
+    };
+  } catch (err: any) {
+    console.error('note:get error:', err);
+    return { list: [], pagination: { total: 0, current: 1, pageNum: 20, totalPages: 0 } };
+  }
+});
+
+ipcMain.handle('note:getById', (_event, id: number) => {
+  if (!db) return null;
+  try {
+    const stmt = db.prepare('SELECT * FROM note WHERE id = ?');
+    return stmt.get(id);
+  } catch (err: any) {
+    console.error('note:getById error:', err);
+    return null;
+  }
+});
+
+ipcMain.handle('note:add', (_event, data: any) => {
+  if (!db) return null;
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO note (title, content, type)
+      VALUES (?, ?, ?)
+    `);
+    const result = stmt.run(
+      data.title || '',
+      data.content || '',
+      data.type || '学习笔记'
+    );
+    return { id: result.lastInsertRowid, ...data };
+  } catch (err: any) {
+    console.error('note:add error:', err);
+    return null;
+  }
+});
+
+ipcMain.handle('note:update', (_event, id: number, data: any) => {
+  if (!db) return false;
+  try {
+    const fields: string[] = [];
+    const values: any[] = [];
+    if (data.title !== undefined) { fields.push('title = ?'); values.push(data.title); }
+    if (data.content !== undefined) { fields.push('content = ?'); values.push(data.content); }
+    if (data.type !== undefined) { fields.push('type = ?'); values.push(data.type); }
+    if (fields.length === 0) return false;
+    values.push(id);
+    const stmt = db.prepare(`UPDATE note SET ${fields.join(', ')} WHERE id = ?`);
+    const result = stmt.run(...values);
+    return result.changes > 0;
+  } catch (err: any) {
+    console.error('note:update error:', err);
+    return false;
+  }
+});
+
+ipcMain.handle('note:delete', (_event, id: number) => {
+  if (!db) return false;
+  try {
+    const stmt = db.prepare('DELETE FROM note WHERE id = ?');
+    const result = stmt.run(id);
+    return result.changes > 0;
+  } catch (err: any) {
+    console.error('note:delete error:', err);
+    return false;
+  }
+});
+
 app.on('window-all-closed', () => {
   if (db) {
     db.close();

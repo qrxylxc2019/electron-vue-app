@@ -139,9 +139,10 @@
 <script lang="ts" setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import request from '@/utils/request'
 import { Search, Plus, Edit, Delete, Lock } from '@element-plus/icons-vue'
 import RichEditor from '@/components/editor.vue'
+
+const api = (window as any).electronAPI
 
 interface Note {
   id?: number
@@ -210,10 +211,10 @@ const fetchNotes = async () => {
     if (searchText.value) {
       params.conditions = { title: searchText.value, content: searchText.value }
     }
-    const res = await request.post('http://localhost:8000/api/note/get', params)
-    if (res.code === 200 && res.result?.list) {
-      notes.value = res.result.list
-      total.value = res.result.pagination?.total || 0
+    const res = await api.getNoteList(params)
+    if (res && res.list) {
+      notes.value = res.list
+      total.value = res.pagination?.total || 0
     } else {
       notes.value = []
       total.value = 0
@@ -259,9 +260,9 @@ const showAddDrawer = () => {
 const handleEdit = async (row: Note) => {
   isEdit.value = true
   try {
-    const res = await request.get(`http://localhost:8000/api/note/content?id=${row.id}`)
-    if (res.code === 200 && res.data) {
-      const data = res.data
+    const res = await api.getNoteById(row.id as number)
+    if (res) {
+      const data = res
       form.value = {
         id: data.id,
         title: data.title || '',
@@ -294,17 +295,17 @@ const handleSubmit = async () => {
     }
     let res
     if (isEdit.value && noteData.id) {
-      res = await request.post('http://localhost:8000/api/note/update', noteData)
+      res = await api.updateNote(noteData.id as number, noteData)
     } else {
       delete noteData.id
-      res = await request.post('http://localhost:8000/api/note/add', noteData)
+      res = await api.addNote(noteData)
     }
-    if (res.code === 200) {
+    if (res) {
       ElMessage.success(isEdit.value ? '更新成功' : '新增成功')
       drawerVisible.value = false
       fetchNotes()
     } else {
-      ElMessage.error(res.message || '保存失败')
+      ElMessage.error('保存失败')
     }
   } catch (error) {
     console.error('保存笔记失败:', error)
@@ -320,12 +321,12 @@ const handleDelete = async (row: Note) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    const res = await request.post('http://localhost:8000/api/note/delete', { id: row.id })
-    if (res.code === 200) {
+    const res = await api.deleteNote(row.id as number)
+    if (res) {
       ElMessage.success('删除成功')
       fetchNotes()
     } else {
-      ElMessage.error(res.message || '删除失败')
+      ElMessage.error('删除失败')
     }
   } catch (error) {
     if (error !== 'cancel') {
@@ -383,9 +384,9 @@ const confirmPrint = async () => {
       let noteContent = note.note || note.content || ''
       if (!noteContent && note.id) {
         try {
-          const res = await request.get(`http://localhost:8000/api/note/content?id=${note.id}`)
-          if (res.code === 200 && res.data) {
-            noteContent = res.data.note || res.data.content || ''
+          const res = await api.getNoteById(note.id as number)
+          if (res) {
+            noteContent = res.note || res.content || ''
           }
         } catch {}
       }
