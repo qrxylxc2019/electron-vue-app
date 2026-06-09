@@ -2574,7 +2574,7 @@ ipcMain.handle('note:get', (_event, params: any) => {
       values.push(`%${conditions.title}%`);
     }
     if (conditions.content) {
-      whereClauses.push('content LIKE ?');
+      whereClauses.push('note LIKE ?');
       values.push(`%${conditions.content}%`);
     }
 
@@ -2626,7 +2626,7 @@ ipcMain.handle('note:add', (_event, data: any) => {
   if (!db) return null;
   try {
     const stmt = db.prepare(`
-      INSERT INTO note (title, content, type)
+      INSERT INTO note (title, note, type)
       VALUES (?, ?, ?)
     `);
     const result = stmt.run(
@@ -2647,7 +2647,7 @@ ipcMain.handle('note:update', (_event, id: number, data: any) => {
     const fields: string[] = [];
     const values: any[] = [];
     if (data.title !== undefined) { fields.push('title = ?'); values.push(data.title); }
-    if (data.content !== undefined) { fields.push('content = ?'); values.push(data.content); }
+    if (data.content !== undefined) { fields.push('note = ?'); values.push(data.content); }
     if (data.type !== undefined) { fields.push('type = ?'); values.push(data.type); }
     if (fields.length === 0) return false;
     values.push(id);

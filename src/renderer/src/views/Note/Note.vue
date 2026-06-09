@@ -1,22 +1,6 @@
 <template>
   <div class="note-container">
     <div class="header">
-      <!-- 密码输入框 -->
-      <el-input
-        v-if="!isPasswordVerified"
-        v-model="passwordInput"
-        placeholder="请输入访问密码"
-        class="password-input"
-        size="large"
-        clearable
-        show-password
-        @change="verifyPassword"
-      >
-        <template #prefix>
-          <el-icon><Lock /></el-icon>
-        </template>
-      </el-input>
-      
       <el-input
         v-model="searchText"
         placeholder="搜索笔记"
@@ -100,6 +84,23 @@
       />
     </div>
 
+    <div v-if="passwordDialogVisible" class="password-overlay">
+      <div class="password-box">
+        <el-input
+          v-model="passwordInput"
+          placeholder="请填写"
+          size="large"
+          clearable
+          show-password
+          @input="checkPassword"
+        >
+          <template #prefix>
+            <el-icon><Lock /></el-icon>
+          </template>
+        </el-input>
+      </div>
+    </div>
+
     <!-- 新增/编辑抽屉 -->
     <el-drawer
       v-model="drawerVisible"
@@ -160,6 +161,7 @@ interface Note {
 // 数据定义
 const notes = ref<Note[]>([])
 const searchText = ref('')
+const passwordDialogVisible = ref(true)
 const passwordInput = ref('')
 const editorRef = ref(null)
 const loading = ref(false)
@@ -186,13 +188,19 @@ const form = ref<Note>({
 
 let searchTimeout: number | null = null
 
-// 验证密码
-const verifyPassword = () => {
+// 实时校验密码
+const checkPassword = () => {
   if (passwordInput.value === '619619') {
     ElMessage({ message: '验证成功', type: 'success' })
     isPasswordVerified.value = true
+    passwordDialogVisible.value = false
     fetchNotes()
-  } else {
+  }
+}
+
+// 验证密码（回车时触发）
+const verifyPassword = () => {
+  if (passwordInput.value !== '619619') {
     ElMessage({ message: '密码错误', type: 'error' })
     passwordInput.value = ''
   }
@@ -290,14 +298,14 @@ const handleSubmit = async () => {
       form.value.note = editorRef.value.getContent()
     }
     const noteData = {
-      ...form.value,
-      content: form.value.note,
+      title: form.value.title,
+      content: form.value.note || form.value.content || '',
+      type: form.value.type || '学习笔记',
     }
     let res
-    if (isEdit.value && noteData.id) {
-      res = await api.updateNote(noteData.id as number, noteData)
+    if (isEdit.value && form.value.id) {
+      res = await api.updateNote(form.value.id as number, noteData)
     } else {
-      delete noteData.id
       res = await api.addNote(noteData)
     }
     if (res) {
@@ -443,6 +451,7 @@ const confirmPrint = async () => {
     flex-direction: column;
     background-color: #faf8f5;
     color: #1a1a1a;
+    position: relative;
   }
 
   .header {
@@ -740,5 +749,36 @@ const confirmPrint = async () => {
   :deep(.el-textarea__inner:focus) {
     box-shadow: 0 0 0 1px #c4a882 inset !important;
     border-color: #c4a882 !important;
+  }
+
+  /* 密码验证遮罩 */
+  .password-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(250, 248, 245, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+
+  .password-box {
+    width: 360px;
+    padding: 32px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e8e4df;
+  }
+
+  .password-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #3d3d3a;
+    text-align: center;
+    margin-bottom: 24px;
   }
 </style>
