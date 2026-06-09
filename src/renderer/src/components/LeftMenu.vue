@@ -26,11 +26,17 @@
         <template #title><span>月计划</span></template>
       </el-menu-item>
 
-      <!-- 一级：征稿 -->
-      <el-menu-item index="/solicit">
-        <el-icon><EditPen /></el-icon>
-        <template #title><span>征稿</span></template>
-      </el-menu-item>
+      <!-- 一级：书法（二级：征稿） -->
+      <el-sub-menu index="/calligraphy">
+        <template #title>
+          <el-icon><Edit /></el-icon>
+          <span>书法</span>
+        </template>
+        <el-menu-item index="/solicit">
+          <el-icon><EditPen /></el-icon>
+          <template #title><span>征稿</span></template>
+        </el-menu-item>
+      </el-sub-menu>
 
       <!-- 一级：学习汇总（二级：信息收藏、项目、笔记） -->
       <el-sub-menu index="/summary">
