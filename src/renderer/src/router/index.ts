@@ -16,6 +16,7 @@ import YearPlan from '../views/YearPlan/YearPlan.vue';
 import Note from '../views/Note/Note.vue';
 import Claude from '../views/Claude/Claude.vue';
 import Token from '../views/Token/Index.vue';
+import JiZi from '../views/JiZi/JiZi.vue';
 
 const routes = [
   { path: '/', name: 'Home', component: DirectoryList },
@@ -35,6 +36,7 @@ const routes = [
   { path: '/note', name: 'Note', component: Note },
   { path: '/claude', name: 'Claude', component: Claude },
   { path: '/token', name: 'Token', component: Token },
+  { path: '/jizi', name: 'JiZi', component: JiZi },
 ];
 
 const router = createRouter({

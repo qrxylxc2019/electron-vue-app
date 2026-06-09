@@ -78,7 +78,6 @@
 <script lang="ts" setup>
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import request from '@/utils/request'
 
 interface CharResult {
   char: string
@@ -101,7 +100,7 @@ const getUrl = (url: string | null) => {
   return `http://localhost:8000${url}`
 }
 
-// 输入变化时搜索匹配
+// 输入变化时搜索匹配（暂不调用接口）
 const handleTextChange = () => {
   if (searchTimeout) clearTimeout(searchTimeout)
   searchTimeout = setTimeout(async () => {
@@ -110,18 +109,13 @@ const handleTextChange = () => {
       charResults.value = []
       return
     }
-    try {
-      const res = await request.post('http://localhost:8000/api/jizi/search', { text })
-      if (res.code === 200) {
-        charResults.value = res.result
-      }
-    } catch (e) {
-      console.error('搜索失败', e)
-    }
+    // TODO: 后续替换为 Electron IPC 调用
+    // const res = await window.electronAPI.jizi.search({ text })
+    console.log('搜索文字:', text)
   }, 400)
 }
 
-// 生成拼图
+// 生成拼图（暂不调用接口）
 const generateCompose = async () => {
   const chars = inputText.value.replace(/\s/g, '').split('')
   if (chars.length === 0) {
@@ -131,14 +125,9 @@ const generateCompose = async () => {
   composeLoading.value = true
   composeUrl.value = ''
   try {
-    const res = await fetch('http://localhost:8000/api/jizi/compose', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chars, cols: cols.value, rows: rows.value, cellSize: cellSize.value })
-    })
-    if (!res.ok) throw new Error('请求失败')
-    const blob = await res.blob()
-    composeUrl.value = URL.createObjectURL(blob)
+    // TODO: 后续替换为 Electron IPC 调用
+    ElMessage.info('集字功能接口待接入')
+    console.log('生成拼图参数:', { chars, cols: cols.value, rows: rows.value, cellSize: cellSize.value })
   } catch (e) {
     ElMessage.error('生成拼图失败')
     console.error(e)
