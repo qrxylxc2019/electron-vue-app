@@ -2907,6 +2907,78 @@ ipcMain.handle('token:delete', (_event, id: number) => {
   }
 });
 
+// 书法图片 - 遍历本地目录
+const HANDWRITING_DIR = 'D:\\\\书法图片';
+
+ipcMain.handle('handwriting:get', async (_event, params: any) => {
+  try {
+    const { page = 1, pageNum = 20, keyword = '' } = params || {};
+
+    if (!fs.existsSync(HANDWRITING_DIR)) {
+      return { code: 200, result: { list: [], pagination: { total: 0, page, pageNum } } };
+    }
+
+    // 读取目录下所有图片文件
+    const files = fs.readdirSync(HANDWRITING_DIR);
+    const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+    let images = files
+      .filter((file) => {
+        const ext = path.extname(file).toLowerCase();
+        return imageExts.includes(ext);
+      })
+      .map((file, index) => {
+        const filePath = path.join(HANDWRITING_DIR, file);
+        const stats = fs.statSync(filePath);
+        return {
+          id: index + 1,
+          name: path.basename(file, path.extname(file)),
+          url: filePath,
+          size: stats.size,
+        };
+      });
+
+    // 关键词过滤
+    if (keyword) {
+      images = images.filter((img) => img.name.includes(keyword));
+    }
+
+    const total = images.length;
+
+    // 分页
+    const start = (page - 1) * pageNum;
+    const end = start + pageNum;
+    const list = images.slice(start, end);
+
+    return { code: 200, result: { list, pagination: { total, page, pageNum } } };
+  } catch (err: any) {
+    console.error('handwriting:get error:', err);
+    return { code: 500, message: err.message };
+  }
+});
+
+ipcMain.handle('handwriting:delete', async (_event, name: string) => {
+  try {
+    const filePath = path.join(HANDWRITING_DIR, name + '.png');
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      return { code: 200 };
+    }
+    // 尝试查找其他扩展名
+    const exts = ['.jpg', '.jpeg', '.gif', '.bmp', '.webp'];
+    for (const ext of exts) {
+      const p = path.join(HANDWRITING_DIR, name + ext);
+      if (fs.existsSync(p)) {
+        fs.unlinkSync(p);
+        return { code: 200 };
+      }
+    }
+    return { code: 404, message: '文件不存在' };
+  } catch (err: any) {
+    console.error('handwriting:delete error:', err);
+    return { code: 500, message: err.message };
+  }
+});
+
 app.on('window-all-closed', () => {
   if (db) {
     db.close();

@@ -17,6 +17,7 @@ import Note from '../views/Note/Note.vue';
 import Claude from '../views/Claude/Claude.vue';
 import Token from '../views/Token/Index.vue';
 import JiZi from '../views/JiZi/JiZi.vue';
+import HandWriting from '../views/HandWriting/HandWriting.vue';
 
 const routes = [
   { path: '/', name: 'Home', component: DirectoryList },
@@ -37,6 +38,7 @@ const routes = [
   { path: '/claude', name: 'Claude', component: Claude },
   { path: '/token', name: 'Token', component: Token },
   { path: '/jizi', name: 'JiZi', component: JiZi },
+  { path: '/handwriting', name: 'HandWriting', component: HandWriting },
 ];
 
 const router = createRouter({

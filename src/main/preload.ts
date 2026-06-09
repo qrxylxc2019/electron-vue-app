@@ -183,6 +183,10 @@ const electronAPI = {
   addToken: (data: any) => ipcRenderer.invoke('token:add', data),
   updateToken: (id: number, data: any) => ipcRenderer.invoke('token:update', id, data),
   deleteToken: (id: number) => ipcRenderer.invoke('token:delete', id),
+
+  // 书法图片
+  getHandwritingList: (params: any) => ipcRenderer.invoke('handwriting:get', params),
+  deleteHandwriting: (name: string) => ipcRenderer.invoke('handwriting:delete', name),
 };
 
 // 暴露给渲染进程的 API

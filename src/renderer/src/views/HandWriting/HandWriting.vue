@@ -99,7 +99,8 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Picture, Loading, ArrowLeft, ArrowRight, Printer, Delete } from '@element-plus/icons-vue'
-import request from '@/utils/request'
+
+const api = (window as any).electronAPI
 
 interface ImageItem {
   id: number
@@ -123,10 +124,14 @@ const currentIndex = ref(0)
 
 let searchTimeout: number | null = null
 
-// 获取图片完整URL
+// 获取图片完整URL（本地文件路径转 file:// 协议）
 const getImageUrl = (url: string | undefined) => {
   if (!url) return ''
-  return `http://localhost:8000${url}`
+  // 如果是本地绝对路径，转为 file:// 协议
+  if (url.startsWith('D:') || url.startsWith('C:')) {
+    return 'file:///' + url.replace(/\\/g, '/')
+  }
+  return url
 }
 
 // 获取图片列表
@@ -138,9 +143,9 @@ const fetchImages = async () => {
       pageNum: pageSize.value,
       keyword: searchKeyword.value || undefined
     }
-    
-    const res = await request.post('http://localhost:8000/api/handwriting/get', params)
-    
+
+    const res = await api.getHandwritingList(params)
+
     if (res.code === 200 && res.result) {
       images.value = res.result.list || []
       total.value = res.result.pagination?.total || 0
@@ -263,7 +268,7 @@ const handleDelete = async (image: ImageItem) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    const res = await request.post('http://localhost:8000/api/handwriting/delete', { name: image.name })
+    const res = await api.deleteHandwriting(image.name)
     if (res.code === 200) {
       ElMessage.success('删除成功')
       fetchImages()
