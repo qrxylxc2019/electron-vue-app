@@ -14,6 +14,8 @@ import Collect from '../views/Collect/Collect.vue';
 import Project from '../views/Project/Project.vue';
 import YearPlan from '../views/YearPlan/YearPlan.vue';
 import Note from '../views/Note/Note.vue';
+import Claude from '../views/Claude/Claude.vue';
+import Token from '../views/Token/Index.vue';
 
 const routes = [
   { path: '/', name: 'Home', component: DirectoryList },
@@ -31,6 +33,8 @@ const routes = [
   { path: '/project', name: 'Project', component: Project },
   { path: '/yearplan', name: 'YearPlan', component: YearPlan },
   { path: '/note', name: 'Note', component: Note },
+  { path: '/claude', name: 'Claude', component: Claude },
+  { path: '/token', name: 'Token', component: Token },
 ];
 
 const router = createRouter({

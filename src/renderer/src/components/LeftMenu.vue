@@ -38,6 +38,14 @@
         <el-icon><Notebook /></el-icon>
         <template #title><span>笔记</span></template>
       </el-menu-item>
+      <el-menu-item index="/claude">
+        <el-icon><ChatDotRound /></el-icon>
+        <template #title><span>Claude</span></template>
+      </el-menu-item>
+      <el-menu-item index="/token">
+        <el-icon><Key /></el-icon>
+        <template #title><span>Token</span></template>
+      </el-menu-item>
       <el-menu-item index="/">
         <el-icon><HomeFilled /></el-icon>
         <template #title><span>科目列表</span></template>
@@ -53,7 +61,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { HomeFilled, Calendar, EditPen, Star, Folder, Notebook, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import { HomeFilled, Calendar, EditPen, Star, Folder, Notebook, ChatDotRound, Key, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const isCollapsed = ref(false)
@@ -91,6 +99,12 @@ const activeMenu = computed(() => {
   }
   if (path.startsWith('/note')) {
     return '/note'
+  }
+  if (path.startsWith('/claude')) {
+    return '/claude'
+  }
+  if (path.startsWith('/token')) {
+    return '/token'
   }
   return path
 })

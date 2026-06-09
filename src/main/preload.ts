@@ -170,6 +170,19 @@ const electronAPI = {
   addNote: (data: any) => ipcRenderer.invoke('note:add', data),
   updateNote: (id: number, data: any) => ipcRenderer.invoke('note:update', id, data),
   deleteNote: (id: number) => ipcRenderer.invoke('note:delete', id),
+
+  // Claude
+  getClaudeList: (params: any) => ipcRenderer.invoke('claude:get', params),
+  addClaude: (data: any) => ipcRenderer.invoke('claude:add', data),
+  updateClaude: (id: number, data: any) => ipcRenderer.invoke('claude:update', id, data),
+  deleteClaude: (id: number) => ipcRenderer.invoke('claude:delete', id),
+  switchClaude: (data: any) => ipcRenderer.invoke('claude:switch', data),
+
+  // Token
+  getTokenList: (params: any) => ipcRenderer.invoke('token:get', params),
+  addToken: (data: any) => ipcRenderer.invoke('token:add', data),
+  updateToken: (id: number, data: any) => ipcRenderer.invoke('token:update', id, data),
+  deleteToken: (id: number) => ipcRenderer.invoke('token:delete', id),
 };
 
 // 暴露给渲染进程的 API

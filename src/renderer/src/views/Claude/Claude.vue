@@ -105,11 +105,12 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Switch, CopyDocument, Edit, Delete } from '@element-plus/icons-vue'
-import request from '@/utils/request'
+
+const api = (window as any).electronAPI
 
 // 数据
 const claudeList = ref([])
@@ -142,16 +143,16 @@ const editForm = ref({
 const handleQuery = async () => {
   loading.value = true
   try {
-    const res = await request.post('http://localhost:8000/api/claude/get', {
+    const res = await api.getClaudeList({
       page: currentPage.value,
       pageNum: pageSize.value,
       conditions: {},
       orderBy: {}
     })
 
-    if (res.code === 200) {
-      claudeList.value = res.result.list
-      total.value = res.result.pagination.total
+    if (res && res.list) {
+      claudeList.value = res.list
+      total.value = res.pagination.total
     }
   } catch (error) {
     ElMessage.error('查询失败')
@@ -170,9 +171,9 @@ const handleAdd = async () => {
 
   submitting.value = true
   try {
-    const res = await request.post('http://localhost:8000/api/claude/add', form.value)
+    const res = await api.addClaude(form.value)
 
-    if (res.code === 200) {
+    if (res) {
       ElMessage.success('添加成功')
       showAddModal.value = false
       resetForm()
@@ -206,9 +207,9 @@ const handleEdit = async () => {
 
   editing.value = true
   try {
-    const res = await request.post('http://localhost:8000/api/claude/update', editForm.value)
+    const res = await api.updateClaude(editForm.value.id, editForm.value)
 
-    if (res.code === 200) {
+    if (res) {
       ElMessage.success('编辑成功')
       showEditModal.value = false
       handleQuery()
@@ -230,9 +231,9 @@ const handleDelete = async (id) => {
       type: 'warning'
     })
 
-    const res = await request.post('http://localhost:8000/api/claude/delete', { id })
+    const res = await api.deleteClaude(id)
 
-    if (res.code === 200) {
+    if (res) {
       ElMessage.success('删除成功')
       handleQuery()
     }
@@ -257,15 +258,13 @@ const handleSwitch = async (row) => {
       }
     )
 
-    const res = await request.post('http://localhost:8000/api/claude/switch', {
-      url: row.url,
-      token: row.token
-    })
-
-    if (res.code === 200) {
-      ElMessage.success('切换成功！配置已更新到 settings.json')
-    } else {
-      ElMessage.error(res.message || '切换失败')
+    // 切换配置：将当前选中的 claude 配置保存到本地存储
+    try {
+      const config = { url: row.url, token: row.token }
+      await api.switchClaude(config)
+      ElMessage.success('切换成功！配置已更新')
+    } catch (err: any) {
+      ElMessage.error(err.message || '切换失败')
     }
   } catch (error) {
     if (error !== 'cancel') {

@@ -94,6 +94,8 @@
 <script>
 import { Plus, Search, CopyDocument, Edit, Delete } from '@element-plus/icons-vue'
 
+const api = window.electronAPI
+
 export default {
   components: {
     Plus,
@@ -154,13 +156,13 @@ export default {
         pageNum: this.pageNum,
         orderBy: { column: "id", type: "desc" },
       };
-      this.$axios.post("http://localhost:8000/api/token/get", params)
+      api.getTokenList(params)
         .then((res) => {
-          if (res.data.code === 200) {
-            this.tableData = res.data.result?.list || [];
-            this.total = res.data.result?.pagination?.total || 0;
+          if (res && res.list) {
+            this.tableData = res.list || [];
+            this.total = res.pagination?.total || 0;
           } else {
-            this.$message.error(res.data.message || "获取数据失败");
+            this.$message.error("获取数据失败");
           }
         })
         .catch(() => {
@@ -177,9 +179,9 @@ export default {
         const params = { url: this.form.url, desc: this.form.desc, token: this.form.token };
         if (this.isEdit) {
           params.id = this.currentId;
-          this.$axios.post("http://localhost:8000/api/token/update", params)
+          api.updateToken(this.currentId, params)
             .then((res) => {
-              if (res.data.code === 200) {
+              if (res) {
                 this.$message.success("更新成功");
                 this.closeModal();
                 this.getTokenList();
@@ -192,9 +194,9 @@ export default {
               this.submitting = false;
             });
         } else {
-          this.$axios.post("http://localhost:8000/api/token/add", params)
+          api.addToken(params)
             .then((res) => {
-              if (res.data.code === 200) {
+              if (res) {
                 this.$message.success("添加成功");
                 this.closeModal();
                 this.getTokenList();
@@ -221,9 +223,9 @@ export default {
         cancelButtonText: "取消",
         type: "warning",
       }).then(() => {
-        this.$axios.post("http://localhost:8000/api/token/delete", { id: row.id })
+        api.deleteToken(row.id)
           .then((res) => {
-            if (res.data.code === 200) {
+            if (res) {
               this.$message.success("删除成功");
               this.getTokenList();
             } else {

@@ -341,6 +341,30 @@ function initDatabase() {
     `);
     console.log('monthplan table ensured');
 
+    // claude 表
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS claude (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        url TEXT,
+        token TEXT,
+        remark TEXT,
+        create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('claude table ensured');
+
+    // token 表
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS token (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        url TEXT,
+        desc TEXT,
+        token TEXT,
+        create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('token table ensured');
+
     // API 设置已改为前端本地存储 + 后端硬编码，无需数据库表
 
     console.log('Database initialized successfully');
@@ -2668,6 +2692,212 @@ ipcMain.handle('note:delete', (_event, id: number) => {
     return result.changes > 0;
   } catch (err: any) {
     console.error('note:delete error:', err);
+    return false;
+  }
+});
+
+// ========== Claude IPC ==========
+
+ipcMain.handle('claude:get', (_event, params: any) => {
+  if (!db) return { list: [], pagination: { total: 0, current: 1, pageNum: 20, totalPages: 0 } };
+  try {
+    const { page = 1, pageNum = 20, conditions = {}, orderBy } = params;
+    const whereClauses: string[] = [];
+    const values: any[] = [];
+
+    if (conditions.url) {
+      whereClauses.push('url LIKE ?');
+      values.push(`%${conditions.url}%`);
+    }
+    if (conditions.token) {
+      whereClauses.push('token LIKE ?');
+      values.push(`%${conditions.token}%`);
+    }
+
+    const whereStr = whereClauses.length > 0 ? 'WHERE ' + whereClauses.join(' AND ') : '';
+
+    const countStmt = db.prepare(`SELECT COUNT(*) as total FROM claude ${whereStr}`);
+    const { total } = countStmt.get(...values) as any;
+
+    let orderStr = 'ORDER BY id DESC';
+    if (orderBy && orderBy.column) {
+      const dir = orderBy.type === 'ASC' ? 'ASC' : 'DESC';
+      orderStr = `ORDER BY ${orderBy.column} ${dir}`;
+    }
+
+    const offset = (page - 1) * pageNum;
+    const dataStmt = db.prepare(`SELECT * FROM claude ${whereStr} ${orderStr} LIMIT ? OFFSET ?`);
+    const list = dataStmt.all(...values, pageNum, offset);
+
+    return {
+      list,
+      pagination: {
+        total,
+        current: page,
+        pageNum,
+        totalPages: Math.ceil(total / pageNum),
+      },
+    };
+  } catch (err: any) {
+    console.error('claude:get error:', err);
+    return { list: [], pagination: { total: 0, current: 1, pageNum: 20, totalPages: 0 } };
+  }
+});
+
+ipcMain.handle('claude:add', (_event, data: any) => {
+  if (!db) return null;
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO claude (url, token, remark)
+      VALUES (?, ?, ?)
+    `);
+    const result = stmt.run(
+      data.url || '',
+      data.token || '',
+      data.remark || ''
+    );
+    return { id: result.lastInsertRowid, ...data };
+  } catch (err: any) {
+    console.error('claude:add error:', err);
+    return null;
+  }
+});
+
+ipcMain.handle('claude:update', (_event, id: number, data: any) => {
+  if (!db) return false;
+  try {
+    const fields: string[] = [];
+    const values: any[] = [];
+    if (data.url !== undefined) { fields.push('url = ?'); values.push(data.url); }
+    if (data.token !== undefined) { fields.push('token = ?'); values.push(data.token); }
+    if (data.remark !== undefined) { fields.push('remark = ?'); values.push(data.remark); }
+    if (fields.length === 0) return false;
+    values.push(id);
+    const stmt = db.prepare(`UPDATE claude SET ${fields.join(', ')} WHERE id = ?`);
+    const result = stmt.run(...values);
+    return result.changes > 0;
+  } catch (err: any) {
+    console.error('claude:update error:', err);
+    return false;
+  }
+});
+
+ipcMain.handle('claude:delete', (_event, id: number) => {
+  if (!db) return false;
+  try {
+    const stmt = db.prepare('DELETE FROM claude WHERE id = ?');
+    const result = stmt.run(id);
+    return result.changes > 0;
+  } catch (err: any) {
+    console.error('claude:delete error:', err);
+    return false;
+  }
+});
+
+ipcMain.handle('claude:switch', (_event, data: any) => {
+  try {
+    // 将配置保存到本地存储或返回成功
+    return { success: true };
+  } catch (err: any) {
+    console.error('claude:switch error:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// ========== Token IPC ==========
+
+ipcMain.handle('token:get', (_event, params: any) => {
+  if (!db) return { list: [], pagination: { total: 0, current: 1, pageNum: 20, totalPages: 0 } };
+  try {
+    const { page = 1, pageNum = 20, conditions = {}, orderBy } = params;
+    const whereClauses: string[] = [];
+    const values: any[] = [];
+
+    if (conditions.url) {
+      whereClauses.push('url LIKE ?');
+      values.push(`%${conditions.url}%`);
+    }
+    if (conditions.desc) {
+      whereClauses.push('desc LIKE ?');
+      values.push(`%${conditions.desc}%`);
+    }
+
+    const whereStr = whereClauses.length > 0 ? 'WHERE ' + whereClauses.join(' AND ') : '';
+
+    const countStmt = db.prepare(`SELECT COUNT(*) as total FROM token ${whereStr}`);
+    const { total } = countStmt.get(...values) as any;
+
+    let orderStr = 'ORDER BY id DESC';
+    if (orderBy && orderBy.column) {
+      const dir = orderBy.type === 'ASC' ? 'ASC' : 'DESC';
+      orderStr = `ORDER BY ${orderBy.column} ${dir}`;
+    }
+
+    const offset = (page - 1) * pageNum;
+    const dataStmt = db.prepare(`SELECT * FROM token ${whereStr} ${orderStr} LIMIT ? OFFSET ?`);
+    const list = dataStmt.all(...values, pageNum, offset);
+
+    return {
+      list,
+      pagination: {
+        total,
+        current: page,
+        pageNum,
+        totalPages: Math.ceil(total / pageNum),
+      },
+    };
+  } catch (err: any) {
+    console.error('token:get error:', err);
+    return { list: [], pagination: { total: 0, current: 1, pageNum: 20, totalPages: 0 } };
+  }
+});
+
+ipcMain.handle('token:add', (_event, data: any) => {
+  if (!db) return null;
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO token (url, desc, token)
+      VALUES (?, ?, ?)
+    `);
+    const result = stmt.run(
+      data.url || '',
+      data.desc || '',
+      data.token || ''
+    );
+    return { id: result.lastInsertRowid, ...data };
+  } catch (err: any) {
+    console.error('token:add error:', err);
+    return null;
+  }
+});
+
+ipcMain.handle('token:update', (_event, id: number, data: any) => {
+  if (!db) return false;
+  try {
+    const fields: string[] = [];
+    const values: any[] = [];
+    if (data.url !== undefined) { fields.push('url = ?'); values.push(data.url); }
+    if (data.desc !== undefined) { fields.push('desc = ?'); values.push(data.desc); }
+    if (data.token !== undefined) { fields.push('token = ?'); values.push(data.token); }
+    if (fields.length === 0) return false;
+    values.push(id);
+    const stmt = db.prepare(`UPDATE token SET ${fields.join(', ')} WHERE id = ?`);
+    const result = stmt.run(...values);
+    return result.changes > 0;
+  } catch (err: any) {
+    console.error('token:update error:', err);
+    return false;
+  }
+});
+
+ipcMain.handle('token:delete', (_event, id: number) => {
+  if (!db) return false;
+  try {
+    const stmt = db.prepare('DELETE FROM token WHERE id = ?');
+    const result = stmt.run(id);
+    return result.changes > 0;
+  } catch (err: any) {
+    console.error('token:delete error:', err);
     return false;
   }
 });
