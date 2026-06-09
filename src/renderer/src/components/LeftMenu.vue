@@ -13,39 +13,62 @@
       <div class="menu-logo" :class="{ collapsed: isCollapsed }">
         <img src="../assets/favicon.ico" alt="logo" />
       </div>
+
+      <!-- 一级：计划 -->
       <el-menu-item index="/plan">
         <el-icon><Calendar /></el-icon>
         <template #title><span>计划</span></template>
       </el-menu-item>
+
+      <!-- 一级：月计划 -->
       <el-menu-item index="/yearplan">
         <el-icon><Calendar /></el-icon>
         <template #title><span>月计划</span></template>
       </el-menu-item>
-      <el-menu-item index="/collect">
-        <el-icon><Star /></el-icon>
-        <template #title><span>信息收藏</span></template>
-      </el-menu-item>
-      <el-menu-item index="/project">
-        <el-icon><Folder /></el-icon>
-        <template #title><span>项目</span></template>
-      </el-menu-item>
 
+      <!-- 一级：征稿 -->
       <el-menu-item index="/solicit">
         <el-icon><EditPen /></el-icon>
         <template #title><span>征稿</span></template>
       </el-menu-item>
-      <el-menu-item index="/note">
-        <el-icon><Notebook /></el-icon>
-        <template #title><span>笔记</span></template>
-      </el-menu-item>
-      <el-menu-item index="/claude">
-        <el-icon><ChatDotRound /></el-icon>
-        <template #title><span>Claude</span></template>
-      </el-menu-item>
-      <el-menu-item index="/token">
-        <el-icon><Key /></el-icon>
-        <template #title><span>Token</span></template>
-      </el-menu-item>
+
+      <!-- 一级：学习汇总（二级：信息收藏、项目、笔记） -->
+      <el-sub-menu index="/summary">
+        <template #title>
+          <el-icon><Collection /></el-icon>
+          <span>学习汇总</span>
+        </template>
+        <el-menu-item index="/collect">
+          <el-icon><Star /></el-icon>
+          <template #title><span>信息收藏</span></template>
+        </el-menu-item>
+        <el-menu-item index="/project">
+          <el-icon><Folder /></el-icon>
+          <template #title><span>项目</span></template>
+        </el-menu-item>
+        <el-menu-item index="/note">
+          <el-icon><Notebook /></el-icon>
+          <template #title><span>笔记</span></template>
+        </el-menu-item>
+      </el-sub-menu>
+
+      <!-- 一级：编程（二级：Claude、Token） -->
+      <el-sub-menu index="/code">
+        <template #title>
+          <el-icon><Cpu /></el-icon>
+          <span>编程</span>
+        </template>
+        <el-menu-item index="/claude">
+          <el-icon><ChatDotRound /></el-icon>
+          <template #title><span>Claude</span></template>
+        </el-menu-item>
+        <el-menu-item index="/token">
+          <el-icon><Key /></el-icon>
+          <template #title><span>Token</span></template>
+        </el-menu-item>
+      </el-sub-menu>
+
+      <!-- 一级：科目列表 -->
       <el-menu-item index="/">
         <el-icon><HomeFilled /></el-icon>
         <template #title><span>科目列表</span></template>
@@ -61,7 +84,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { HomeFilled, Calendar, EditPen, Star, Folder, Notebook, ChatDotRound, Key, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import { HomeFilled, Calendar, EditPen, Star, Folder, Notebook, ChatDotRound, Key, Collection, Cpu, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const isCollapsed = ref(false)
@@ -240,5 +263,26 @@ const activeMenu = computed(() => {
   align-items: center !important;
   justify-content: center !important;
   padding: 8px 0 !important;
+}
+
+/* Sub-menu styling */
+:deep(.el-sub-menu__title) {
+  font-size: 16px;
+  height: 56px;
+  line-height: 56px;
+}
+
+:deep(.el-sub-menu__title .el-icon) {
+  font-size: 20px;
+  margin-right: 12px;
+}
+
+:deep(.el-sub-menu .el-menu-item) {
+  padding-left: 48px !important;
+}
+
+:deep(.el-sub-menu.is-active .el-sub-menu__title) {
+  color: #8b9a6d !important;
+  font-weight: 600;
 }
 </style>
