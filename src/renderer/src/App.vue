@@ -15,7 +15,6 @@
             @input="handlePasswordInput(i-1, $event)"
             @keydown="handlePasswordKeydown(i-1, $event)"
             class="password-digit"
-            readonly
           />
         </div>
         <div class="numeric-keypad">
