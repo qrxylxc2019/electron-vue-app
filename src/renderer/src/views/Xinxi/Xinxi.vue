@@ -41,6 +41,19 @@
       style="width: 100%; height: calc(100vh - 221px)"
     >
       <el-table-column type="index" label="序号" width="100" />
+      <el-table-column label="操作" width="290">
+        <template #default="{ row }">
+          <el-button type="primary" @click="openArticle(row.url)">
+            查看
+          </el-button>
+          <el-button type="warning" @click="collectArticle(row)">
+            收藏
+          </el-button>
+          <el-button type="danger" @click="deleteArticle(row)">
+            删除
+          </el-button>
+        </template>
+      </el-table-column>
       <el-table-column label="标题" min-width="300">
         <template #default="{ row }">
           <div class="single-line-text">{{ row.title }}</div>
@@ -65,19 +78,7 @@
           {{ formatTime(row.publish_time) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="290" fixed="right">
-        <template #default="{ row }">
-          <el-button type="primary" @click="openArticle(row.url)">
-            查看
-          </el-button>
-          <el-button type="warning" @click="collectArticle(row)">
-            收藏
-          </el-button>
-          <el-button type="danger" @click="deleteArticle(row)">
-            删除
-          </el-button>
-        </template>
-      </el-table-column>
+      
     </el-table>
 
     <!-- 分页 -->
@@ -706,12 +707,6 @@ const collectArticle = async (row) => {
 // 删除文章
 const deleteArticle = async (row) => {
   try {
-    await ElMessageBox.confirm('确定要删除这条信息吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-
     const res = await api.deleteXinxi(row.id)
     if (res.code === 200) {
       ElMessage.success('删除成功')
