@@ -201,7 +201,6 @@ body {
   border: 1px solid #e8e4df;
   border-radius: 16px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-  width: 420px;
   max-width: 90vw;
 }
 
@@ -221,7 +220,7 @@ body {
 
 .password-digit {
   flex: 1;
-  height: 56px;
+  height: 100px;
   text-align: center;
   border: 2px solid #e8e4df;
   border-radius: 10px;
@@ -251,7 +250,7 @@ body {
 
 .keypad-btn {
   width: 100%;
-  height: 56px;
+  height: 100px;
   font-size: 20px;
   font-weight: 500;
   background-color: #f5f0e8;
