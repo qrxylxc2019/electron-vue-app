@@ -65,13 +65,16 @@
           {{ formatTime(row.publish_time) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="200" fixed="right">
+      <el-table-column label="操作" width="290" fixed="right">
         <template #default="{ row }">
           <el-button type="primary" @click="openArticle(row.url)">
             查看
           </el-button>
           <el-button type="warning" @click="collectArticle(row)">
             收藏
+          </el-button>
+          <el-button type="danger" @click="deleteArticle(row)">
+            删除
           </el-button>
         </template>
       </el-table-column>
@@ -697,6 +700,30 @@ const collectArticle = async (row) => {
     }
   } catch (e) {
     ElMessage.error(e.message || '收藏失败')
+  }
+}
+
+// 删除文章
+const deleteArticle = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定要删除这条信息吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
+    const res = await api.deleteXinxi(row.id)
+    if (res.code === 200) {
+      ElMessage.success('删除成功')
+      handleQueryArticles()
+    } else {
+      ElMessage.error(res.message || '删除失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败')
+      console.error(error)
+    }
   }
 }
 

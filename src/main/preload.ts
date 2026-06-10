@@ -194,6 +194,7 @@ const electronAPI = {
   getXinxiList: (params: any) => ipcRenderer.invoke('xinxi:getList', params),
   clearXinxi: () => ipcRenderer.invoke('xinxi:clear'),
   addXinxi: (data: any) => ipcRenderer.invoke('xinxi:add', data),
+  deleteXinxi: (id: number) => ipcRenderer.invoke('xinxi:delete', id),
 
   // 微信公众号订阅
   getWxaccountList: (params: any) => ipcRenderer.invoke('wxaccount:get', params),

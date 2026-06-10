@@ -3195,6 +3195,19 @@ ipcMain.handle('xinxi:add', async (_event, data: any) => {
   }
 });
 
+// 删除单条 xinxi 数据
+ipcMain.handle('xinxi:delete', async (_event, id: number) => {
+  if (!db) return { code: 500, message: '数据库未初始化' };
+  try {
+    const stmt = db.prepare('DELETE FROM xinxi WHERE id = ?');
+    const result = stmt.run(id);
+    return { code: 200, result: { changes: result.changes } };
+  } catch (err: any) {
+    console.error('xinxi:delete error:', err);
+    return { code: 500, message: err.message };
+  }
+});
+
 // ==================== wxaccount 微信公众号订阅 ====================
 
 // 查询订阅列表
