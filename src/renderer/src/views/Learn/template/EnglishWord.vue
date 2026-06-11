@@ -428,7 +428,11 @@ const nextPage = () => {
 .english-word-container {
   padding: 20px;
   background-color: #faf8f5;
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .header {
@@ -468,6 +472,9 @@ const nextPage = () => {
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 12px;
   margin-bottom: 20px;
+  flex: 1;
+  overflow-y: auto;
+  align-content: start;
 }
 
 .word-card {
