@@ -3554,6 +3554,18 @@ ipcMain.handle('kp:getByDirectory', (_event, directoryId: number) => {
   }
 });
 
+// 根据ID获取单个知识点
+ipcMain.handle('kp:getById', (_event, id: number) => {
+  if (!db) return null;
+  try {
+    const stmt = db.prepare('SELECT * FROM knowledge_points WHERE id = ?');
+    return stmt.get(id) || null;
+  } catch (err) {
+    console.error('kp:getById error:', err);
+    return null;
+  }
+});
+
 // AI根据知识点生成题目
 ipcMain.handle('ai:generateQuestionsByKnowledge', async (_event, data: any) => {
   const providerOrder = (data.providerOrder as string[]) || ['modelspace', 'deepseek'];

@@ -227,6 +227,7 @@ declare global {
 
       // 知识点
       getKnowledgePoints: (directoryId: number) => Promise<KnowledgePoint[]>;
+      getKnowledgePointById: (id: number) => Promise<KnowledgePoint | null>;
 
       // AI根据知识点出题
       generateQuestionsByKnowledge: (data: {

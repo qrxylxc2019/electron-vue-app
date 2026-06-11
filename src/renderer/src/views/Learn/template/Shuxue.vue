@@ -24,6 +24,7 @@
               <div class="question-header">
                 <div class="header-left">
                   <el-tag :type="questionTypeTag.type">{{ questionTypeTag.text }}</el-tag>
+                  <el-tag v-if="currentQuestionKnowledgeName" type="info" size="small" class="knowledge-tag">{{ currentQuestionKnowledgeName }}</el-tag>
                 </div>
                 <div class="header-actions">
                   <el-button class="copy-btn" size="small" @click="copyQuestionContent" :title="copySuccess ? '已复制' : '复制题目'">
@@ -216,6 +217,9 @@ const deepseekWebviewRef = ref(null)
 const showKnowledgeDialog = ref(false)
 const knowledgeTree = ref([])
 
+// 知识点映射表 id -> name
+const knowledgeMap = ref(new Map())
+
 // 将扁平知识点列表转为树状结构
 const buildTree = (items) => {
   const map = {}
@@ -349,6 +353,15 @@ const loadQuestionsByKnowledge = async (knowledgeId: number, knowledgeName?: str
 }
 
 const currentQuestion = computed(() => questions.value[currentIndex.value] || null)
+
+// 当前题目对应的知识点名称（从缓存映射表中查找）
+const currentQuestionKnowledgeName = computed(() => {
+  const q = currentQuestion.value
+  if (q?.knowledge_id && knowledgeMap.value.has(q.knowledge_id)) {
+    return knowledgeMap.value.get(q.knowledge_id)
+  }
+  return ''
+})
 
 const progressPercent = computed(() => {
   if (questions.value.length === 0) return 0
@@ -624,8 +637,23 @@ const saveNewQuestions = async () => {
   }
 }
 
+// 加载知识点列表并构建映射表
+const loadKnowledgeMap = async () => {
+  try {
+    const points = await window.electronAPI.getKnowledgePoints(parseInt(props.directoryId))
+    const map = new Map()
+    for (const point of points) {
+      map.set(point.id, point.name)
+    }
+    knowledgeMap.value = map
+  } catch (error) {
+    console.error('加载知识点映射表失败:', error)
+  }
+}
+
 onMounted(() => {
   loadQuestions()
+  loadKnowledgeMap()
 })
 
 const loadQuestions = async () => {
