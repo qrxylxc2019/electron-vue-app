@@ -293,10 +293,26 @@ const buildTree = (items) => {
   return roots
 }
 
-const openKnowledgeDialog = async () => {
+// 加载知识点树数据
+const loadKnowledgeTree = async () => {
   try {
     const points = await window.electronAPI.getKnowledgePoints(parseInt(props.directoryId))
     knowledgeTree.value = buildTree(points)
+    // 同时刷新映射表
+    const map = new Map()
+    for (const point of points) {
+      map.set(point.id, point.name)
+    }
+    knowledgeMap.value = map
+  } catch (error) {
+    console.error('加载知识点树失败:', error)
+    throw error
+  }
+}
+
+const openKnowledgeDialog = async () => {
+  try {
+    await loadKnowledgeTree()
     showKnowledgeDialog.value = true
   } catch (error) {
     ElMessage.error('加载知识点失败')
@@ -339,15 +355,8 @@ const saveInlineKnowledge = async (parentData: any) => {
     })
     if (result) {
       ElMessage.success('添加成功')
-      // 刷新知识点列表
-      const points = await window.electronAPI.getKnowledgePoints(parseInt(props.directoryId))
-      knowledgeTree.value = buildTree(points)
-      // 刷新映射表
-      const map = new Map()
-      for (const point of points) {
-        map.set(point.id, point.name)
-      }
-      knowledgeMap.value = map
+      // 刷新知识点树和映射表
+      await loadKnowledgeTree()
     } else {
       ElMessage.error('添加失败')
     }
@@ -370,15 +379,8 @@ const deleteKnowledgePoint = async (data: any) => {
     const result = await window.electronAPI.deleteKnowledgePoint(data.id)
     if (result) {
       ElMessage.success('删除成功')
-      // 刷新知识点列表
-      const points = await window.electronAPI.getKnowledgePoints(parseInt(props.directoryId))
-      knowledgeTree.value = buildTree(points)
-      // 刷新映射表
-      const map = new Map()
-      for (const point of points) {
-        map.set(point.id, point.name)
-      }
-      knowledgeMap.value = map
+      // 刷新知识点树和映射表
+      await loadKnowledgeTree()
       // 如果当前筛选的就是被删除的知识点，重置筛选
       if (filterKnowledgeId.value === data.id) {
         resetKnowledgeFilter()
@@ -448,8 +450,14 @@ const aiClassifying = ref(false)
 // AI分类题目
 const aiClassifyQuestion = async () => {
   if (!currentQuestion.value) return
-  if (knowledgeMap.value.size === 0) {
-    ElMessage.warning('知识点列表为空，请先加载知识点')
+
+  // 如果知识点列表为空，先加载
+  if (knowledgeTree.value.length === 0) {
+    await loadKnowledgeTree()
+  }
+
+  if (knowledgeTree.value.length === 0) {
+    ElMessage.warning('知识点列表为空，请先添加知识点')
     return
   }
 
@@ -480,35 +488,22 @@ const aiClassifyQuestion = async () => {
     })
 
     if (result.success && result.result) {
-      const { knowledge_id, knowledge_name, confidence, reason } = result.result
+      const { knowledge_id, knowledge_name } = result.result
 
-      // 确认是否更新
-      try {
-        await ElMessageBox.confirm(
-          `AI判断该题目属于：${knowledge_name}\n置信度：${(confidence * 100).toFixed(1)}%\n理由：${reason}\n\n是否更新该题目的知识点？`,
-          'AI分类结果',
-          { type: 'info', confirmButtonText: '更新', cancelButtonText: '取消' }
-        )
+      // 直接更新题目知识点
+      const updateResult = await window.electronAPI.updateQuestion(
+        currentQuestion.value.id,
+        { knowledge_id }
+      )
 
-        // 更新题目知识点
-        const updateResult = await window.electronAPI.updateQuestion(
-          currentQuestion.value.id,
-          { knowledge_id }
-        )
-
-        if (updateResult) {
-          // 更新本地数据
-          currentQuestion.value.knowledge_id = knowledge_id
-          // 刷新映射表
-          await loadKnowledgeMap()
-          ElMessage.success(`已更新知识点为：${knowledge_name}`)
-        } else {
-          ElMessage.error('更新失败')
-        }
-      } catch (e: any) {
-        if (e !== 'cancel') {
-          console.error('更新知识点失败:', e)
-        }
+      if (updateResult) {
+        // 更新本地数据
+        currentQuestion.value.knowledge_id = knowledge_id
+        // 刷新映射表
+        await loadKnowledgeMap()
+        ElMessage.success(`已自动分类到：${knowledge_name}`)
+      } else {
+        ElMessage.error('更新失败')
       }
     } else {
       ElMessage.error(result.error || 'AI分类失败')
@@ -877,7 +872,7 @@ const loadKnowledgeMap = async () => {
 
 onMounted(() => {
   loadQuestions()
-  loadKnowledgeMap()
+  loadKnowledgeTree()
 })
 
 const loadQuestions = async () => {
