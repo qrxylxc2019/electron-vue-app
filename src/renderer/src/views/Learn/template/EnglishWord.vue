@@ -378,14 +378,9 @@ const allWords = ref([
   { word: 'interact', phonetic: '/ˌɪntərˈækt/', meaning: 'v. 互动，交互' },
   { word: 'interfere', phonetic: '/ˌɪntərˈfɪər/', meaning: 'v. 干涉，妨碍' },
   { word: 'interpret', phonetic: '/ɪnˈtɜːrprɪt/', meaning: 'v. 解释，口译' },
-  { word: 'intimate', phonetic: '/ˈɪntɪmət/', meaning: 'adj. 亲密的 n. 密友' },
-  { word: 'investigate', phonetic: '/ɪnˈvestɪɡeɪt/', meaning: 'v. 调查，研究' },
-  { word: 'involve', phonetic: '/ɪnˈvɒlv/', meaning: 'v. 涉及，包含' },
-  { word: 'isolate', phonetic: '/ˈaɪsəleɪt/', meaning: 'v. 隔离，孤立' },
-  { word: 'justify', phonetic: '/ˈdʒʌstɪfaɪ/', meaning: 'v. 证明…正当' },
 ])
 
-const WORDS_PER_PAGE = 200
+const WORDS_PER_PAGE = 49
 const currentPage = ref(1)
 const showMeaning = ref(true)
 
