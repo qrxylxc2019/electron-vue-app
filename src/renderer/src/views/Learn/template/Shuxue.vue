@@ -436,7 +436,28 @@ const resetAnswer = () => {
 const copyQuestionContent = async () => {
   if (!currentQuestion.value) return
   try {
-    await navigator.clipboard.writeText(currentQuestion.value.title)
+    let text = currentQuestion.value.title + '\n'
+    
+    // 添加选项
+    const opts = []
+    const keys = ['A', 'B', 'C', 'D', 'E']
+    for (const key of keys) {
+      const optText = currentQuestion.value[`option_${key.toLowerCase()}`]
+      if (optText) opts.push(`${key}. ${optText}`)
+    }
+    if (opts.length > 0) {
+      text += '\n' + opts.join('\n') + '\n'
+    }
+    
+    // 添加答案和解析（如果已显示答案）
+    if (showAnswer.value) {
+      text += `\n正确答案：${currentQuestion.value.correct_answer}`
+      if (currentQuestion.value.explanation) {
+        text += `\n解析：${currentQuestion.value.explanation}`
+      }
+    }
+    
+    await navigator.clipboard.writeText(text)
     copySuccess.value = true
     setTimeout(() => copySuccess.value = false, 2000)
   } catch (e) {
