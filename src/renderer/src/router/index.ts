@@ -8,6 +8,7 @@ import Translate from '../views/Learn/Translate.vue';
 import Article from '../views/Learn/Article.vue';
 import Cloze from '../views/Learn/Cloze.vue';
 import Shuxue from '../views/Learn/Shuxue.vue';
+import EnglishWord from '../views/Learn/EnglishWord.vue';
 import Plan from '../views/Plan/Plan.vue';
 import Solicit from '../views/Solicit/Solicit.vue';
 import Collect from '../views/Collect/Collect.vue';
@@ -30,6 +31,7 @@ const routes = [
   { path: '/article/:directoryId', name: 'Article', component: Article, props: true },
   { path: '/cloze/:directoryId', name: 'Cloze', component: Cloze, props: true },
   { path: '/shuxue/:directoryId', name: 'Shuxue', component: Shuxue, props: true },
+  { path: '/englishword/:directoryId', name: 'EnglishWord', component: EnglishWord, props: true },
   { path: '/plan', name: 'Plan', component: Plan },
   { path: '/solicit', name: 'Solicit', component: Solicit },
   { path: '/collect', name: 'Collect', component: Collect },

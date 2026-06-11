@@ -54,7 +54,7 @@
           <el-icon size="56" color="#c4a882"><Folder /></el-icon>
           <span class="directory-name">{{ dir.name }}</span>
           <span class="directory-count">
-            {{ dir.name === '高项论文' || dir.name === 'ai题目' ? getArticleCount(dir.id) : (dir.name === '高项案例' || dir.name === '案例押题') ? getCaseCount(dir.id) : (dir.name === '考研英语' || dir.name === '完型填空') ? getClozeCount(dir.id) : getQuestionCount(dir.id) }} 题
+            {{ dir.name === '高项论文' || dir.name === 'ai题目' ? getArticleCount(dir.id) : (dir.name === '高项案例' || dir.name === '案例押题') ? getCaseCount(dir.id) : (dir.name === '考研英语' || dir.name === '完型填空' || dir.name === '英语单词') ? getClozeCount(dir.id) : getQuestionCount(dir.id) }} 题
           </span>
         </div>
       </div>
@@ -754,10 +754,11 @@ const enterQuiz = (directoryId: number) => {
   const isAIDir = dir?.name === 'ai题目';
   const isClozeDir = dir?.name === '完型填空';
   const isWordDir = dir?.name === '考研英语';
+  const isEnglishWordDir = dir?.name === '英语单词';
   const count = isArticleDir ? getArticleCount(directoryId) : isCaseDir ? getCaseCount(directoryId) : getQuestionCount(directoryId);
 
-  // ai题目、考研英语、完型填空允许题目数为0，仍然可以进入页面
-  if (count === 0 && !isAIDir && !isWordDir && !isClozeDir) {
+  // ai题目、考研英语、完型填空、英语单词允许题目数为0，仍然可以进入页面
+  if (count === 0 && !isAIDir && !isWordDir && !isClozeDir && !isEnglishWordDir) {
     ElMessage.warning('该科目暂无题目');
     return;
   }
@@ -842,6 +843,15 @@ const enterQuiz = (directoryId: number) => {
         count: quizSettings.value.count.toString(),
         repeat: quizSettings.value.repeat.toString()
       }
+    });
+    return;
+  }
+
+  // 英语单词进入单词页面
+  if (dir?.name === '英语单词') {
+    router.push({
+      name: 'EnglishWord',
+      params: { directoryId: directoryId.toString() }
     });
     return;
   }
