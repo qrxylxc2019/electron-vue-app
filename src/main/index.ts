@@ -3566,6 +3566,19 @@ ipcMain.handle('kp:getById', (_event, id: number) => {
   }
 });
 
+// 添加知识点
+ipcMain.handle('kp:add', (_event, data: { directory_id: number; parent_id?: number | null; name: string; sort_order?: number }) => {
+  if (!db) return null;
+  try {
+    const stmt = db.prepare('INSERT INTO knowledge_points (directory_id, parent_id, name, sort_order) VALUES (?, ?, ?, ?)');
+    const result = stmt.run(data.directory_id, data.parent_id || null, data.name, data.sort_order || 0);
+    return { id: Number(result.lastInsertRowid), ...data };
+  } catch (err) {
+    console.error('kp:add error:', err);
+    return null;
+  }
+});
+
 // AI根据知识点生成题目
 ipcMain.handle('ai:generateQuestionsByKnowledge', async (_event, data: any) => {
   const providerOrder = (data.providerOrder as string[]) || ['modelspace', 'deepseek'];

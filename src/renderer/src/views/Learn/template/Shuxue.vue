@@ -169,21 +169,50 @@ D. 选项D
         <template #default="{ node, data }">
           <div class="knowledge-node">
             <span class="node-label">{{ data.name }}</span>
-            <el-button
-              v-if="!data.children || data.children.length === 0"
-              class="generate-btn"
-              size="small"
-              :loading="generatingNodeId === data.id"
-              :disabled="generatingNodeId !== null"
-              @click.stop="generateQuestions(data)"
-            >
-              <el-icon v-if="generatingNodeId !== data.id"><Cpu /></el-icon>
-              {{ generatingNodeId === data.id ? '出题中...' : 'AI出题' }}
-            </el-button>
+            <div class="node-actions">
+              <el-button
+                class="add-child-btn"
+                size="small"
+                text
+                @click.stop="openAddKnowledgeDialog(data)"
+                title="添加下级知识点"
+              >
+                <el-icon><Plus /></el-icon>
+              </el-button>
+              <el-button
+                v-if="!data.children || data.children.length === 0"
+                class="generate-btn"
+                size="small"
+                :loading="generatingNodeId === data.id"
+                :disabled="generatingNodeId !== null"
+                @click.stop="generateQuestions(data)"
+              >
+                <el-icon v-if="generatingNodeId !== data.id"><Cpu /></el-icon>
+                {{ generatingNodeId === data.id ? '出题中...' : 'AI出题' }}
+              </el-button>
+            </div>
           </div>
         </template>
       </el-tree>
       <el-empty v-if="knowledgeTree.length === 0" description="暂无知识点" />
+    </el-dialog>
+
+    <!-- 添加下级知识点弹窗 -->
+    <el-dialog
+      v-model="showAddKnowledgeDialog"
+      :title="`添加下级知识点：${addKnowledgeParent?.name || ''}`"
+      width="400px"
+      class="warm-dialog"
+    >
+      <el-input
+        v-model="newKnowledgeName"
+        placeholder="请输入知识点名称"
+        @keyup.enter="saveNewKnowledge"
+      />
+      <template #footer>
+        <el-button @click="showAddKnowledgeDialog = false">取消</el-button>
+        <el-button type="primary" @click="saveNewKnowledge">确定</el-button>
+      </template>
     </el-dialog>
   </div>
 </template>
@@ -260,6 +289,50 @@ const openKnowledgeDialog = async () => {
 }
 
 const generatingNodeId = ref<number | null>(null)
+
+// 添加下级知识点相关
+const showAddKnowledgeDialog = ref(false)
+const addKnowledgeParent = ref<any>(null)
+const newKnowledgeName = ref('')
+
+const openAddKnowledgeDialog = (parentData: any) => {
+  addKnowledgeParent.value = parentData
+  newKnowledgeName.value = ''
+  showAddKnowledgeDialog.value = true
+}
+
+const saveNewKnowledge = async () => {
+  if (!newKnowledgeName.value.trim()) {
+    ElMessage.warning('请输入知识点名称')
+    return
+  }
+  try {
+    const result = await window.electronAPI.addKnowledgePoint({
+      directory_id: parseInt(props.directoryId),
+      parent_id: addKnowledgeParent.value?.id || null,
+      name: newKnowledgeName.value.trim(),
+      sort_order: 0
+    })
+    if (result) {
+      ElMessage.success('添加成功')
+      showAddKnowledgeDialog.value = false
+      // 刷新知识点列表
+      const points = await window.electronAPI.getKnowledgePoints(parseInt(props.directoryId))
+      knowledgeTree.value = buildTree(points)
+      // 刷新映射表
+      const map = new Map()
+      for (const point of points) {
+        map.set(point.id, point.name)
+      }
+      knowledgeMap.value = map
+    } else {
+      ElMessage.error('添加失败')
+    }
+  } catch (error) {
+    console.error('添加知识点失败:', error)
+    ElMessage.error('添加失败')
+  }
+}
 
 const generateQuestions = async (knowledgePoint: any) => {
   generatingNodeId.value = knowledgePoint.id
@@ -1184,6 +1257,24 @@ const loadQuestions = async () => {
 .node-label {
   font-size: 14px;
   color: #1a1a1a;
+}
+
+.node-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.add-child-btn {
+  color: #8b9a6d;
+  padding: 4px 8px;
+  height: auto;
+  min-height: 28px;
+}
+
+.add-child-btn:hover {
+  color: #7a895c;
+  background: rgba(139, 154, 109, 0.1);
 }
 
 .generate-btn {
