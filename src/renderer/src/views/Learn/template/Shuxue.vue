@@ -164,6 +164,16 @@ D. 选项D
       width="700px"
       class="warm-dialog knowledge-dialog"
     >
+      <div class="knowledge-dialog-header">
+        <span class="generate-count-label">AI出题数量：</span>
+        <el-input-number
+          v-model="aiGenerateCount"
+          :min="1"
+          :max="20"
+          size="small"
+          class="generate-count-input"
+        />
+      </div>
       <el-tree
         :data="knowledgeTree"
         :props="{ label: 'name', children: 'children' }"
@@ -322,6 +332,9 @@ const openKnowledgeDialog = async () => {
 
 const generatingNodeId = ref<number | null>(null)
 
+// AI出题数量
+const aiGenerateCount = ref(20)
+
 // 内联添加知识点相关
 const addingNodeParentId = ref<number | null>(null)
 const inlineNewKnowledgeName = ref('')
@@ -402,7 +415,7 @@ const generateQuestions = async (knowledgePoint: any) => {
     const result = await window.electronAPI.generateQuestionsByKnowledge({
       knowledgeName: knowledgePoint.name,
       directoryId: parseInt(props.directoryId),
-      count: 5,
+      count: aiGenerateCount.value,
       providerOrder: ['deepseekLocal', 'modelspace', 'deepseek']
     })
     if (result.success && result.questions && result.questions.length > 0) {
@@ -1365,9 +1378,27 @@ const loadQuestions = async () => {
 }
 
 :deep(.knowledge-dialog .el-dialog__body) {
-  padding: 20px 24px;
+  padding: 12px 24px 20px;
   max-height: 60vh;
   overflow-y: auto;
+}
+
+.knowledge-dialog-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e8e4df;
+}
+
+.generate-count-label {
+  font-size: 14px;
+  color: #666;
+}
+
+.generate-count-input {
+  width: 100px;
 }
 
 .knowledge-tree {
