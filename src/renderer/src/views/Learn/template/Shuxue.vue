@@ -10,6 +10,9 @@
           <el-button class="knowledge-btn" size="small" @click="openKnowledgeDialog">
             <el-icon><Reading /></el-icon> 知识点
           </el-button>
+          <el-tag v-if="currentFilterKnowledgeName" type="success" class="filter-knowledge-tag" closable @close="resetKnowledgeFilter">
+            {{ currentFilterKnowledgeName }}
+          </el-tag>
         </div>
         <div class="progress-bar">
           <span class="progress-text">题目 {{ currentIndex + 1 }} / {{ questions.length }}</span>
@@ -168,16 +171,43 @@ D. 选项D
       >
         <template #default="{ node, data }">
           <div class="knowledge-node">
-            <span class="node-label">{{ data.name }}</span>
+            <!-- 内联添加输入框 -->
+            <template v-if="addingNodeParentId === data.id">
+              <el-input
+                v-model="inlineNewKnowledgeName"
+                size="small"
+                placeholder="输入名称后回车"
+                @keyup.enter="saveInlineKnowledge(data)"
+                @blur="cancelInlineAdd"
+                ref="inlineInputRef"
+                style="width: 180px;"
+              />
+            </template>
+            <template v-else>
+              <span class="node-label">{{ data.name }}</span>
+            </template>
             <div class="node-actions">
+              <!-- 添加按钮：只有一二级显示（通过node.level判断） -->
               <el-button
+                v-if="node.level <= 2"
                 class="add-child-btn"
                 size="small"
                 text
-                @click.stop="openAddKnowledgeDialog(data)"
+                @click.stop="startInlineAdd(data)"
                 title="添加下级知识点"
               >
                 <el-icon><Plus /></el-icon>
+              </el-button>
+              <!-- 删除按钮 -->
+              <el-button
+                class="delete-kp-btn"
+                size="small"
+                text
+                type="danger"
+                @click.stop="deleteKnowledgePoint(data)"
+                title="删除知识点"
+              >
+                <el-icon><Delete /></el-icon>
               </el-button>
               <el-button
                 v-if="!data.children || data.children.length === 0"
@@ -195,24 +225,6 @@ D. 选项D
         </template>
       </el-tree>
       <el-empty v-if="knowledgeTree.length === 0" description="暂无知识点" />
-    </el-dialog>
-
-    <!-- 添加下级知识点弹窗 -->
-    <el-dialog
-      v-model="showAddKnowledgeDialog"
-      :title="`添加下级知识点：${addKnowledgeParent?.name || ''}`"
-      width="400px"
-      class="warm-dialog"
-    >
-      <el-input
-        v-model="newKnowledgeName"
-        placeholder="请输入知识点名称"
-        @keyup.enter="saveNewKnowledge"
-      />
-      <template #footer>
-        <el-button @click="showAddKnowledgeDialog = false">取消</el-button>
-        <el-button type="primary" @click="saveNewKnowledge">确定</el-button>
-      </template>
     </el-dialog>
   </div>
 </template>
@@ -290,32 +302,39 @@ const openKnowledgeDialog = async () => {
 
 const generatingNodeId = ref<number | null>(null)
 
-// 添加下级知识点相关
-const showAddKnowledgeDialog = ref(false)
-const addKnowledgeParent = ref<any>(null)
-const newKnowledgeName = ref('')
+// 内联添加知识点相关
+const addingNodeParentId = ref<number | null>(null)
+const inlineNewKnowledgeName = ref('')
+const inlineInputRef = ref<any>(null)
 
-const openAddKnowledgeDialog = (parentData: any) => {
-  addKnowledgeParent.value = parentData
-  newKnowledgeName.value = ''
-  showAddKnowledgeDialog.value = true
+const startInlineAdd = (parentData: any) => {
+  addingNodeParentId.value = parentData.id
+  inlineNewKnowledgeName.value = ''
+  // 下一个tick聚焦输入框
+  setTimeout(() => {
+    inlineInputRef.value?.focus()
+  }, 50)
 }
 
-const saveNewKnowledge = async () => {
-  if (!newKnowledgeName.value.trim()) {
-    ElMessage.warning('请输入知识点名称')
+const cancelInlineAdd = () => {
+  addingNodeParentId.value = null
+  inlineNewKnowledgeName.value = ''
+}
+
+const saveInlineKnowledge = async (parentData: any) => {
+  if (!inlineNewKnowledgeName.value.trim()) {
+    cancelInlineAdd()
     return
   }
   try {
     const result = await window.electronAPI.addKnowledgePoint({
       directory_id: parseInt(props.directoryId),
-      parent_id: addKnowledgeParent.value?.id || null,
-      name: newKnowledgeName.value.trim(),
+      parent_id: parentData.id,
+      name: inlineNewKnowledgeName.value.trim(),
       sort_order: 0
     })
     if (result) {
       ElMessage.success('添加成功')
-      showAddKnowledgeDialog.value = false
       // 刷新知识点列表
       const points = await window.electronAPI.getKnowledgePoints(parseInt(props.directoryId))
       knowledgeTree.value = buildTree(points)
@@ -331,6 +350,43 @@ const saveNewKnowledge = async () => {
   } catch (error) {
     console.error('添加知识点失败:', error)
     ElMessage.error('添加失败')
+  } finally {
+    cancelInlineAdd()
+  }
+}
+
+// 删除知识点
+const deleteKnowledgePoint = async (data: any) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定删除知识点 "${data.name}" 吗？\n删除后会同时删除该知识点下的所有下级知识点和关联题目！`,
+      '警告',
+      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+    )
+    const result = await window.electronAPI.deleteKnowledgePoint(data.id)
+    if (result) {
+      ElMessage.success('删除成功')
+      // 刷新知识点列表
+      const points = await window.electronAPI.getKnowledgePoints(parseInt(props.directoryId))
+      knowledgeTree.value = buildTree(points)
+      // 刷新映射表
+      const map = new Map()
+      for (const point of points) {
+        map.set(point.id, point.name)
+      }
+      knowledgeMap.value = map
+      // 如果当前筛选的就是被删除的知识点，重置筛选
+      if (filterKnowledgeId.value === data.id) {
+        resetKnowledgeFilter()
+      }
+    } else {
+      ElMessage.error('删除失败')
+    }
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      console.error('删除知识点失败:', error)
+      ElMessage.error('删除失败')
+    }
   }
 }
 
@@ -379,13 +435,25 @@ const generateQuestions = async (knowledgePoint: any) => {
 // 当前筛选的知识点ID（null表示显示全部）
 const filterKnowledgeId = ref<number | null>(null)
 
+// 当前筛选的知识点名称
+const currentFilterKnowledgeName = ref('')
+
 // 点击知识点节点，筛选该知识点下的题目
 const onKnowledgeNodeClick = async (data: any) => {
   // 如果是最底层节点，点击后加载该知识点下的题目
   if (!data.children || data.children.length === 0) {
     filterKnowledgeId.value = data.id
+    currentFilterKnowledgeName.value = data.name
     await loadQuestionsByKnowledge(data.id, data.name)
   }
+}
+
+// 重置知识点筛选
+const resetKnowledgeFilter = () => {
+  filterKnowledgeId.value = null
+  currentFilterKnowledgeName.value = ''
+  directoryName.value = '数学'
+  loadQuestions()
 }
 
 // 根据知识点加载题目（应用重复规则）
@@ -1275,6 +1343,23 @@ const loadQuestions = async () => {
 .add-child-btn:hover {
   color: #7a895c;
   background: rgba(139, 154, 109, 0.1);
+}
+
+.delete-kp-btn {
+  color: #f56c6c;
+  padding: 4px 8px;
+  height: auto;
+  min-height: 28px;
+}
+
+.delete-kp-btn:hover {
+  color: #f78989;
+  background: rgba(245, 108, 111, 0.1);
+}
+
+.filter-knowledge-tag {
+  margin-left: 8px;
+  font-size: 13px;
 }
 
 .generate-btn {

@@ -207,6 +207,7 @@ const electronAPI = {
   getKnowledgePoints: (directoryId: number) => ipcRenderer.invoke('kp:getByDirectory', directoryId),
   getKnowledgePointById: (id: number) => ipcRenderer.invoke('kp:getById', id),
   addKnowledgePoint: (data: { directory_id: number; parent_id?: number | null; name: string; sort_order?: number }) => ipcRenderer.invoke('kp:add', data),
+  deleteKnowledgePoint: (id: number) => ipcRenderer.invoke('kp:delete', id),
 
   // AI根据知识点出题
   generateQuestionsByKnowledge: (data: any) => ipcRenderer.invoke('ai:generateQuestionsByKnowledge', data),

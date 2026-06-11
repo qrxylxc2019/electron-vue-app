@@ -3579,6 +3579,43 @@ ipcMain.handle('kp:add', (_event, data: { directory_id: number; parent_id?: numb
   }
 });
 
+// 删除知识点（同时删除下级知识点和关联题目）
+ipcMain.handle('kp:delete', (_event, id: number) => {
+  if (!db) return false;
+  const dbInstance = db;
+  try {
+    // 递归获取所有下级知识点ID
+    const getAllChildrenIds = (parentId: number): number[] => {
+      const stmt = dbInstance.prepare('SELECT id FROM knowledge_points WHERE parent_id = ?');
+      const children = stmt.all(parentId) as any[];
+      let ids = children.map(c => c.id);
+      for (const child of children) {
+        ids = ids.concat(getAllChildrenIds(child.id));
+      }
+      return ids;
+    };
+
+    const allIds = [id, ...getAllChildrenIds(id)];
+
+    // 删除关联题目
+    const deleteQuestions = dbInstance.prepare('DELETE FROM questions WHERE knowledge_id = ?');
+    for (const kpId of allIds) {
+      deleteQuestions.run(kpId);
+    }
+
+    // 删除知识点（从叶子节点开始删，避免外键约束问题）
+    const deleteKP = dbInstance.prepare('DELETE FROM knowledge_points WHERE id = ?');
+    for (let i = allIds.length - 1; i >= 0; i--) {
+      deleteKP.run(allIds[i]);
+    }
+
+    return true;
+  } catch (err) {
+    console.error('kp:delete error:', err);
+    return false;
+  }
+});
+
 // AI根据知识点生成题目
 ipcMain.handle('ai:generateQuestionsByKnowledge', async (_event, data: any) => {
   const providerOrder = (data.providerOrder as string[]) || ['modelspace', 'deepseek'];
