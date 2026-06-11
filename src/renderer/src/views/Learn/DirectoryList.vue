@@ -72,6 +72,16 @@
         <el-form-item label="科目名称">
           <el-input v-model="newDirectory.name" placeholder="请输入科目名称" />
         </el-form-item>
+        <el-form-item label="模板">
+          <el-select v-model="newDirectory.template" placeholder="请选择模板" clearable style="width: 100%">
+            <el-option
+              v-for="tpl in templateOptions"
+              :key="tpl.value"
+              :label="tpl.label"
+              :value="tpl.value"
+            />
+          </el-select>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showAddDialog = false">取消</el-button>
@@ -263,7 +273,20 @@ const caseCounts = ref<Record<number, number>>({});
 const showAddDialog = ref(false);
 const isSelecting = ref(false);
 const selectedIds = ref<number[]>([]);
-const newDirectory = ref({ name: '' });
+const newDirectory = ref({ name: '', template: '' });
+
+// 模板选项（对应 Learn/template 目录下的 Vue 文件）
+const templateOptions = [
+  { value: 'AIQuiz', label: 'AI题目' },
+  { value: 'Article', label: '文章题' },
+  { value: 'CaseQuiz', label: '案例题' },
+  { value: 'Cloze', label: '完型填空' },
+  { value: 'English', label: '英语阅读' },
+  { value: 'EnglishWord', label: '英语单词' },
+  { value: 'Quiz', label: '普通题目' },
+  { value: 'Shuxue', label: '数学' },
+  { value: 'Translate', label: '英语翻译' },
+];
 const isFullscreen = ref(false);
 const showSettingsDialog = ref(false);
 const selectedDirId = ref<number>(0);
@@ -747,8 +770,46 @@ const getClozeCount = (dirId: number) => {
   return questionCounts.value[dirId] || 0;
 };
 
+// 模板名称到路由名称的映射
+const templateRouteMap: Record<string, string> = {
+  'AIQuiz': 'AIQuiz',
+  'Article': 'Article',
+  'CaseQuiz': 'CaseQuiz',
+  'Cloze': 'Cloze',
+  'English': 'English',
+  'EnglishWord': 'EnglishWord',
+  'Quiz': 'Quiz',
+  'Shuxue': 'Shuxue',
+  'Translate': 'Translate',
+};
+
 const enterQuiz = (directoryId: number) => {
   const dir = directories.value.find(d => d.id === directoryId);
+
+  // 如果科目有 template 字段，优先根据 template 跳转
+  if (dir?.template && templateRouteMap[dir.template]) {
+    const routeName = templateRouteMap[dir.template];
+    // EnglishWord 不需要 mode/count/repeat 参数
+    if (routeName === 'EnglishWord') {
+      router.push({
+        name: routeName,
+        params: { directoryId: directoryId.toString() }
+      });
+    } else {
+      router.push({
+        name: routeName,
+        params: { directoryId: directoryId.toString() },
+        query: {
+          mode: quizSettings.value.mode,
+          count: quizSettings.value.count.toString(),
+          repeat: quizSettings.value.repeat.toString()
+        }
+      });
+    }
+    return;
+  }
+
+  // 兼容旧科目（没有 template 字段的，按名称判断）
   const isArticleDir = dir?.name === '高项论文';
   const isCaseDir = dir?.name === '高项案例' || dir?.name === '案例押题';
   const isAIDir = dir?.name === 'ai题目';
@@ -918,11 +979,13 @@ const addDirectory = async () => {
     return;
   }
   try {
-    const result = await window.electronAPI.addDirectory(newDirectory.value.name.trim());
+    const template = newDirectory.value.template || null;
+    const result = await window.electronAPI.addDirectory(newDirectory.value.name.trim(), template);
     if (result) {
       ElMessage.success('添加成功');
       showAddDialog.value = false;
       newDirectory.value.name = '';
+      newDirectory.value.template = '';
       await loadDirectories();
     } else {
       ElMessage.error('添加失败');

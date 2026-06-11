@@ -108,12 +108,25 @@ function initDatabase() {
       CREATE TABLE IF NOT EXISTS directories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
+        template TEXT DEFAULT NULL,
         parent_id INTEGER DEFAULT NULL,
         sort_order INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (parent_id) REFERENCES directories(id)
       )
     `);
+
+    // 兼容旧数据库：如果 directories 表没有 template 列，则添加
+    try {
+      const columns = db.prepare("PRAGMA table_info(directories)").all() as any[];
+      const hasTemplate = columns.some((col: any) => col.name === 'template');
+      if (!hasTemplate) {
+        db.exec('ALTER TABLE directories ADD COLUMN template TEXT DEFAULT NULL');
+        log('Added template column to directories table');
+      }
+    } catch (err) {
+      log('Check template column error: ' + err);
+    }
 
     // ������Ŀ??
     db.exec(`
@@ -570,17 +583,17 @@ function setupIpc() {
   });
 
   // ����Ŀ¼��������ԣ�
-  ipcMain.handle('db:addDirectory', (_event, name: string, parentId: number | null = null) => {
-    if (!db) return null;
-    try {
-      const stmt = db.prepare('INSERT INTO directories (name, parent_id) VALUES (?, ?)');
-      const result = stmt.run(name, parentId);
-      return { id: result.lastInsertRowid, name, parent_id: parentId };
-    } catch (err) {
-      console.error('addDirectory error:', err);
-      return null;
-    }
-  });
+ipcMain.handle('db:addDirectory', (_event, name: string, template: string | null = null, parentId: number | null = null) => {
+if (!db) return null;
+try {
+const stmt = db.prepare('INSERT INTO directories (name, template, parent_id) VALUES (?, ?, ?)');
+const result = stmt.run(name, template, parentId);
+return { id: result.lastInsertRowid, name, template, parent_id: parentId };
+} catch (err) {
+console.error('addDirectory error:', err);
+return null;
+}
+});
 
   // 删除目录
   ipcMain.handle('db:deleteDirectory', (_event, id: number) => {

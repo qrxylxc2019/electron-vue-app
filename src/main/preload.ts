@@ -3,7 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 const electronAPI = {
   // 目录相关
   getDirectories: () => ipcRenderer.invoke('db:getDirectories'),
-  addDirectory: (name: string, parentId?: number | null) => ipcRenderer.invoke('db:addDirectory', name, parentId),
+  addDirectory: (name: string, template?: string, parentId?: number | null) => ipcRenderer.invoke('db:addDirectory', name, template, parentId),
   deleteDirectory: (id: number) => ipcRenderer.invoke('db:deleteDirectory', id),
 
   // 题目相关

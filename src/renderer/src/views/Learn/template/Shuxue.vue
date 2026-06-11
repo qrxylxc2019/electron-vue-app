@@ -156,7 +156,7 @@ import {
   Plus, Check, DocumentCopy, CircleCheck, CircleClose,
   Cpu, ArrowRight, Delete, Refresh
 } from '@element-plus/icons-vue'
-import Latex from '../../components/Latex.vue'
+import Latex from '../../../components/Latex.vue'
 
 const route = useRoute()
 const router = useRouter()
