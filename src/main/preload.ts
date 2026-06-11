@@ -201,6 +201,9 @@ const electronAPI = {
   addWxaccount: (data: any) => ipcRenderer.invoke('wxaccount:add', data),
   updateWxaccount: (id: number, data: any) => ipcRenderer.invoke('wxaccount:update', id, data),
   deleteWxaccount: (id: number) => ipcRenderer.invoke('wxaccount:delete', id),
+
+  // 知识点
+  getKnowledgePoints: (directoryId: number) => ipcRenderer.invoke('kp:getByDirectory', directoryId),
 };
 
 // 暴露给渲染进程的 API

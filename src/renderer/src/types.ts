@@ -117,6 +117,16 @@ export interface Marquee {
   update_time: string;
 }
 
+// 知识点
+export interface KnowledgePoint {
+  id: number;
+  directory_id: number;
+  parent_id: number | null;
+  name: string;
+  sort_order: number;
+  created_at: string;
+}
+
 // 扩展 Window 接口
 declare global {
   interface Window {
@@ -212,6 +222,9 @@ declare global {
       addMarquee: (data: Partial<Marquee>) => Promise<Marquee | null>;
       updateMarquee: (id: number, data: Partial<Marquee>) => Promise<boolean>;
       deleteMarquee: (id: number) => Promise<boolean>;
+
+      // 知识点
+      getKnowledgePoints: (directoryId: number) => Promise<KnowledgePoint[]>;
     };
   }
 }

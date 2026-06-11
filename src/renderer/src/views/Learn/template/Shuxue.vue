@@ -7,6 +7,9 @@
           <el-button class="add-material-btn" type="primary" size="small" @click="openAddQuestionDialog">
             <el-icon><Plus /></el-icon> 新增题目
           </el-button>
+          <el-button class="knowledge-btn" size="small" @click="openKnowledgeDialog">
+            <el-icon><Reading /></el-icon> 知识点
+          </el-button>
         </div>
         <div class="progress-bar">
           <span class="progress-text">题目 {{ currentIndex + 1 }} / {{ questions.length }}</span>
@@ -145,6 +148,24 @@ D. 选项D
         <el-button type="primary" @click="saveNewQuestions">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 知识点弹窗 -->
+    <el-dialog
+      v-model="showKnowledgeDialog"
+      title="知识点"
+      width="500px"
+      class="warm-dialog knowledge-dialog"
+    >
+      <el-tree
+        :data="knowledgeTree"
+        :props="{ label: 'name', children: 'children' }"
+        default-expand-all
+        :expand-on-click-node="false"
+        node-key="id"
+        class="knowledge-tree"
+      />
+      <el-empty v-if="knowledgeTree.length === 0" description="暂无知识点" />
+    </el-dialog>
   </div>
 </template>
 
@@ -154,7 +175,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Plus, Check, DocumentCopy, CircleCheck, CircleClose,
-  Cpu, ArrowRight, Delete, Refresh
+  Cpu, ArrowRight, Delete, Refresh, Reading
 } from '@element-plus/icons-vue'
 import Latex from '../../../components/Latex.vue'
 
@@ -174,6 +195,47 @@ const copySuccess = ref(false)
 const addQuestionDialogVisible = ref(false)
 const newQuestionContent = ref('')
 const deepseekWebviewRef = ref(null)
+const showKnowledgeDialog = ref(false)
+const knowledgeTree = ref([])
+
+// 将扁平知识点列表转为树状结构
+const buildTree = (items) => {
+  const map = {}
+  const roots = []
+  for (const item of items) {
+    map[item.id] = { ...item, children: [] }
+  }
+  for (const item of items) {
+    if (item.parent_id && map[item.parent_id]) {
+      map[item.parent_id].children.push(map[item.id])
+    } else {
+      roots.push(map[item.id])
+    }
+  }
+  // 清理空 children 数组
+  const clean = (nodes) => {
+    for (const node of nodes) {
+      if (node.children.length === 0) {
+        delete node.children
+      } else {
+        clean(node.children)
+      }
+    }
+  }
+  clean(roots)
+  return roots
+}
+
+const openKnowledgeDialog = async () => {
+  try {
+    const points = await window.electronAPI.getKnowledgePoints(parseInt(props.directoryId))
+    knowledgeTree.value = buildTree(points)
+    showKnowledgeDialog.value = true
+  } catch (error) {
+    ElMessage.error('加载知识点失败')
+    console.error(error)
+  }
+}
 
 const currentQuestion = computed(() => questions.value[currentIndex.value] || null)
 
@@ -886,5 +948,68 @@ const loadQuestions = async () => {
 
 .add-question-form {
   padding: 20px 24px;
+}
+
+.knowledge-btn {
+  background-color: #8b9a6d;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 44px;
+}
+
+.knowledge-btn:hover {
+  background-color: #7a895c;
+}
+
+:deep(.knowledge-dialog) {
+  border-radius: 16px;
+  overflow: hidden;
+  background: #faf9f7;
+}
+
+:deep(.knowledge-dialog .el-dialog__header) {
+  background: #faf9f7;
+  border-bottom: 1px solid #e8e4df;
+  padding: 20px 24px;
+  margin-right: 0;
+}
+
+:deep(.knowledge-dialog .el-dialog__title) {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+:deep(.knowledge-dialog .el-dialog__body) {
+  padding: 20px 24px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.knowledge-tree {
+  background: transparent;
+}
+
+:deep(.knowledge-tree .el-tree-node__content) {
+  height: 40px;
+  border-radius: 8px;
+  margin-bottom: 2px;
+}
+
+:deep(.knowledge-tree .el-tree-node__content:hover) {
+  background: #f5f0e8;
+}
+
+:deep(.knowledge-tree .el-tree-node.is-current > .el-tree-node__content) {
+  background: rgba(139, 154, 109, 0.12);
+}
+
+:deep(.knowledge-tree .el-tree-node__expand-icon) {
+  color: #8b9a6d;
 }
 </style>

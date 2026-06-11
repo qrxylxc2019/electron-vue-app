@@ -272,6 +272,20 @@ function initDatabase() {
       )
     `);
 
+    // 知识点表（多层级树状结构，关联科目）
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS knowledge_points (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        directory_id INTEGER NOT NULL,
+        parent_id INTEGER DEFAULT NULL,
+        name TEXT NOT NULL,
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (directory_id) REFERENCES directories(id),
+        FOREIGN KEY (parent_id) REFERENCES knowledge_points(id)
+      )
+    `);
+
     // plan 表
     db.exec(`
       CREATE TABLE IF NOT EXISTS plan (
@@ -483,6 +497,183 @@ function seedDefaultData() {
     }
   } catch (err) {
     console.error('Seed 考研英语 data error:', err);
+  }
+
+  // 初始化考研数学知识点
+  try {
+    const checkMath = db.prepare("SELECT id FROM directories WHERE name = '数学'");
+    const existingMath = checkMath.get();
+    if (existingMath) {
+      const mathDirId = (existingMath as any).id;
+      const checkKP = db.prepare("SELECT id FROM knowledge_points WHERE directory_id = ?");
+      const existingKP = checkKP.get(mathDirId);
+      if (!existingKP) {
+        const insertKP = db.prepare("INSERT INTO knowledge_points (directory_id, parent_id, name, sort_order) VALUES (?, ?, ?, ?)");
+        // 高等数学
+        const gaoshu = insertKP.run(mathDirId, null, '高等数学', 1);
+        const gaoshuId = Number(gaoshu.lastInsertRowid);
+        // 线性代数
+        const xiandai = insertKP.run(mathDirId, null, '线性代数', 2);
+        const xiandaiId = Number(xiandai.lastInsertRowid);
+        // 概率统计
+        const gailv = insertKP.run(mathDirId, null, '概率论与数理统计', 3);
+        const gailvId = Number(gailv.lastInsertRowid);
+
+        // === 高等数学子节点 ===
+        const gs1 = insertKP.run(mathDirId, gaoshuId, '函数、极限与连续', 1);
+        const gs1Id = Number(gs1.lastInsertRowid);
+        insertKP.run(mathDirId, gs1Id, '函数的概念与性质', 1);
+        insertKP.run(mathDirId, gs1Id, '极限的概念与性质', 2);
+        insertKP.run(mathDirId, gs1Id, '极限的运算法则', 3);
+        insertKP.run(mathDirId, gs1Id, '极限存在的准则', 4);
+        insertKP.run(mathDirId, gs1Id, '无穷小与无穷大', 5);
+        insertKP.run(mathDirId, gs1Id, '连续与间断', 6);
+
+        const gs2 = insertKP.run(mathDirId, gaoshuId, '一元函数微分学', 2);
+        const gs2Id = Number(gs2.lastInsertRowid);
+        insertKP.run(mathDirId, gs2Id, '导数的概念', 1);
+        insertKP.run(mathDirId, gs2Id, '导数的运算法则', 2);
+        insertKP.run(mathDirId, gs2Id, '微分', 3);
+        insertKP.run(mathDirId, gs2Id, '微分中值定理', 4);
+        insertKP.run(mathDirId, gs2Id, '洛必达法则', 5);
+        insertKP.run(mathDirId, gs2Id, '泰勒公式', 6);
+        insertKP.run(mathDirId, gs2Id, '函数的单调性与极值', 7);
+        insertKP.run(mathDirId, gs2Id, '曲线的凹凸性与拐点', 8);
+        insertKP.run(mathDirId, gs2Id, '渐近线与曲率', 9);
+
+        const gs3 = insertKP.run(mathDirId, gaoshuId, '一元函数积分学', 3);
+        const gs3Id = Number(gs3.lastInsertRowid);
+        insertKP.run(mathDirId, gs3Id, '不定积分的概念与性质', 1);
+        insertKP.run(mathDirId, gs3Id, '换元积分法', 2);
+        insertKP.run(mathDirId, gs3Id, '分部积分法', 3);
+        insertKP.run(mathDirId, gs3Id, '有理函数积分', 4);
+        insertKP.run(mathDirId, gs3Id, '定积分的概念与性质', 5);
+        insertKP.run(mathDirId, gs3Id, '微积分基本定理', 6);
+        insertKP.run(mathDirId, gs3Id, '定积分的应用', 7);
+        insertKP.run(mathDirId, gs3Id, '反常积分', 8);
+
+        const gs4 = insertKP.run(mathDirId, gaoshuId, '多元函数微分学', 4);
+        const gs4Id = Number(gs4.lastInsertRowid);
+        insertKP.run(mathDirId, gs4Id, '多元函数的概念', 1);
+        insertKP.run(mathDirId, gs4Id, '偏导数与全微分', 2);
+        insertKP.run(mathDirId, gs4Id, '多元复合函数求导', 3);
+        insertKP.run(mathDirId, gs4Id, '隐函数求导', 4);
+        insertKP.run(mathDirId, gs4Id, '多元函数的极值', 5);
+        insertKP.run(mathDirId, gs4Id, '方向导数与梯度', 6);
+
+        const gs5 = insertKP.run(mathDirId, gaoshuId, '多元函数积分学', 5);
+        const gs5Id = Number(gs5.lastInsertRowid);
+        insertKP.run(mathDirId, gs5Id, '二重积分', 1);
+        insertKP.run(mathDirId, gs5Id, '三重积分', 2);
+        insertKP.run(mathDirId, gs5Id, '曲线积分', 3);
+        insertKP.run(mathDirId, gs5Id, '曲面积分', 4);
+        insertKP.run(mathDirId, gs5Id, '格林公式', 5);
+        insertKP.run(mathDirId, gs5Id, '高斯公式与斯托克斯公式', 6);
+
+        const gs6 = insertKP.run(mathDirId, gaoshuId, '常微分方程', 6);
+        const gs6Id = Number(gs6.lastInsertRowid);
+        insertKP.run(mathDirId, gs6Id, '一阶微分方程', 1);
+        insertKP.run(mathDirId, gs6Id, '可降阶的高阶方程', 2);
+        insertKP.run(mathDirId, gs6Id, '高阶线性微分方程', 3);
+        insertKP.run(mathDirId, gs6Id, '常系数线性微分方程', 4);
+
+        const gs7 = insertKP.run(mathDirId, gaoshuId, '无穷级数', 7);
+        const gs7Id = Number(gs7.lastInsertRowid);
+        insertKP.run(mathDirId, gs7Id, '常数项级数', 1);
+        insertKP.run(mathDirId, gs7Id, '幂级数', 2);
+        insertKP.run(mathDirId, gs7Id, '傅里叶级数', 3);
+
+        // === 线性代数子节点 ===
+        const xd1 = insertKP.run(mathDirId, xiandaiId, '行列式', 1);
+        const xd1Id = Number(xd1.lastInsertRowid);
+        insertKP.run(mathDirId, xd1Id, '行列式的概念与性质', 1);
+        insertKP.run(mathDirId, xd1Id, '行列式的展开定理', 2);
+        insertKP.run(mathDirId, xd1Id, '行列式的计算', 3);
+
+        const xd2 = insertKP.run(mathDirId, xiandaiId, '矩阵', 2);
+        const xd2Id = Number(xd2.lastInsertRowid);
+        insertKP.run(mathDirId, xd2Id, '矩阵的运算', 1);
+        insertKP.run(mathDirId, xd2Id, '逆矩阵', 2);
+        insertKP.run(mathDirId, xd2Id, '初等变换与初等矩阵', 3);
+        insertKP.run(mathDirId, xd2Id, '矩阵的秩', 4);
+        insertKP.run(mathDirId, xd2Id, '分块矩阵', 5);
+
+        const xd3 = insertKP.run(mathDirId, xiandaiId, '向量', 3);
+        const xd3Id = Number(xd3.lastInsertRowid);
+        insertKP.run(mathDirId, xd3Id, '向量的概念与运算', 1);
+        insertKP.run(mathDirId, xd3Id, '向量组的线性相关性', 2);
+        insertKP.run(mathDirId, xd3Id, '向量组的秩', 3);
+        insertKP.run(mathDirId, xd3Id, '向量空间', 4);
+
+        const xd4 = insertKP.run(mathDirId, xiandaiId, '线性方程组', 4);
+        const xd4Id = Number(xd4.lastInsertRowid);
+        insertKP.run(mathDirId, xd4Id, '齐次线性方程组', 1);
+        insertKP.run(mathDirId, xd4Id, '非齐次线性方程组', 2);
+
+        const xd5 = insertKP.run(mathDirId, xiandaiId, '特征值与特征向量', 5);
+        const xd5Id = Number(xd5.lastInsertRowid);
+        insertKP.run(mathDirId, xd5Id, '特征值与特征向量的概念', 1);
+        insertKP.run(mathDirId, xd5Id, '相似矩阵', 2);
+        insertKP.run(mathDirId, xd5Id, '实对称矩阵的对角化', 3);
+
+        const xd6 = insertKP.run(mathDirId, xiandaiId, '二次型', 6);
+        const xd6Id = Number(xd6.lastInsertRowid);
+        insertKP.run(mathDirId, xd6Id, '二次型及其矩阵表示', 1);
+        insertKP.run(mathDirId, xd6Id, '化二次型为标准形', 2);
+        insertKP.run(mathDirId, xd6Id, '正定二次型', 3);
+
+        // === 概率论子节点 ===
+        const gl1 = insertKP.run(mathDirId, gailvId, '随机事件与概率', 1);
+        const gl1Id = Number(gl1.lastInsertRowid);
+        insertKP.run(mathDirId, gl1Id, '随机事件', 1);
+        insertKP.run(mathDirId, gl1Id, '概率的定义与性质', 2);
+        insertKP.run(mathDirId, gl1Id, '条件概率与独立性', 3);
+        insertKP.run(mathDirId, gl1Id, '全概率公式与贝叶斯公式', 4);
+
+        const gl2 = insertKP.run(mathDirId, gailvId, '随机变量及其分布', 2);
+        const gl2Id = Number(gl2.lastInsertRowid);
+        insertKP.run(mathDirId, gl2Id, '离散型随机变量', 1);
+        insertKP.run(mathDirId, gl2Id, '连续型随机变量', 2);
+        insertKP.run(mathDirId, gl2Id, '常见分布', 3);
+
+        const gl3 = insertKP.run(mathDirId, gailvId, '多维随机变量', 3);
+        const gl3Id = Number(gl3.lastInsertRowid);
+        insertKP.run(mathDirId, gl3Id, '二维离散型随机变量', 1);
+        insertKP.run(mathDirId, gl3Id, '二维连续型随机变量', 2);
+        insertKP.run(mathDirId, gl3Id, '随机变量的独立性', 3);
+
+        const gl4 = insertKP.run(mathDirId, gailvId, '随机变量的数字特征', 4);
+        const gl4Id = Number(gl4.lastInsertRowid);
+        insertKP.run(mathDirId, gl4Id, '数学期望', 1);
+        insertKP.run(mathDirId, gl4Id, '方差', 2);
+        insertKP.run(mathDirId, gl4Id, '协方差与相关系数', 3);
+
+        const gl5 = insertKP.run(mathDirId, gailvId, '大数定律与中心极限定理', 5);
+        const gl5Id = Number(gl5.lastInsertRowid);
+        insertKP.run(mathDirId, gl5Id, '大数定律', 1);
+        insertKP.run(mathDirId, gl5Id, '中心极限定理', 2);
+
+        const gl6 = insertKP.run(mathDirId, gailvId, '数理统计的基本概念', 6);
+        const gl6Id = Number(gl6.lastInsertRowid);
+        insertKP.run(mathDirId, gl6Id, '总体与样本', 1);
+        insertKP.run(mathDirId, gl6Id, '统计量与抽样分布', 2);
+
+        const gl7 = insertKP.run(mathDirId, gailvId, '参数估计', 7);
+        const gl7Id = Number(gl7.lastInsertRowid);
+        insertKP.run(mathDirId, gl7Id, '点估计', 1);
+        insertKP.run(mathDirId, gl7Id, '估计量的评选标准', 2);
+        insertKP.run(mathDirId, gl7Id, '区间估计', 3);
+
+        const gl8 = insertKP.run(mathDirId, gailvId, '假设检验', 8);
+        const gl8Id = Number(gl8.lastInsertRowid);
+        insertKP.run(mathDirId, gl8Id, '假设检验的基本概念', 1);
+        insertKP.run(mathDirId, gl8Id, '正态总体参数的假设检验', 2);
+
+        console.log('Seeded knowledge points for 数学');
+      }
+    }
+  } catch (err) {
+    console.error('Seed 数学 knowledge points error:', err);
   }
 }
 
@@ -3321,6 +3512,18 @@ ipcMain.handle('wxaccount:delete', async (_event, id: number) => {
   } catch (err: any) {
     console.error('wxaccount:delete error:', err);
     return { code: 500, message: err.message };
+  }
+});
+
+// 获取知识点列表（按科目）
+ipcMain.handle('kp:getByDirectory', (_event, directoryId: number) => {
+  if (!db) return [];
+  try {
+    const stmt = db.prepare('SELECT * FROM knowledge_points WHERE directory_id = ? ORDER BY sort_order, id');
+    return stmt.all(directoryId);
+  } catch (err) {
+    console.error('kp:getByDirectory error:', err);
+    return [];
   }
 });
 
