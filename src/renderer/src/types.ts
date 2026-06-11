@@ -14,6 +14,7 @@ export interface Question {
   id: number;
   directory_id: number;
   pid: number | null;
+  knowledge_id: number | null;
   question_type: QuestionType;
   title: string;
   option_a: string | null;
@@ -135,6 +136,7 @@ declare global {
       addDirectory: (name: string, template?: string, parentId?: number | null) => Promise<Directory | null>;
       deleteDirectory: (id: number) => Promise<boolean>;
       getQuestions: (directoryId: number) => Promise<Question[]>;
+      getQuestionsByKnowledge: (knowledgeId: number) => Promise<Question[]>;
       searchQuestions: (directoryId: number, keyword: string) => Promise<Question[]>;
       getArticles: (directoryId: number) => Promise<Article[]>;
       getQuestion: (id: number) => Promise<Question | null>;
@@ -225,6 +227,14 @@ declare global {
 
       // 知识点
       getKnowledgePoints: (directoryId: number) => Promise<KnowledgePoint[]>;
+
+      // AI根据知识点出题
+      generateQuestionsByKnowledge: (data: {
+        knowledgeName: string;
+        directoryId: number;
+        count?: number;
+        providerOrder?: string[];
+      }) => Promise<{ success: boolean; questions?: any[]; error?: string }>;
     };
   }
 }

@@ -128,12 +128,25 @@ function initDatabase() {
       log('Check template column error: ' + err);
     }
 
+    // 兼容旧数据库：如果 questions 表没有 knowledge_id 列，则添加
+    try {
+      const qColumns = db.prepare("PRAGMA table_info(questions)").all() as any[];
+      const hasKnowledgeId = qColumns.some((col: any) => col.name === 'knowledge_id');
+      if (!hasKnowledgeId) {
+        db.exec('ALTER TABLE questions ADD COLUMN knowledge_id INTEGER DEFAULT NULL');
+        log('Added knowledge_id column to questions table');
+      }
+    } catch (err) {
+      log('Check knowledge_id column error: ' + err);
+    }
+
     // ������Ŀ??
     db.exec(`
       CREATE TABLE IF NOT EXISTS questions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         directory_id INTEGER NOT NULL,
         pid INTEGER DEFAULT NULL,
+        knowledge_id INTEGER DEFAULT NULL,
         question_type TEXT NOT NULL CHECK(question_type IN ('single', 'multiple', 'judge', 'write')),
         title TEXT NOT NULL,
         option_a TEXT,
@@ -147,7 +160,8 @@ function initDatabase() {
         sort_order INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (directory_id) REFERENCES directories(id),
-        FOREIGN KEY (pid) REFERENCES questions(id)
+        FOREIGN KEY (pid) REFERENCES questions(id),
+        FOREIGN KEY (knowledge_id) REFERENCES knowledge_points(id)
       )
     `);
 
@@ -691,17 +705,29 @@ function setupIpc() {
     }
   });
 
-  // ��ȡĳĿ¼�µ���Ŀ��??
-  ipcMain.handle('db:getQuestions', (_event, directoryId: number) => {
-    if (!db) return [];
-    try {
-      const stmt = db.prepare('SELECT * FROM questions WHERE directory_id = ? ORDER BY sort_order, id');
-      return stmt.all(directoryId);
-    } catch (err) {
-      console.error('getQuestions error:', err);
-      return [];
-    }
-  });
+// ��ȡĳĿ¼�µ���Ŀ��??
+ipcMain.handle('db:getQuestions', (_event, directoryId: number) => {
+if (!db) return [];
+try {
+const stmt = db.prepare('SELECT * FROM questions WHERE directory_id = ? ORDER BY sort_order, id');
+return stmt.all(directoryId);
+} catch (err) {
+console.error('getQuestions error:', err);
+return [];
+}
+});
+
+// 获取某知识点下的题目
+ipcMain.handle('db:getQuestionsByKnowledge', (_event, knowledgeId: number) => {
+if (!db) return [];
+try {
+const stmt = db.prepare('SELECT * FROM questions WHERE knowledge_id = ? ORDER BY sort_order, id');
+return stmt.all(knowledgeId);
+} catch (err) {
+console.error('getQuestionsByKnowledge error:', err);
+return [];
+}
+});
 
   // 模糊查询题目（按标题关键词）
   ipcMain.handle('db:searchQuestions', (_event, directoryId: number, keyword: string) => {
@@ -1138,12 +1164,13 @@ return null;
     if (!db) return null;
     try {
       const stmt = db.prepare(`
-        INSERT INTO questions (directory_id, pid, question_type, title, option_a, option_b, option_c, option_d, option_e, correct_answer, explanation, ai_explanation)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO questions (directory_id, pid, knowledge_id, question_type, title, option_a, option_b, option_c, option_d, option_e, correct_answer, explanation, ai_explanation)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       const result = stmt.run(
         question.directory_id,
         question.pid || null,
+        question.knowledge_id || null,
         question.question_type,
         question.title,
         question.option_a || null,
@@ -3525,6 +3552,100 @@ ipcMain.handle('kp:getByDirectory', (_event, directoryId: number) => {
     console.error('kp:getByDirectory error:', err);
     return [];
   }
+});
+
+// AI根据知识点生成题目
+ipcMain.handle('ai:generateQuestionsByKnowledge', async (_event, data: any) => {
+  const providerOrder = (data.providerOrder as string[]) || ['modelspace', 'deepseek'];
+  const knowledgeName = data.knowledgeName as string;
+  const count = data.count || 5;
+
+  if (!knowledgeName) {
+    return { success: false, error: '知识点名称不能为空' };
+  }
+
+  const systemPrompt = `你是一位考研数学出题专家。请根据给定的知识点，生成${count}道考研数学题目。
+要求：
+1. 题目必须严格围绕给定知识点
+2. 包含单选题和多选题（question_type为"single"或"multiple"）
+3. 题目难度适中，符合考研数学要求
+4. 如有数学公式，使用LaTeX语法，行内公式用$...$，独立公式用$$...$$
+5. 必须返回JSON数组格式，每个元素包含以下字段：
+   - question_type: "single"或"multiple"
+   - title: 题干内容
+   - option_a: 选项A内容
+   - option_b: 选项B内容
+   - option_c: 选项C内容
+   - option_d: 选项D内容
+   - option_e: 选项E内容（如有）
+   - correct_answer: 正确答案（多选用逗号分隔，如"A,C"）
+   - explanation: 解析内容
+6. 只返回JSON数组，不要返回其他内容`;
+
+  const userPrompt = `请根据知识点"${knowledgeName}"生成${count}道考研数学题目。`;
+
+  const result = await callAIWithFallback(providerOrder, async (provider) => {
+    log(`[AI GenerateByKnowledge] 使用厂商: ${provider}, 知识点: ${knowledgeName}`);
+    let content = '';
+
+    if (provider === 'deepseekLocal') {
+      const dsClient = getDeepSeekClient();
+      if (!dsClient) {
+        throw new Error('DeepSeek 本地版客户端未初始化，请先设置 Token');
+      }
+
+      const dsMessages: { role: 'user' | 'assistant'; content: string }[] = [
+        { role: 'user', content: `${systemPrompt}\n\n${userPrompt}` }
+      ];
+
+      for await (const chunk of dsClient.chatStream(dsMessages, 'deepseek-chat')) {
+        if (chunk.type === 'text' && chunk.content) {
+          content += chunk.content;
+        } else if (chunk.type === 'error') {
+          throw new Error(chunk.content || 'DeepSeek 聊天失败');
+        }
+      }
+    } else {
+      const client = getOpenAIClient(provider);
+      const model = getCurrentModel(provider);
+
+      const response = await client.chat.completions.create({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        stream: false,
+        temperature: 0.8,
+        max_tokens: 4096,
+      });
+
+      content = response.choices[0]?.message?.content || '';
+    }
+
+    // 提取JSON部分
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      throw new Error('AI返回格式不正确，未找到JSON数组');
+    }
+
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (!Array.isArray(parsed)) {
+        throw new Error('AI返回的JSON不是数组');
+      }
+      return parsed;
+    } catch (e: any) {
+      throw new Error(`JSON解析失败: ${e.message}`);
+    }
+  });
+
+  if (!result.success) {
+    console.error('AI generate questions by knowledge error:', result.error);
+    return { success: false, error: result.error };
+  }
+
+  return { success: true, questions: result.data };
 });
 
 app.on('window-all-closed', () => {

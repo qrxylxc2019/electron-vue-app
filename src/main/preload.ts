@@ -8,6 +8,7 @@ const electronAPI = {
 
   // 题目相关
   getQuestions: (directoryId: number) => ipcRenderer.invoke('db:getQuestions', directoryId),
+  getQuestionsByKnowledge: (knowledgeId: number) => ipcRenderer.invoke('db:getQuestionsByKnowledge', knowledgeId),
   searchQuestions: (directoryId: number, keyword: string) => ipcRenderer.invoke('db:searchQuestions', directoryId, keyword),
   getArticles: (directoryId: number) => ipcRenderer.invoke('db:getArticles', directoryId),
   getQuestion: (id: number) => ipcRenderer.invoke('db:getQuestion', id),
@@ -204,6 +205,9 @@ const electronAPI = {
 
   // 知识点
   getKnowledgePoints: (directoryId: number) => ipcRenderer.invoke('kp:getByDirectory', directoryId),
+
+  // AI根据知识点出题
+  generateQuestionsByKnowledge: (data: any) => ipcRenderer.invoke('ai:generateQuestionsByKnowledge', data),
 };
 
 // 暴露给渲染进程的 API

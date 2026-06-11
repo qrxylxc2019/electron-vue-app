@@ -153,7 +153,7 @@ D. 选项D
     <el-dialog
       v-model="showKnowledgeDialog"
       title="知识点"
-      width="500px"
+      width="700px"
       class="warm-dialog knowledge-dialog"
     >
       <el-tree
@@ -163,7 +163,25 @@ D. 选项D
         :expand-on-click-node="false"
         node-key="id"
         class="knowledge-tree"
-      />
+        @node-click="onKnowledgeNodeClick"
+      >
+        <template #default="{ node, data }">
+          <div class="knowledge-node">
+            <span class="node-label">{{ data.name }}</span>
+            <el-button
+              v-if="!data.children || data.children.length === 0"
+              class="generate-btn"
+              size="small"
+              :loading="generatingNodeId === data.id"
+              :disabled="generatingNodeId !== null"
+              @click.stop="generateQuestions(data)"
+            >
+              <el-icon v-if="generatingNodeId !== data.id"><Cpu /></el-icon>
+              {{ generatingNodeId === data.id ? '出题中...' : 'AI出题' }}
+            </el-button>
+          </div>
+        </template>
+      </el-tree>
       <el-empty v-if="knowledgeTree.length === 0" description="暂无知识点" />
     </el-dialog>
   </div>
@@ -234,6 +252,99 @@ const openKnowledgeDialog = async () => {
   } catch (error) {
     ElMessage.error('加载知识点失败')
     console.error(error)
+  }
+}
+
+const generatingNodeId = ref<number | null>(null)
+
+const generateQuestions = async (knowledgePoint: any) => {
+  generatingNodeId.value = knowledgePoint.id
+  try {
+    const result = await window.electronAPI.generateQuestionsByKnowledge({
+      knowledgeName: knowledgePoint.name,
+      directoryId: parseInt(props.directoryId),
+      count: 5,
+      providerOrder: ['deepseekLocal', 'modelspace', 'deepseek']
+    })
+    if (result.success && result.questions && result.questions.length > 0) {
+      let savedCount = 0
+      for (const q of result.questions) {
+        const questionData = {
+          directory_id: parseInt(props.directoryId),
+          knowledge_id: knowledgePoint.id,
+          question_type: q.question_type || 'single',
+          title: q.title,
+          option_a: q.option_a || null,
+          option_b: q.option_b || null,
+          option_c: q.option_c || null,
+          option_d: q.option_d || null,
+          option_e: q.option_e || null,
+          correct_answer: q.correct_answer,
+          explanation: q.explanation || null,
+        }
+        const saved = await window.electronAPI.addQuestion(questionData)
+        if (saved) savedCount++
+      }
+      ElMessage.success(`已生成并保存 ${savedCount} 道题目`)
+      // 刷新题目列表
+      await loadQuestions()
+    } else {
+      ElMessage.error(result.error || 'AI出题失败，请稍后重试')
+    }
+  } catch (error: any) {
+    ElMessage.error('AI出题失败：' + (error.message || '未知错误'))
+    console.error(error)
+  } finally {
+    generatingNodeId.value = null
+  }
+}
+
+// 当前筛选的知识点ID（null表示显示全部）
+const filterKnowledgeId = ref<number | null>(null)
+
+// 点击知识点节点，筛选该知识点下的题目
+const onKnowledgeNodeClick = async (data: any) => {
+  // 如果是最底层节点，点击后加载该知识点下的题目
+  if (!data.children || data.children.length === 0) {
+    filterKnowledgeId.value = data.id
+    await loadQuestionsByKnowledge(data.id, data.name)
+  }
+}
+
+// 根据知识点加载题目（应用重复规则）
+const loadQuestionsByKnowledge = async (knowledgeId: number, knowledgeName?: string) => {
+  try {
+    let qs = await window.electronAPI.getQuestionsByKnowledge(knowledgeId)
+    qs = qs || []
+
+    const mode = route.query.mode as string
+    const count = parseInt(route.query.count as string) || qs.length
+    const repeat = parseInt(route.query.repeat as string) || 1
+
+    qs = shuffleArray([...qs])
+
+    if (mode === 'random' && count < qs.length) {
+      qs = qs.slice(0, count)
+    }
+
+    if (repeat > 1) {
+      const baseQuestions = [...qs]
+      const repeated: any[] = []
+      for (let i = 0; i < repeat; i++) {
+        repeated.push(...shuffleArray([...baseQuestions]))
+      }
+      qs = repeated
+    }
+
+    questions.value = qs
+    currentIndex.value = 0
+    resetAnswer()
+    if (knowledgeName) {
+      directoryName.value = `${knowledgeName} - 数学`
+    }
+  } catch (error) {
+    console.error('加载知识点题目失败:', error)
+    ElMessage.error('加载知识点题目失败')
   }
 }
 
@@ -1011,5 +1122,39 @@ const loadQuestions = async () => {
 
 :deep(.knowledge-tree .el-tree-node__expand-icon) {
   color: #8b9a6d;
+}
+
+.knowledge-node {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  padding-right: 8px;
+}
+
+.node-label {
+  font-size: 14px;
+  color: #1a1a1a;
+}
+
+.generate-btn {
+  background-color: #8b9a6d;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  height: auto;
+  min-height: 28px;
+}
+
+.generate-btn:hover:not(:disabled) {
+  background-color: #7a895c;
+}
+
+.generate-btn:disabled {
+  background-color: #c0c4cc;
+  border-color: #c0c4cc;
 }
 </style>
