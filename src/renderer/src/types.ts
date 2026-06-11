@@ -238,6 +238,12 @@ declare global {
         count?: number;
         providerOrder?: string[];
       }) => Promise<{ success: boolean; questions?: any[]; error?: string }>;
+      // AI分类题目到知识点
+      classifyQuestion: (data: {
+        questionTitle: string;
+        knowledgePoints: Array<{ id: number; name: string }>;
+        providerOrder?: string[];
+      }) => Promise<{ success: boolean; result?: { knowledge_id: number; knowledge_name: string; confidence: number; reason: string }; error?: string }>;
     };
   }
 }

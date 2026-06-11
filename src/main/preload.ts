@@ -211,6 +211,7 @@ const electronAPI = {
 
   // AI根据知识点出题
   generateQuestionsByKnowledge: (data: any) => ipcRenderer.invoke('ai:generateQuestionsByKnowledge', data),
+  classifyQuestion: (data: any) => ipcRenderer.invoke('ai:classifyQuestion', data),
 };
 
 // 暴露给渲染进程的 API

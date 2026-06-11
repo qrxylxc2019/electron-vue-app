@@ -1262,6 +1262,7 @@ return null;
       if (data.correct_answer !== undefined) { fields.push('correct_answer = ?'); values.push(data.correct_answer); }
       if (data.explanation !== undefined) { fields.push('explanation = ?'); values.push(data.explanation); }
       if (data.question_type !== undefined) { fields.push('question_type = ?'); values.push(data.question_type); }
+      if (data.knowledge_id !== undefined) { fields.push('knowledge_id = ?'); values.push(data.knowledge_id); }
       
       if (fields.length === 0) return false;
       
@@ -3708,6 +3709,102 @@ ipcMain.handle('ai:generateQuestionsByKnowledge', async (_event, data: any) => {
   }
 
   return { success: true, questions: result.data };
+});
+
+// AI分类题目到知识点
+ipcMain.handle('ai:classifyQuestion', async (_event, data: any) => {
+  const providerOrder = (data.providerOrder as string[]) || ['modelspace', 'deepseek'];
+  const questionTitle = data.questionTitle as string;
+  const knowledgePoints = data.knowledgePoints as Array<{ id: number; name: string }>;
+
+  if (!questionTitle || !knowledgePoints || knowledgePoints.length === 0) {
+    return { success: false, error: '题目内容或知识点列表不能为空' };
+  }
+
+  const knowledgeListText = knowledgePoints.map(kp => `ID: ${kp.id}, 名称: ${kp.name}`).join('\n');
+
+  const systemPrompt = `你是一位考研数学分类专家。请根据给定的题目内容，判断该题目最属于哪个知识点。
+
+要求：
+1. 仔细分析题目内容，判断其考查的核心知识点
+2. 从给定的知识点列表中选择最匹配的一个
+3. 必须返回JSON格式，包含以下字段：
+   - knowledge_id: 匹配的知识点的ID（数字）
+   - knowledge_name: 匹配的知识点的名称
+   - confidence: 匹配置信度（0-1之间的小数）
+   - reason: 分类理由（简要说明为什么属于这个知识点）
+4. 只返回JSON对象，不要返回其他内容`;
+
+  const userPrompt = `题目内容：
+${questionTitle}
+
+可选知识点列表：
+${knowledgeListText}
+
+请判断该题目最属于哪个知识点，返回JSON格式。`;
+
+  const result = await callAIWithFallback(providerOrder, async (provider) => {
+    log(`[AI Classify] 使用厂商: ${provider}`);
+    let content = '';
+
+    if (provider === 'deepseekLocal') {
+      const dsClient = getDeepSeekClient();
+      if (!dsClient) {
+        throw new Error('DeepSeek 本地版客户端未初始化，请先设置 Token');
+      }
+
+      const dsMessages: { role: 'user' | 'assistant'; content: string }[] = [
+        { role: 'user', content: `${systemPrompt}\n\n${userPrompt}` }
+      ];
+
+      for await (const chunk of dsClient.chatStream(dsMessages, 'deepseek-chat')) {
+        if (chunk.type === 'text' && chunk.content) {
+          content += chunk.content;
+        } else if (chunk.type === 'error') {
+          throw new Error(chunk.content || 'DeepSeek 聊天失败');
+        }
+      }
+    } else {
+      const client = getOpenAIClient(provider);
+      const model = getCurrentModel(provider);
+
+      const response = await client.chat.completions.create({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        stream: false,
+        temperature: 0.3,
+        max_tokens: 1024,
+      });
+
+      content = response.choices[0]?.message?.content || '';
+    }
+
+    // 提取JSON部分
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('AI返回格式不正确，未找到JSON对象');
+    }
+
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (typeof parsed.knowledge_id !== 'number') {
+        throw new Error('AI返回的JSON中knowledge_id不是数字');
+      }
+      return parsed;
+    } catch (e: any) {
+      throw new Error(`JSON解析失败: ${e.message}`);
+    }
+  });
+
+  if (!result.success) {
+    console.error('AI classify question error:', result.error);
+    return { success: false, error: result.error };
+  }
+
+  return { success: true, result: result.data };
 });
 
 app.on('window-all-closed', () => {

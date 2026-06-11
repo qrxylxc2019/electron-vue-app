@@ -30,6 +30,10 @@
                   <el-tag v-if="currentQuestionKnowledgeName" type="info" size="small" class="knowledge-tag">{{ currentQuestionKnowledgeName }}</el-tag>
                 </div>
                 <div class="header-actions">
+                  <el-button class="ai-classify-btn" size="small" @click="aiClassifyQuestion" :loading="aiClassifying" title="AI分类">
+                    <el-icon :size="16"><Cpu /></el-icon>
+                    <span class="btn-text">AI分类</span>
+                  </el-button>
                   <el-button class="copy-btn" size="small" @click="copyQuestionContent" :title="copySuccess ? '已复制' : '复制题目'">
                     <el-icon :size="18">
                       <Check v-if="copySuccess" style="color: #67c23a;" />
@@ -437,6 +441,85 @@ const filterKnowledgeId = ref<number | null>(null)
 
 // 当前筛选的知识点名称
 const currentFilterKnowledgeName = ref('')
+
+// AI分类状态
+const aiClassifying = ref(false)
+
+// AI分类题目
+const aiClassifyQuestion = async () => {
+  if (!currentQuestion.value) return
+  if (knowledgeMap.value.size === 0) {
+    ElMessage.warning('知识点列表为空，请先加载知识点')
+    return
+  }
+
+  aiClassifying.value = true
+  try {
+    // 构建知识点列表（只包含最底层知识点）
+    const knowledgePoints = []
+    const findLeafNodes = (nodes: any[]) => {
+      for (const node of nodes) {
+        if (!node.children || node.children.length === 0) {
+          knowledgePoints.push({ id: node.id, name: node.name })
+        } else {
+          findLeafNodes(node.children)
+        }
+      }
+    }
+    findLeafNodes(knowledgeTree.value)
+
+    if (knowledgePoints.length === 0) {
+      ElMessage.warning('没有可用的最底层知识点')
+      return
+    }
+
+    const result = await window.electronAPI.classifyQuestion({
+      questionTitle: currentQuestion.value.title,
+      knowledgePoints,
+      providerOrder: ['deepseekLocal', 'modelspace', 'deepseek']
+    })
+
+    if (result.success && result.result) {
+      const { knowledge_id, knowledge_name, confidence, reason } = result.result
+
+      // 确认是否更新
+      try {
+        await ElMessageBox.confirm(
+          `AI判断该题目属于：${knowledge_name}\n置信度：${(confidence * 100).toFixed(1)}%\n理由：${reason}\n\n是否更新该题目的知识点？`,
+          'AI分类结果',
+          { type: 'info', confirmButtonText: '更新', cancelButtonText: '取消' }
+        )
+
+        // 更新题目知识点
+        const updateResult = await window.electronAPI.updateQuestion(
+          currentQuestion.value.id,
+          { knowledge_id }
+        )
+
+        if (updateResult) {
+          // 更新本地数据
+          currentQuestion.value.knowledge_id = knowledge_id
+          // 刷新映射表
+          await loadKnowledgeMap()
+          ElMessage.success(`已更新知识点为：${knowledge_name}`)
+        } else {
+          ElMessage.error('更新失败')
+        }
+      } catch (e: any) {
+        if (e !== 'cancel') {
+          console.error('更新知识点失败:', e)
+        }
+      }
+    } else {
+      ElMessage.error(result.error || 'AI分类失败')
+    }
+  } catch (error: any) {
+    ElMessage.error('AI分类失败：' + (error.message || '未知错误'))
+    console.error(error)
+  } finally {
+    aiClassifying.value = false
+  }
+}
 
 // 点击知识点节点，筛选该知识点下的题目
 const onKnowledgeNodeClick = async (data: any) => {
@@ -1360,6 +1443,23 @@ const loadQuestions = async () => {
 .filter-knowledge-tag {
   margin-left: 8px;
   font-size: 13px;
+}
+
+.ai-classify-btn {
+  color: #8b9a6d;
+  padding: 6px 12px;
+  height: auto;
+  min-height: 32px;
+}
+
+.ai-classify-btn:hover {
+  color: #7a895c;
+  background: rgba(139, 154, 109, 0.1);
+}
+
+.ai-classify-btn .btn-text {
+  margin-left: 4px;
+  font-size: 12px;
 }
 
 .generate-btn {
