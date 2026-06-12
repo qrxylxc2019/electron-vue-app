@@ -10,7 +10,7 @@
           <el-radio-button label="grid">全看模式</el-radio-button>
           <el-radio-button label="flash">快闪模式</el-radio-button>
         </el-radio-group>
-        <el-button class="mode-btn" @click="toggleMode" v-if="studyMode === 'grid'">
+        <el-button class="mode-btn" @click="toggleMode">
           {{ showMeaning ? '隐藏释义' : '显示释义' }}
         </el-button>
       </div>
@@ -32,6 +32,7 @@
 
     <!-- 快闪模式 -->
     <div v-else class="flash-mode-container">
+      
       <div class="flash-cards-stack">
         <div
           v-for="(word, index) in visibleFlashCards"
@@ -54,7 +55,7 @@
         <div class="flash-progress-bar">
           <div class="flash-progress-fill" :style="{ width: flashProgress + '%' }"></div>
         </div>
-        <span class="flash-progress-text">{{ flashCurrentIndex + 1 }} / {{ allWords.length }}</span>
+        <span class="flash-progress-text">{{ flashCurrentIndex + 1 }} / {{ flashWords.length }}</span>
       </div>
       <div class="flash-controls">
         <el-button class="flash-btn" @click="toggleFlashPlay">
@@ -65,6 +66,23 @@
           <el-icon><Refresh /></el-icon> 重置
         </el-button>
       </div>
+      <!-- 快闪页码选择 -->
+      <div class="flash-page-selector">
+        <span class="flash-page-label">快闪页码：</span>
+        <el-input-number
+          v-model="flashPage"
+          :min="1"
+          :max="totalPages"
+          :step="1"
+          size="small"
+          class="flash-page-input"
+          @change="onFlashPageChange"
+        />
+        <span class="flash-page-total">/ {{ totalPages }} 页</span>
+        <span class="flash-page-range">({{ flashPageRange }})</span>
+      </div>
+
+      
     </div>
 
     <div v-if="studyMode === 'grid'" class="pagination-bar">
@@ -98,6 +116,7 @@ const router = useRouter()
 const studyMode = ref<'grid' | 'flash'>('grid')
 
 // 快闪模式相关
+const flashPage = ref(1) // 快闪当前页码
 const flashCurrentIndex = ref(0)
 const isFlashPlaying = ref(false)
 const isExiting = ref(false)
@@ -107,20 +126,40 @@ const FLASH_INTERVAL_TIME = 2000 // 2秒切换一次
 // 可见的闪卡数量
 const VISIBLE_FLASH_CARDS = 3
 
+// 当前快闪页面对应的单词列表
+const flashWords = computed(() => {
+  const start = (flashPage.value - 1) * WORDS_PER_PAGE
+  const end = start + WORDS_PER_PAGE
+  return allWords.value.slice(start, end)
+})
+
+// 快闪页码范围显示
+const flashPageRange = computed(() => {
+  const start = (flashPage.value - 1) * WORDS_PER_PAGE + 1
+  const end = Math.min(flashPage.value * WORDS_PER_PAGE, allWords.value.length)
+  return `第${start}-${end}个单词`
+})
+
 // 获取当前可见的闪卡
 const visibleFlashCards = computed(() => {
   const cards = []
   for (let i = 0; i < VISIBLE_FLASH_CARDS; i++) {
-    const index = (flashCurrentIndex.value + i) % allWords.value.length
-    cards.push(allWords.value[index])
+    const index = (flashCurrentIndex.value + i) % flashWords.value.length
+    cards.push(flashWords.value[index])
   }
   return cards
 })
 
 // 快闪进度
 const flashProgress = computed(() => {
-  return ((flashCurrentIndex.value + 1) / allWords.value.length) * 100
+  return ((flashCurrentIndex.value + 1) / flashWords.value.length) * 100
 })
+
+// 页码改变时重置快闪
+const onFlashPageChange = () => {
+  pauseFlash()
+  flashCurrentIndex.value = 0
+}
 
 // 获取闪卡样式
 const getFlashCardStyle = (index: number) => {
@@ -719,6 +758,47 @@ const nextPage = () => {
   justify-content: center;
   padding: 20px;
   position: relative;
+}
+
+/* 快闪页码选择器 */
+.flash-page-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 12px 20px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e8e4df;
+}
+
+.flash-page-label {
+  font-size: 14px;
+  color: #6c6a64;
+}
+
+.flash-page-input {
+  width: 80px;
+}
+
+.flash-page-input :deep(.el-input__wrapper) {
+  box-shadow: 0 0 0 1px #e8e4df inset;
+}
+
+.flash-page-input :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px #8b9a6d inset;
+}
+
+.flash-page-total {
+  font-size: 14px;
+  color: #3d3d3a;
+}
+
+.flash-page-range {
+  font-size: 13px;
+  color: #8b9a6d;
+  margin-left: 8px;
 }
 
 .flash-cards-stack {
