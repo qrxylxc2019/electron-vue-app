@@ -6,13 +6,18 @@
       </el-button>
       <h2 class="title">英语单词 {{ currentRange }}</h2>
       <div class="header-actions">
-        <el-button class="mode-btn" @click="toggleMode">
+        <el-radio-group v-model="studyMode" class="mode-radio-group">
+          <el-radio-button label="grid">全看模式</el-radio-button>
+          <el-radio-button label="flash">快闪模式</el-radio-button>
+        </el-radio-group>
+        <el-button class="mode-btn" @click="toggleMode" v-if="studyMode === 'grid'">
           {{ showMeaning ? '隐藏释义' : '显示释义' }}
         </el-button>
       </div>
     </div>
 
-    <div class="word-grid">
+    <!-- 全看模式 -->
+    <div v-if="studyMode === 'grid'" class="word-grid">
       <div
         v-for="(word, index) in currentWords"
         :key="index"
@@ -25,7 +30,44 @@
       </div>
     </div>
 
-    <div class="pagination-bar">
+    <!-- 快闪模式 -->
+    <div v-else class="flash-mode-container">
+      <div class="flash-cards-stack">
+        <div
+          v-for="(word, index) in visibleFlashCards"
+          :key="word.word + index"
+          class="flash-card"
+          :class="{
+            'flash-card-current': index === 0,
+            'flash-card-next': index === 1,
+            'flash-card-future': index > 1,
+            'flash-card-exiting': isExiting
+          }"
+          :style="getFlashCardStyle(index)"
+        >
+          <div class="flash-word-text">{{ word.word }}</div>
+          <div class="flash-word-phonetic">{{ word.phonetic }}</div>
+          <div class="flash-word-meaning">{{ word.meaning }}</div>
+        </div>
+      </div>
+      <div class="flash-progress">
+        <div class="flash-progress-bar">
+          <div class="flash-progress-fill" :style="{ width: flashProgress + '%' }"></div>
+        </div>
+        <span class="flash-progress-text">{{ flashCurrentIndex + 1 }} / {{ allWords.length }}</span>
+      </div>
+      <div class="flash-controls">
+        <el-button class="flash-btn" @click="toggleFlashPlay">
+          <el-icon><component :is="isFlashPlaying ? 'VideoPause' : 'VideoPlay'" /></el-icon>
+          {{ isFlashPlaying ? '暂停' : '播放' }}
+        </el-button>
+        <el-button class="flash-btn" @click="resetFlash">
+          <el-icon><Refresh /></el-icon> 重置
+        </el-button>
+      </div>
+    </div>
+
+    <div v-if="studyMode === 'grid'" class="pagination-bar">
       <el-button
         class="page-btn"
         :disabled="currentPage === 1"
@@ -46,11 +88,116 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, Refresh } from '@element-plus/icons-vue'
 
 const router = useRouter()
+
+// 学习模式：grid=全看模式, flash=快闪模式
+const studyMode = ref<'grid' | 'flash'>('grid')
+
+// 快闪模式相关
+const flashCurrentIndex = ref(0)
+const isFlashPlaying = ref(false)
+const isExiting = ref(false)
+const flashInterval = ref<number | null>(null)
+const FLASH_INTERVAL_TIME = 2000 // 2秒切换一次
+
+// 可见的闪卡数量
+const VISIBLE_FLASH_CARDS = 3
+
+// 获取当前可见的闪卡
+const visibleFlashCards = computed(() => {
+  const cards = []
+  for (let i = 0; i < VISIBLE_FLASH_CARDS; i++) {
+    const index = (flashCurrentIndex.value + i) % allWords.value.length
+    cards.push(allWords.value[index])
+  }
+  return cards
+})
+
+// 快闪进度
+const flashProgress = computed(() => {
+  return ((flashCurrentIndex.value + 1) / allWords.value.length) * 100
+})
+
+// 获取闪卡样式
+const getFlashCardStyle = (index: number) => {
+  const baseScale = 1 - index * 0.05
+  const baseTranslateY = index * 15
+  const baseOpacity = 1 - index * 0.2
+  const baseZIndex = VISIBLE_FLASH_CARDS - index
+
+  if (isExiting.value && index === 0) {
+    return {
+      transform: `translateX(-120%) translateY(${baseTranslateY}px) scale(${baseScale})`,
+      opacity: 0,
+      zIndex: baseZIndex,
+      transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+    }
+  }
+
+  return {
+    transform: `translateX(0) translateY(${baseTranslateY}px) scale(${baseScale})`,
+    opacity: baseOpacity,
+    zIndex: baseZIndex,
+    transition: isExiting.value ? 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' : 'all 0.3s ease'
+  }
+}
+
+// 切换快闪播放状态
+const toggleFlashPlay = () => {
+  if (isFlashPlaying.value) {
+    pauseFlash()
+  } else {
+    playFlash()
+  }
+}
+
+// 播放快闪
+const playFlash = () => {
+  isFlashPlaying.value = true
+  flashInterval.value = window.setInterval(() => {
+    nextFlashCard()
+  }, FLASH_INTERVAL_TIME)
+}
+
+// 暂停快闪
+const pauseFlash = () => {
+  isFlashPlaying.value = false
+  if (flashInterval.value) {
+    clearInterval(flashInterval.value)
+    flashInterval.value = null
+  }
+}
+
+// 下一张闪卡
+const nextFlashCard = () => {
+  isExiting.value = true
+  setTimeout(() => {
+    flashCurrentIndex.value = (flashCurrentIndex.value + 1) % allWords.value.length
+    isExiting.value = false
+  }, 300)
+}
+
+// 重置快闪
+const resetFlash = () => {
+  pauseFlash()
+  flashCurrentIndex.value = 0
+}
+
+// 监听模式切换
+watch(studyMode, (newMode) => {
+  if (newMode === 'grid') {
+    pauseFlash()
+  }
+})
+
+// 组件卸载时清理
+onUnmounted(() => {
+  pauseFlash()
+})
 
 // 考研核心词汇
 const allWords = ref([
@@ -544,5 +691,178 @@ const nextPage = () => {
   font-size: 16px;
   color: #3d3d3a;
   font-weight: 500;
+}
+
+/* 模式切换 Radio 样式 */
+.mode-radio-group {
+  margin-right: 12px;
+}
+
+.mode-radio-group :deep(.el-radio-button__inner) {
+  background-color: #f5f0e8;
+  border-color: #e8e4df;
+  color: #3d3d3a;
+}
+
+.mode-radio-group :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  background-color: #8b9a6d;
+  border-color: #8b9a6d;
+  color: #fff;
+}
+
+/* 快闪模式样式 */
+.flash-mode-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+}
+
+.flash-cards-stack {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  height: 350px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1000px;
+}
+
+.flash-card {
+  position: absolute;
+  width: 100%;
+  max-width: 450px;
+  height: 280px;
+  background: linear-gradient(135deg, #fff 0%, #faf8f5 100%);
+  border: 2px solid #e8e4df;
+  border-radius: 20px;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.flash-card-current {
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+}
+
+.flash-card-next {
+  filter: brightness(0.98);
+}
+
+.flash-card-future {
+  filter: brightness(0.95);
+}
+
+.flash-word-text {
+  font-size: 42px;
+  font-weight: 700;
+  color: #3d3d3a;
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+}
+
+.flash-word-phonetic {
+  font-size: 18px;
+  color: #8e8b82;
+  margin-bottom: 20px;
+  font-style: italic;
+}
+
+.flash-word-meaning {
+  font-size: 20px;
+  color: #6c6a64;
+  text-align: center;
+  line-height: 1.5;
+  padding: 0 20px;
+}
+
+.flash-progress {
+  width: 100%;
+  max-width: 450px;
+  margin-top: 30px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.flash-progress-bar {
+  flex: 1;
+  height: 8px;
+  background: #e8e4df;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.flash-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #8b9a6d 0%, #a8b88a 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.flash-progress-text {
+  font-size: 14px;
+  color: #8e8b82;
+  min-width: 60px;
+  text-align: right;
+}
+
+.flash-controls {
+  margin-top: 25px;
+  display: flex;
+  gap: 15px;
+}
+
+.flash-btn {
+  background-color: #8b9a6d;
+  border-color: #8b9a6d;
+  color: #fff;
+  border-radius: 10px;
+  padding: 12px 24px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flash-btn:hover {
+  background-color: #7a895c;
+  border-color: #7a895c;
+}
+
+.flash-btn .el-icon {
+  font-size: 18px;
+}
+
+/* 卡片滑出动画 */
+@keyframes slideOutLeft {
+  0% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-120%) scale(0.9);
+    opacity: 0;
+  }
+}
+
+@keyframes slideInRight {
+  0% {
+    transform: translateX(50px) scale(0.95);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
 }
 </style>
