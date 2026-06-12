@@ -53,7 +53,7 @@
         <!-- 新增学习内容表单 -->
         <div class="url-left-form">
           <h4 class="form-title">新增学习内容</h4>
-          <el-form :model="form" size="default" label-position="left" class="compact-form" label-width="50px">
+          <el-form :model="form" size="large" label-position="left" class="compact-form" label-width="60px">
             <el-form-item label="URL" class="compact-form-item horizontal-item">
               <div class="input-button-group">
                 <el-input
@@ -61,8 +61,9 @@
                   placeholder="请输入URL"
                   clearable
                   class="url-input"
+                  size="large"
                 ></el-input>
-                <el-button type="success" :loading="aiLoading" @click="aiParseUrl" class="ai-btn">AI</el-button>
+                <el-button type="success" :loading="aiLoading" @click="aiParseUrl" class="ai-btn" size="large">AI</el-button>
               </div>
             </el-form-item>
             <el-form-item label="标题" class="compact-form-item horizontal-item">
@@ -70,6 +71,7 @@
                 v-model="form.title"
                 placeholder="请输入标题"
                 clearable
+                size="large"
               ></el-input>
             </el-form-item>
             <el-form-item class="submit-item">
@@ -77,6 +79,7 @@
                 type="primary"
                 @click="handleSubmit"
                 class="submit-btn"
+                size="large"
               >保存</el-button>
             </el-form-item>
           </el-form>
@@ -1200,29 +1203,30 @@ fetchLearnData()
 }
 
 .url-left-form {
-  padding: 12px;
-  border-top: 1px solid #ebeef5;
-  background-color: #f5f7fa;
+  padding: 20px 16px;
+  border-top: 1px solid #e8e4df;
+  background-color: #faf8f5;
   flex-shrink: 0;
 }
 
 .form-title {
-  margin: 0 0 12px 0;
-  padding-left: 8px;
-  color: #303133;
-  font-size: 14px;
+  margin: 0 0 16px 0;
+  padding-left: 12px;
+  color: #3d3d3a;
+  font-size: 18px;
   font-weight: 600;
-  border-left: 3px solid #409eff;
+  border-left: 4px solid #8b9a6d;
 }
 
 .compact-form :deep(.el-form-item) {
-  margin-bottom: 10px;
+  margin-bottom: 16px;
 }
 
 .compact-form :deep(.el-form-item__label) {
-  line-height: 32px;
-  font-size: 12px;
-  color: #606266;
+  line-height: 40px;
+  font-size: 15px;
+  color: #6c6a64;
+  font-weight: 500;
 }
 
 .compact-form.horizontal-item :deep(.el-form-item__content) {
@@ -1231,7 +1235,7 @@ fetchLearnData()
 
 .input-button-group {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
   width: 100%;
 }
@@ -1241,24 +1245,28 @@ fetchLearnData()
 }
 
 .ai-btn {
-  height: 32px;
-  padding: 0 16px;
+  height: 40px;
+  padding: 0 20px;
   font-weight: 500;
+  font-size: 15px;
+  border-radius: 10px;
 }
 
 .submit-item {
-  margin-top: 4px;
+  margin-top: 8px;
   margin-bottom: 0 !important;
 }
 
 .submit-item :deep(.el-form-item__content) {
-  margin-left: 50px !important;
+  margin-left: 60px !important;
 }
 
 .submit-btn {
   width: 100%;
-  height: 32px;
+  height: 40px;
   font-weight: 500;
+  font-size: 15px;
+  border-radius: 10px;
 }
 
 .browser-container {
