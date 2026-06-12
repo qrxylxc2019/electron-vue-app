@@ -109,7 +109,7 @@
       <el-sub-menu index="/commerce">
         <template #title>
           <el-icon><Shop /></el-icon>
-          <span>挣钱</span>
+          <span>商业</span>
         </template>
         <el-menu-item index="/commerce">
           <el-icon><Goods /></el-icon>
