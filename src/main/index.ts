@@ -193,6 +193,28 @@ function initDatabase() {
       )
     `);
 
+    // 密码表
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS password (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        url TEXT NOT NULL,
+        account TEXT NOT NULL,
+        password TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // 提示词表
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS prompt (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        content TEXT,
+        type INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // 英语阅读材料表
     db.exec(`
       CREATE TABLE IF NOT EXISTS english_materials (
@@ -2322,6 +2344,144 @@ ipcMain.handle('db:getApiSettings', () => {
 
 ipcMain.handle('db:saveApiSettings', () => {
   return true;
+});
+
+// ========== 密码 (password) IPC ==========
+
+ipcMain.handle('password:getList', (_event, params: any) => {
+  if (!db) return { success: false, list: [], total: 0 };
+  try {
+    const { page = 1, pageNum = 10, conditions = {} } = params;
+    const offset = (page - 1) * pageNum;
+    let whereClause = 'WHERE 1=1';
+    const queryParams: any[] = [];
+    if (conditions.url) {
+      whereClause += ' AND url LIKE ?';
+      queryParams.push(`%${conditions.url}%`);
+    }
+    const countStmt = db.prepare(`SELECT COUNT(*) as total FROM password ${whereClause}`);
+    const countResult = countStmt.get(...queryParams) as { total: number };
+    const total = countResult?.total || 0;
+    const stmt = db.prepare(`SELECT * FROM password ${whereClause} ORDER BY id DESC LIMIT ? OFFSET ?`);
+    const list = stmt.all(...queryParams, pageNum, offset);
+    return { success: true, list, total };
+  } catch (err) {
+    console.error('password:getList error:', err);
+    return { success: false, list: [], total: 0, error: String(err) };
+  }
+});
+
+ipcMain.handle('password:add', (_event, data: any) => {
+  if (!db) return { success: false };
+  try {
+    const stmt = db.prepare('INSERT INTO password (url, account, password) VALUES (?, ?, ?)');
+    const result = stmt.run(data.url, data.account, data.password);
+    return { success: true, id: result.lastInsertRowid };
+  } catch (err) {
+    console.error('password:add error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('password:update', (_event, data: any) => {
+  if (!db) return { success: false };
+  try {
+    const stmt = db.prepare('UPDATE password SET url = ?, account = ?, password = ? WHERE id = ?');
+    stmt.run(data.url, data.account, data.password, data.id);
+    return { success: true };
+  } catch (err) {
+    console.error('password:update error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('password:delete', (_event, id: number) => {
+  if (!db) return { success: false };
+  try {
+    const stmt = db.prepare('DELETE FROM password WHERE id = ?');
+    stmt.run(id);
+    return { success: true };
+  } catch (err) {
+    console.error('password:delete error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+// ========== 提示词 (prompt) IPC ==========
+
+ipcMain.handle('prompt:getList', (_event, params: any) => {
+  if (!db) return { success: false, list: [], total: 0 };
+  try {
+    const { page = 1, pageNum = 10, conditions = {} } = params;
+    const offset = (page - 1) * pageNum;
+    let whereClause = 'WHERE 1=1';
+    const queryParams: any[] = [];
+    if (conditions.title) {
+      whereClause += ' AND title LIKE ?';
+      queryParams.push(`%${conditions.title}%`);
+    }
+    if (conditions.content) {
+      whereClause += ' OR content LIKE ?';
+      queryParams.push(`%${conditions.content}%`);
+    }
+    const countStmt = db.prepare(`SELECT COUNT(*) as total FROM prompt ${whereClause}`);
+    const countResult = countStmt.get(...queryParams) as { total: number };
+    const total = countResult?.total || 0;
+    const stmt = db.prepare(`SELECT * FROM prompt ${whereClause} ORDER BY id DESC LIMIT ? OFFSET ?`);
+    const list = stmt.all(...queryParams, pageNum, offset);
+    return { success: true, list, total };
+  } catch (err) {
+    console.error('prompt:getList error:', err);
+    return { success: false, list: [], total: 0, error: String(err) };
+  }
+});
+
+ipcMain.handle('prompt:getDetail', (_event, id: number) => {
+  if (!db) return { success: false };
+  try {
+    const stmt = db.prepare('SELECT * FROM prompt WHERE id = ?');
+    const data = stmt.get(id);
+    return { success: true, data };
+  } catch (err) {
+    console.error('prompt:getDetail error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('prompt:add', (_event, data: any) => {
+  if (!db) return { success: false };
+  try {
+    const stmt = db.prepare('INSERT INTO prompt (title, content, type) VALUES (?, ?, ?)');
+    const result = stmt.run(data.title, data.content, data.type || 1);
+    return { success: true, id: result.lastInsertRowid };
+  } catch (err) {
+    console.error('prompt:add error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('prompt:update', (_event, data: any) => {
+  if (!db) return { success: false };
+  try {
+    const stmt = db.prepare('UPDATE prompt SET title = ?, content = ?, type = ? WHERE id = ?');
+    stmt.run(data.title, data.content, data.type || 1, data.id);
+    return { success: true };
+  } catch (err) {
+    console.error('prompt:update error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('prompt:delete', (_event, id: number) => {
+  if (!db) return { success: false };
+  try {
+    const stmt = db.prepare('DELETE FROM prompt WHERE id = ?');
+    stmt.run(id);
+    return { success: true };
+  } catch (err) {
+    console.error('prompt:delete error:', err);
+    return { success: false, error: String(err) };
+  }
 });
 
 // ========== 副业项目 (commerce) IPC ==========

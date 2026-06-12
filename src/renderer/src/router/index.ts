@@ -20,8 +20,9 @@ import Token from '../views/Token/Index.vue';
 import JiZi from '../views/JiZi/JiZi.vue';
 import HandWriting from '../views/HandWriting/HandWriting.vue';
 import Xinxi from '../views/Xinxi/Xinxi.vue';
-
 import Commerce from '../views/Commerce/Commerce.vue';
+import Password from '../views/Password/Password.vue';
+import Prompt from '../views/Prompt/Prompt.vue';
 
 const routes = [
   { path: '/', name: 'Home', component: DirectoryList },
@@ -46,6 +47,8 @@ const routes = [
   { path: '/handwriting', name: 'HandWriting', component: HandWriting },
   { path: '/xinxi', name: 'Xinxi', component: Xinxi },
   { path: '/commerce', name: 'Commerce', component: Commerce },
+  { path: '/password', name: 'Password', component: Password },
+  { path: '/prompt', name: 'Prompt', component: Prompt },
 ];
 
 const router = createRouter({

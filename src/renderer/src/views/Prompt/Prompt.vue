@@ -118,9 +118,10 @@
 <script lang="ts" setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import request from '@/utils/request'
 import { Search, Plus, Edit, Delete } from '@element-plus/icons-vue'
 import RichEditor from '@/components/editor.vue'
+
+declare const window: any; // 声明 window 类型，用于访问 electronAPI
 
 interface Note {
   id?: number
@@ -183,19 +184,15 @@ const fetchNotes = async () => {
       }
     }
 
-    const res = await request.post('http://localhost:8000/api/prompt/get', params)
-    if (res.code === 200 && res.result && res.result.list) {
-      notes.value = res.result.list.filter((note: Note) => !note.isTemp)
-
-      if (res.result.pagination && res.result.pagination.total !== undefined) {
-        total.value = res.result.pagination.total
-        currentPage.value = res.result.pagination.current
-      }
+    const res = await window.electronAPI.getPromptList(params)
+    if (res.success && res.list) {
+      notes.value = res.list.filter((note: Note) => !note.isTemp)
+      total.value = res.total || 0
     } else {
       notes.value = []
       total.value = 0
       ElMessage({
-        message: '获取提示词数据失败',
+        message: res.error || '获取提示词数据失败',
         type: 'warning'
       })
     }
@@ -230,8 +227,8 @@ const viewNote = async (note: Note) => {
   if (!note.id) return
 
   try {
-    const res = await request.get(`http://localhost:8000/api/prompt/content?id=${note.id}`)
-    if (res.code === 200 && res.data) {
+    const res = await window.electronAPI.getPromptDetail(note.id)
+    if (res.success && res.data) {
       const promptData = res.data
 
       currentNote.value = {
@@ -246,7 +243,7 @@ const viewNote = async (note: Note) => {
       showEditModal.value = true
     } else {
       ElMessage({
-        message: '获取提示词内容失败',
+        message: res.error || '获取提示词内容失败',
         type: 'warning'
       })
     }
@@ -291,12 +288,12 @@ const saveNote = async () => {
 
     let res
     if (noteData.id) {
-      res = await request.post('http://localhost:8000/api/prompt/update', noteData)
+      res = await window.electronAPI.updatePrompt(noteData)
     } else {
-      res = await request.post('http://localhost:8000/api/prompt/add', noteData)
+      res = await window.electronAPI.addPrompt(noteData)
     }
 
-    if (res.code === 200) {
+    if (res.success) {
       ElMessage({
         message: '保存成功',
         type: 'success'
@@ -331,11 +328,9 @@ const deleteNote = async (note: Note) => {
     })
 
     if (result === 'confirm') {
-      const res = await request.post('http://localhost:8000/api/prompt/delete', {
-        id: note.id
-      })
+      const res = await window.electronAPI.deletePrompt(note.id)
 
-      if (res.code === 200) {
+      if (res.success) {
         ElMessage({
           message: '删除成功',
           type: 'success'

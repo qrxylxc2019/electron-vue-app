@@ -230,6 +230,17 @@ declare global {
       addCommerce: (data: any) => Promise<{ success: boolean; id?: number; error?: string }>;
       updateCommerce: (data: any) => Promise<{ success: boolean; error?: string }>;
       deleteCommerce: (id: number) => Promise<{ success: boolean; error?: string }>;
+      // 密码
+      getPasswordList: (params: any) => Promise<{ success: boolean; list?: any[]; total?: number; error?: string }>;
+      addPassword: (data: any) => Promise<{ success: boolean; id?: number; error?: string }>;
+      updatePassword: (data: any) => Promise<{ success: boolean; error?: string }>;
+      deletePassword: (id: number) => Promise<{ success: boolean; error?: string }>;
+      // 提示词
+      getPromptList: (params: any) => Promise<{ success: boolean; list?: any[]; total?: number; error?: string }>;
+      getPromptDetail: (id: number) => Promise<{ success: boolean; data?: any; error?: string }>;
+      addPrompt: (data: any) => Promise<{ success: boolean; id?: number; error?: string }>;
+      updatePrompt: (data: any) => Promise<{ success: boolean; error?: string }>;
+      deletePrompt: (id: number) => Promise<{ success: boolean; error?: string }>;
 
       // 知识点
       getKnowledgePoints: (directoryId: number) => Promise<KnowledgePoint[]>;

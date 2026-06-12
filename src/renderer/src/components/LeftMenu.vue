@@ -70,6 +70,10 @@
           <el-icon><Document /></el-icon>
           <template #title><span>信息查询</span></template>
         </el-menu-item>
+        <el-menu-item index="/password">
+          <el-icon><Lock /></el-icon>
+          <template #title><span>密码</span></template>
+        </el-menu-item>
       </el-sub-menu>
 
       <!-- 一级：编程（二级：Claude、Token） -->
@@ -99,19 +103,32 @@
           <template #title><span>科目列表</span></template>
         </el-menu-item>
       </el-sub-menu>
-
+      
 
       <!-- 一级：副业 -->
       <el-sub-menu index="/commerce">
         <template #title>
           <el-icon><Shop /></el-icon>
-          <span>副业</span>
+          <span>挣钱</span>
         </template>
         <el-menu-item index="/commerce">
           <el-icon><Goods /></el-icon>
           <template #title><span>副业项目</span></template>
         </el-menu-item>
       </el-sub-menu>
+
+      <!-- 一级：副业 -->
+      <el-sub-menu index="/prompt">
+        <template #title>
+          <el-icon><Shop /></el-icon>
+          <span>设置</span>
+        </template>
+        <el-menu-item index="/prompt">
+          <el-icon><ChatDotRound /></el-icon>
+          <template #title><span>提示词</span></template>
+        </el-menu-item>
+      </el-sub-menu>
+
     </el-menu>
     <div class="collapse-btn" @click="toggleCollapse">
       <el-icon v-if="isCollapsed"><ArrowRight /></el-icon>
@@ -123,7 +140,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { HomeFilled, Calendar, EditPen, Star, Folder, Notebook, ChatDotRound, Key, Collection, Cpu, Reading, ArrowLeft, ArrowRight, Edit, Grid, Picture, Document, Shop, Goods } from '@element-plus/icons-vue'
+import { HomeFilled, Calendar, EditPen, Star, Folder, Notebook, ChatDotRound, Key, Collection, Cpu, Reading, ArrowLeft, ArrowRight, Edit, Grid, Picture, Document, Shop, Goods, Lock } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const isCollapsed = ref(false)
@@ -179,6 +196,9 @@ const activeMenu = computed(() => {
   }
   if (path.startsWith('/commerce')) {
     return '/commerce'
+  }
+  if (path.startsWith('/password')) {
+    return '/password'
   }
   return path
 })

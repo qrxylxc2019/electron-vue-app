@@ -1,5 +1,5 @@
 <template>
-  <div class="password-container">
+  <div class="wrap-container">
     <div class="operation-bar">
       <el-input
         v-model="verifyForm.password"
@@ -28,12 +28,12 @@
       <!-- 左侧表格 -->
       <div class="table-container">
         <el-table :data="tableData" style="width: 100%; height: 600px;" size="large">
-          <el-table-column prop="index" label="ID" width="80" />
+          <el-table-column prop="index" label="ID" width="100" />
           <el-table-column prop="url" label="url" min-width="400" show-overflow-tooltip/>
           <el-table-column prop="account" label="账号" min-width="250" show-overflow-tooltip/>
           <el-table-column label="密码" min-width="200">
             <template #default="{ row }">
-              <div class="password-container-cell">
+              <div class="wrap-container-cell">
                 <span v-if="showPasswords" class="password-text" :title="row.password">{{ row.password }}</span>
                 <span v-else class="password-mask">******</span>
               </div>
@@ -109,7 +109,6 @@
 </template>
 
 <script>
-import { ipcApiRoute } from "@/api/main";
 import CryptoJS from "crypto-js";
 
 export default {
@@ -193,18 +192,18 @@ export default {
       };
       console.log("params = ", params);
 
-      this.$axios.post(`http://localhost:8000/api/password/get`, params)
+      window.electronAPI.getPasswordList(params)
         .then((res) => {
-          if (res.data.code === 200) {
-            this.tableData = (res.data.result?.list || []).map((item, index) => ({
+          if (res.success) {
+            this.tableData = (res.list || []).map((item, index) => ({
               ...item,
               index: (this.currentPage - 1) * this.pageNum + index + 1,
               password: this.decryptPassword(item.password)
             }));
-            this.total = res.data.result?.pagination?.total || 0;
+            this.total = res.total || 0;
             this.loading = false;
           } else {
-            this.$message.error(res.data.message || "获取数据失败");
+            this.$message.error(res.error || "获取数据失败");
             this.loading = false;
           }
         })
@@ -254,14 +253,14 @@ export default {
             if (this.isEdit) {
               params.id = this.currentId
 
-              this.$axios.post(`http://localhost:8000/api/password/update`, params)
+              window.electronAPI.updatePassword(params)
               .then((res) => {
-                if (res.data.code === 200) {
+                if (res.success) {
                   this.$message.success("更新成功");
                   this.resetForm();
                   this.getPasswordList();
                 } else {
-                  this.$message.error("更新失败");
+                  this.$message.error(res.error || "更新失败");
                 }
               })
               .catch((err) => {
@@ -270,14 +269,14 @@ export default {
               });
             } else {
               // 新增记录
-              this.$axios.post(`http://localhost:8000/api/password/add`, params)
+              window.electronAPI.addPassword(params)
                 .then((res) => {
-                  if (res.data.code === 200) {
+                  if (res.success) {
                     this.$message.success("保存成功");
                     this.resetForm();
                     this.getPasswordList();
                   } else {
-                    this.$message.error("保存失败");
+                    this.$message.error(res.error || "保存失败");
                   }
                 })
                 .catch((err) => {
@@ -304,13 +303,13 @@ export default {
             id: row.id,
           };
 
-          this.$axios.post(`http://localhost:8000/api/password/delete`, params)
+          window.electronAPI.deletePassword(row.id)
             .then((res) => {
-              if (res.data.code === 200) {
+              if (res.success) {
                 this.$message.success("删除成功");
                 this.getPasswordList();
               } else {
-                this.$message.error("删除失败");
+                this.$message.error(res.error || "删除失败");
               }
             })
             .catch((err) => {
@@ -362,13 +361,12 @@ export default {
       try {
         // 首先获取所有密码记录
         const getAllParams = {
-          action: "get",
-          table: "password",
+          page: 1,
           pageNum: 999999, // 获取所有记录
         };
 
-        const result = await this.$axios.post(`http://localhost:8000/api/password/get`, getAllParams);
-        const allPasswords = result.data.result?.list || [];
+        const result = await window.electronAPI.getPasswordList(getAllParams);
+        const allPasswords = result.list || [];
 
         // 遍历所有密码记录并更新
         for (const record of allPasswords) {
@@ -381,17 +379,13 @@ export default {
 
           // 更新数据库记录
           const updateParams = {
-            action: "update",
-            table: "password",
-            conditions: {
-              password: newEncryptedPassword,
-            },
-            where: {
-              id: record.id,
-            },
+            id: record.id,
+            url: record.url,
+            account: record.account,
+            password: newEncryptedPassword,
           };
 
-          await this.$axios.post(`http://localhost:8000/api/password/operate`, updateParams);
+          await window.electronAPI.updatePassword(updateParams);
         }
 
         this.$message.success("所有密码已更新完成");
@@ -437,271 +431,358 @@ export default {
 </script>
 
 <style scoped>
-.password-container {
-  padding: 20px;
-  height: 100vh;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  background-color: #faf8f5;
-  color: #1a1a1a;
-}
+  /* Claude Design System - Colors */
+  :root {
+    --claude-primary: #cc785c;
+    --claude-primary-active: #a9583e;
+    --claude-primary-disabled: #e6dfd8;
+    --claude-ink: #141413;
+    --claude-body: #3d3d3a;
+    --claude-body-strong: #252523;
+    --claude-muted: #6c6a64;
+    --claude-muted-soft: #8e8b82;
+    --claude-hairline: #e6dfd8;
+    --claude-hairline-soft: #ebe6df;
+    --claude-canvas: #faf9f5;
+    --claude-surface-soft: #f5f0e8;
+    --claude-surface-card: #efe9de;
+    --claude-surface-cream-strong: #e8e0d2;
+    --claude-success: #5db872;
+    --claude-error: #c64545;
+  }
 
-.operation-bar {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-  align-items: center;
-  padding: 0 20px;
-  height: 60px;
-  background: #fff;
-  border-radius: 12px;
-  border-bottom: 1px solid #e8e4df;
-}
+  .wrap-container {
+    padding: 20px;
+    height: 100vh;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    background-color: #faf8f5;
+    color: #1a1a1a;
+    position: relative;
+  }
 
-.content-layout {
-  display: flex;
-  gap: 20px;
-  flex: 1;
-}
+  .operation-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 0 20px;
+    height: 60px;
+    background: #fff;
+    border-radius: 12px;
+    border-bottom: 1px solid #e8e4df;
+  }
 
-.table-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
+  .operation-bar .el-button--primary {
+    background-color: #8b9a6d;
+    border-color: #8b9a6d;
+    color: #fff;
+    border-radius: 10px;
+    padding: 12px 20px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
 
-.pagination {
-  display: flex;
-  justify-content: center;
-  margin-top: 16px;
-  padding: 16px;
-  background: #fff;
-  border-radius: 12px;
-  border-bottom: 1px solid #e8e4df;
-}
+  .operation-bar .el-button--primary:hover {
+    background-color: #7a895c;
+    border-color: #7a895c;
+  }
 
-/* Commerce 风格表格 */
-:deep(.el-table) {
-  --el-table-border-color: #e8e4df;
-  --el-table-header-bg-color: #f5f3f0;
-  --el-table-row-hover-bg-color: #faf8f5;
-  font-size: 16px;
-  background-color: #fff;
-  border-radius: 12px;
-}
+  .operation-bar :deep(.el-input__wrapper) {
+    background-color: #f5f3f0;
+    border: 1px solid #e8e4df;
+    border-radius: 10px;
+    box-shadow: none !important;
+    transition: all 0.3s;
+  }
 
-:deep(.el-table__inner-wrapper::before) {
-  display: none;
-}
+  .operation-bar :deep(.el-input__wrapper:hover) {
+    border-color: #c4a882;
+  }
 
-:deep(.el-table__body) {
-  background-color: #fff;
-}
+  .operation-bar :deep(.el-input__wrapper.is-focus) {
+    border-color: #c4a882;
+    box-shadow: 0 0 0 2px rgba(196, 168, 130, 0.2) !important;
+  }
 
-:deep(.el-table .el-table__header th) {
-  font-size: 16px;
-  font-weight: 600;
-  color: #6b6560;
-  background-color: #f5f3f0 !important;
-  padding: 12px 16px;
-}
+  .content-layout {
+    display: flex;
+    gap: 20px;
+    flex: 1;
+  }
 
-:deep(.el-table .cell) {
-  font-size: 16px;
-  color: #1a1a1a;
-  line-height: 1.5;
-}
+  .table-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
 
-:deep(.el-table__row) {
-  background-color: #fff;
-  height: 50px !important;
-  line-height: 50px !important;
-}
+  .pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 16px;
+    padding: 16px;
+    background: #fff;
+    border-radius: 12px;
+    border-bottom: 1px solid #e8e4df;
+  }
 
-:deep(.el-table__row:hover) {
-  background-color: #faf8f5 !important;
-}
+  /* Commerce 风格表格 */
+  :deep(.el-table) {
+    --el-table-border-color: #e8e4df;
+    --el-table-header-bg-color: #f5f3f0;
+    --el-table-row-hover-bg-color: #faf8f5;
+    font-size: 16px;
+    background-color: #fff;
+    border-radius: 12px;
+  }
 
-:deep(.el-table__cell) {
-  padding: 8px 16px !important;
-}
+  :deep(.el-table__inner-wrapper::before) {
+    display: none;
+  }
 
-:deep(.el-tag) {
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: 8px;
-  padding: 4px 10px;
-}
+  :deep(.el-table__body) {
+    background-color: #fff;
+  }
 
-/* 分页按钮样式 */
-:deep(.el-pagination .btn-prev),
-:deep(.el-pagination .btn-next) {
-  background-color: #1a1a1a;
-  color: white;
-  border-radius: 8px;
-  padding: 0 15px;
-  height: 32px;
-  line-height: 32px;
-  margin: 0 5px;
-}
+  :deep(.el-table .el-table__header th) {
+    font-size: 16px;
+    font-weight: 600;
+    color: #6b6560;
+    background-color: #f5f3f0 !important;
+    padding: 12px 16px;
+  }
 
-:deep(.el-pagination button:disabled) {
-  background-color: #c0c4cc;
-  color: white;
-}
+  :deep(.el-table .cell) {
+    font-size: 16px;
+    color: #1a1a1a;
+    line-height: 1.5;
+  }
 
-/* 主要按钮样式 - 深绿色 */
-:deep(.el-button--primary) {
-  background-color: #8b9a6d;
-  border-color: #8b9a6d;
-  border-radius: 10px;
-}
+  :deep(.el-table__row) {
+    background-color: #fff;
+    height: 50px !important;
+    line-height: 50px !important;
+  }
 
-:deep(.el-button--primary:hover) {
-  background-color: #7a895c;
-  border-color: #7a895c;
-}
+  :deep(.el-table__row:hover) {
+    background-color: #faf8f5 !important;
+  }
 
-/* link 类型按钮 */
-:deep(.el-button--primary.is-link) {
-  background-color: transparent;
-  border-color: transparent;
-  color: #8b9a6d;
-}
+  :deep(.el-table__cell) {
+    padding: 8px 16px !important;
+  }
 
-:deep(.el-button--primary.is-link:hover) {
-  color: #7a895c;
-  background-color: rgba(139, 154, 109, 0.1);
-}
+  :deep(.el-tag) {
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 8px;
+    padding: 4px 10px;
+  }
 
-/* 危险/删除按钮样式 */
-:deep(.el-button--danger) {
-  background-color: #e8686a;
-  border-color: #e8686a;
-  border-radius: 10px;
-}
+  /* 分页按钮样式 */
+  :deep(.el-pagination .btn-prev),
+  :deep(.el-pagination .btn-next) {
+    background-color: #1a1a1a;
+    color: white;
+    border-radius: 8px;
+    padding: 0 15px;
+    height: 32px;
+    line-height: 32px;
+    margin: 0 5px;
+  }
 
-:deep(.el-button--danger:hover) {
-  background-color: #d8585a;
-  border-color: #d8585a;
-}
+  :deep(.el-pagination button:disabled) {
+    background-color: #c0c4cc;
+    color: white;
+  }
 
-/* link 类型危险按钮 */
-:deep(.el-button--danger.is-link) {
-  background-color: transparent;
-  border-color: transparent;
-  color: #e8686a;
-}
+  /* 主要按钮样式 - 深绿色 */
+  :deep(.el-button--primary) {
+    background-color: #8b9a6d;
+    border-color: #8b9a6d;
+    border-radius: 10px;
+  }
 
-:deep(.el-button--danger.is-link:hover) {
-  color: #d8585a;
-  background-color: rgba(232, 104, 106, 0.1);
-}
+  :deep(.el-button--primary:hover) {
+    background-color: #7a895c;
+    border-color: #7a895c;
+  }
 
-/* 信息按钮样式 */
-:deep(.el-button--info) {
-  background-color: #9a9590;
-  border-color: #9a9590;
-  border-radius: 10px;
-}
+  /* link 类型按钮 */
+  :deep(.el-button--primary.is-link) {
+    background-color: transparent;
+    border-color: transparent;
+    color: #8b9a6d;
+  }
 
-:deep(.el-button--info:hover) {
-  background-color: #8a8580;
-  border-color: #8a8580;
-}
+  :deep(.el-button--primary.is-link:hover) {
+    color: #7a895c;
+    background-color: rgba(139, 154, 109, 0.1);
+  }
 
-/* 警告按钮样式 */
-:deep(.el-button--warning) {
-  background-color: #c4a882;
-  border-color: #c4a882;
-  border-radius: 10px;
-  color: #fff;
-}
+  /* 危险/删除按钮样式 */
+  :deep(.el-button--danger) {
+    background-color: #e8686a;
+    border-color: #e8686a;
+    border-radius: 10px;
+  }
 
-:deep(.el-button--warning:hover) {
-  background-color: #b59872;
-  border-color: #b59872;
-  color: #fff;
-}
+  :deep(.el-button--danger:hover) {
+    background-color: #d8585a;
+    border-color: #d8585a;
+  }
 
-/* 默认按钮样式 */
-:deep(.el-button--default) {
-  background-color: #f5f3f0;
-  border-color: #e8e4df;
-  color: #6b6560;
-  border-radius: 10px;
-}
+  /* link 类型危险按钮 */
+  :deep(.el-button--danger.is-link) {
+    background-color: transparent;
+    border-color: transparent;
+    color: #e8686a;
+  }
 
-:deep(.el-button--default:hover) {
-  background-color: #e8e4df;
-  border-color: #d8d4cf;
-  color: #5b5650;
-}
+  :deep(.el-button--danger.is-link:hover) {
+    color: #d8585a;
+    background-color: rgba(232, 104, 106, 0.1);
+  }
 
-/* 输入框样式 */
-:deep(.el-input__wrapper) {
-  background-color: #f5f3f0;
-  border: 1px solid #e8e4df;
-  border-radius: 10px;
-  box-shadow: none !important;
-  transition: all 0.3s;
-}
+  /* 信息按钮样式 */
+  :deep(.el-button--info) {
+    background-color: #9a9590;
+    border-color: #9a9590;
+    border-radius: 10px;
+  }
 
-:deep(.el-input__wrapper:hover) {
-  border-color: #c4a882;
-}
+  :deep(.el-button--info:hover) {
+    background-color: #8a8580;
+    border-color: #8a8580;
+  }
 
-:deep(.el-input__wrapper.is-focus) {
-  border-color: #c4a882;
-  box-shadow: 0 0 0 2px rgba(196, 168, 130, 0.2) !important;
-}
+  /* 警告按钮样式 */
+  :deep(.el-button--warning) {
+    background-color: #c4a882;
+    border-color: #c4a882;
+    border-radius: 10px;
+    color: #fff;
+  }
 
-h2 {
-  margin-top: 0;
-  margin-bottom: 20px;
-  font-size: 18px;
-  color: #1a1a1a;
-}
+  :deep(.el-button--warning:hover) {
+    background-color: #b59872;
+    border-color: #b59872;
+    color: #fff;
+  }
 
-:deep(.el-form-item) {
-  width: 100%;
-  margin-bottom: 20px;
-}
+  /* 默认按钮样式 */
+  :deep(.el-button--default) {
+    background-color: #f5f3f0;
+    border-color: #e8e4df;
+    color: #6b6560;
+    border-radius: 10px;
+  }
 
-:deep(.el-input) {
-  width: 100%;
-}
+  :deep(.el-button--default:hover) {
+    background-color: #e8e4df;
+    border-color: #d8d4cf;
+    color: #5b5650;
+  }
 
-.password-container-cell {
-  display: flex;
-  align-items: center;
-}
+  /* Dialog 样式 */
+  :deep(.el-dialog) {
+    border-radius: 16px;
+    background-color: #faf8f5;
+  }
 
-.password-text {
-  font-size: 16px;
-  color: #3d3d3a;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 180px;
-}
+  :deep(.el-dialog__header) {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e8e4df;
+  }
 
-.password-mask {
-  font-size: 16px;
-  color: #8e8b82;
-  letter-spacing: 2px;
-}
+  :deep(.el-dialog__title) {
+    color: #6b6560;
+    font-weight: 500;
+    font-size: 18px;
+  }
 
-.button-group {
-  display: flex;
-  gap: 8px;
-}
-:deep(.el-table .el-table__cell) {
-  z-index:0!important;
-}
-.el-table--border .el-table__inner-wrapper:after, .el-table--border:after, .el-table--border:before, .el-table__inner-wrapper:before{
-   z-index:0!important;
-}
+  :deep(.el-dialog__body) {
+    padding: 24px;
+  }
+
+  /* 表单输入框样式 */
+  :deep(.el-input__wrapper) {
+    border-radius: 10px;
+    background-color: #f5f3f0;
+    border: 1px solid #e8e4df;
+    box-shadow: none !important;
+    transition: all 0.3s;
+  }
+
+  :deep(.el-input__wrapper:hover) {
+    box-shadow: 0 0 0 1px #c4a882 inset !important;
+  }
+
+  :deep(.el-input__wrapper.is-focus) {
+    box-shadow: 0 0 0 1px #c4a882 inset !important;
+  }
+
+  :deep(.el-textarea__inner) {
+    border-radius: 10px;
+    background-color: #f5f3f0;
+    border: 1px solid #e8e4df;
+    box-shadow: none !important;
+    color: #1a1a1a;
+  }
+
+  :deep(.el-textarea__inner:focus) {
+    box-shadow: 0 0 0 1px #c4a882 inset !important;
+    border-color: #c4a882 !important;
+  }
+
+  h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 18px;
+    color: #1a1a1a;
+  }
+
+  :deep(.el-form-item) {
+    width: 100%;
+    margin-bottom: 20px;
+  }
+
+  :deep(.el-input) {
+    width: 100%;
+  }
+
+  .wrap-container-cell {
+    display: flex;
+    align-items: center;
+  }
+
+  .password-text {
+    font-size: 16px;
+    color: #3d3d3a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+  }
+
+  .password-mask {
+    font-size: 16px;
+    color: #8e8b82;
+    letter-spacing: 2px;
+  }
+
+  .button-group {
+    display: flex;
+    gap: 8px;
+  }
+
+  :deep(.el-table .el-table__cell) {
+    z-index:0!important;
+  }
+  .el-table--border .el-table__inner-wrapper:after, .el-table--border:after, .el-table--border:before, .el-table__inner-wrapper:before{
+     z-index:0!important;
+  }
 </style>

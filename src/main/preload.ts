@@ -219,6 +219,19 @@ const electronAPI = {
   addCommerce: (data: any) => ipcRenderer.invoke('commerce:add', data),
   updateCommerce: (data: any) => ipcRenderer.invoke('commerce:update', data),
   deleteCommerce: (id: number) => ipcRenderer.invoke('commerce:delete', id),
+
+  // 密码
+  getPasswordList: (params: any) => ipcRenderer.invoke('password:getList', params),
+  addPassword: (data: any) => ipcRenderer.invoke('password:add', data),
+  updatePassword: (data: any) => ipcRenderer.invoke('password:update', data),
+  deletePassword: (id: number) => ipcRenderer.invoke('password:delete', id),
+
+  // 提示词
+  getPromptList: (params: any) => ipcRenderer.invoke('prompt:getList', params),
+  getPromptDetail: (id: number) => ipcRenderer.invoke('prompt:getDetail', id),
+  addPrompt: (data: any) => ipcRenderer.invoke('prompt:add', data),
+  updatePrompt: (data: any) => ipcRenderer.invoke('prompt:update', data),
+  deletePrompt: (id: number) => ipcRenderer.invoke('prompt:delete', id),
 };
 
 // 暴露给渲染进程的 API
