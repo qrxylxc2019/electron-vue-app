@@ -2,7 +2,7 @@
   <div class="english-container">
     <el-page-header @back="goBack" :content="directoryName" />
 
-    <div class="english-content" v-if="currentMaterial">
+    <div class="english-content" >
       <div class="top-toolbar">
         <div class="toolbar-actions">
           <el-button
@@ -36,7 +36,7 @@
       </div>
 
       <!-- 两栏布局主体：材料与小题各50% -->
-      <div class="english-main-wrapper">
+      <div class="english-main-wrapper" v-if="currentMaterial">
         <!-- 左侧：阅读材料 -->
         <div class="english-left">
           <div class="material-scroll-area">
@@ -300,11 +300,11 @@
           <!-- 无小题提示 -->
           <el-empty v-else description="该阅读材料暂无小题" />
         </div>
-
       </div>
+      <el-empty v-else description="暂无阅读材料" />
     </div>
 
-    <el-empty v-else description="暂无阅读材料" />
+    
 
     <!-- 新增题目弹窗 -->
     <el-dialog
