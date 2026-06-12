@@ -8,12 +8,12 @@
             v-model="searchKeyword"
             placeholder="请输入搜索关键词"
             class="search-input"
-            size="default"
+            size="large"
             @input="debouncedSearch"
             clearable
           >
           </el-input>
-          <el-button type="primary" @click="collectUrl" size="default">所有url</el-button>
+          <el-button type="primary" @click="collectUrl" size="large">所有url</el-button>
         </div>
         <div class="url-left-table">
           <el-table
@@ -1172,11 +1172,11 @@ fetchLearnData()
 }
 
 .url-left-header {
-  padding: 12px;
-  border-bottom: 1px solid #ebeef5;
+  padding: 16px;
+  border-bottom: 1px solid #e8e4df;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   background-color: #fff;
 }
 
@@ -1184,9 +1184,36 @@ fetchLearnData()
   flex: 1;
 }
 
-.url-left-header .el-button {
-  height: 32px;
-  padding: 0 16px;
+.url-left-header .search-input :deep(.el-input__wrapper) {
+  background-color: #f5f3f0;
+  border: 1px solid #e8e4df;
+  border-radius: 10px;
+  box-shadow: none !important;
+  transition: all 0.3s;
+}
+
+.url-left-header .search-input :deep(.el-input__wrapper:hover) {
+  border-color: #c4a882;
+}
+
+.url-left-header .search-input :deep(.el-input__wrapper.is-focus) {
+  border-color: #c4a882;
+  box-shadow: 0 0 0 2px rgba(196, 168, 130, 0.2) !important;
+}
+
+.url-left-header .el-button--primary {
+  background-color: #8b9a6d;
+  border-color: #8b9a6d;
+  color: #fff;
+  border-radius: 10px;
+  padding: 12px 20px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.url-left-header .el-button--primary:hover {
+  background-color: #7a895c;
+  border-color: #7a895c;
 }
 
 .url-left-table {
@@ -1245,11 +1272,20 @@ fetchLearnData()
 }
 
 .ai-btn {
+  background-color: #c4a882;
+  border-color: #c4a882;
+  color: #fff;
   height: 40px;
   padding: 0 20px;
   font-weight: 500;
   font-size: 15px;
   border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.ai-btn:hover {
+  background-color: #b59872;
+  border-color: #b59872;
 }
 
 .submit-item {
@@ -1267,6 +1303,15 @@ fetchLearnData()
   font-weight: 500;
   font-size: 15px;
   border-radius: 10px;
+  background-color: #8b9a6d;
+  border-color: #8b9a6d;
+  color: #fff;
+  transition: all 0.2s ease;
+}
+
+.submit-btn:hover {
+  background-color: #7a895c;
+  border-color: #7a895c;
 }
 
 .browser-container {
