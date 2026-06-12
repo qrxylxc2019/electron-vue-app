@@ -212,6 +212,13 @@ const electronAPI = {
   // AI根据知识点出题
   generateQuestionsByKnowledge: (data: any) => ipcRenderer.invoke('ai:generateQuestionsByKnowledge', data),
   classifyQuestion: (data: any) => ipcRenderer.invoke('ai:classifyQuestion', data),
+
+  // 副业项目
+  getCommerceList: (params: any) => ipcRenderer.invoke('commerce:getList', params),
+  getCommerceDetail: (id: number) => ipcRenderer.invoke('commerce:getDetail', id),
+  addCommerce: (data: any) => ipcRenderer.invoke('commerce:add', data),
+  updateCommerce: (data: any) => ipcRenderer.invoke('commerce:update', data),
+  deleteCommerce: (id: number) => ipcRenderer.invoke('commerce:delete', id),
 };
 
 // 暴露给渲染进程的 API

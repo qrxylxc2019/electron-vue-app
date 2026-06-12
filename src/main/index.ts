@@ -180,6 +180,19 @@ function initDatabase() {
       )
     `);
 
+    // 副业项目表
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS commerce (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        content TEXT,
+        url TEXT,
+        desc TEXT,
+        status TEXT DEFAULT '未开始',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // 英语阅读材料表
     db.exec(`
       CREATE TABLE IF NOT EXISTS english_materials (
@@ -2309,6 +2322,83 @@ ipcMain.handle('db:getApiSettings', () => {
 
 ipcMain.handle('db:saveApiSettings', () => {
   return true;
+});
+
+// ========== 副业项目 (commerce) IPC ==========
+
+ipcMain.handle('commerce:getList', (_event, params: any) => {
+  if (!db) return { success: false, list: [], total: 0 };
+  try {
+    const { page = 1, pageNum = 20, conditions = {} } = params;
+    const offset = (page - 1) * pageNum;
+    let whereClause = 'WHERE 1=1';
+    const queryParams: any[] = [];
+    if (conditions.name) {
+      whereClause += ' AND name LIKE ?';
+      queryParams.push(`%${conditions.name}%`);
+    }
+    if (conditions.content) {
+      whereClause += ' AND content LIKE ?';
+      queryParams.push(`%${conditions.content}%`);
+    }
+    const countStmt = db.prepare(`SELECT COUNT(*) as total FROM commerce ${whereClause}`);
+    const countResult = countStmt.get(...queryParams) as { total: number };
+    const total = countResult?.total || 0;
+    const stmt = db.prepare(`SELECT * FROM commerce ${whereClause} ORDER BY id DESC LIMIT ? OFFSET ?`);
+    const list = stmt.all(...queryParams, pageNum, offset);
+    return { success: true, list, total };
+  } catch (err) {
+    console.error('commerce:getList error:', err);
+    return { success: false, list: [], total: 0, error: String(err) };
+  }
+});
+
+ipcMain.handle('commerce:getDetail', (_event, id: number) => {
+  if (!db) return { success: false };
+  try {
+    const stmt = db.prepare('SELECT * FROM commerce WHERE id = ?');
+    const data = stmt.get(id);
+    return { success: true, data };
+  } catch (err) {
+    console.error('commerce:getDetail error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('commerce:add', (_event, data: any) => {
+  if (!db) return { success: false };
+  try {
+    const stmt = db.prepare('INSERT INTO commerce (name, content, url, desc, status) VALUES (?, ?, ?, ?, ?)');
+    const result = stmt.run(data.name, data.content, data.url, data.desc, data.status);
+    return { success: true, id: result.lastInsertRowid };
+  } catch (err) {
+    console.error('commerce:add error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('commerce:update', (_event, data: any) => {
+  if (!db) return { success: false };
+  try {
+    const stmt = db.prepare('UPDATE commerce SET name = ?, content = ?, url = ?, desc = ?, status = ? WHERE id = ?');
+    stmt.run(data.name, data.content, data.url, data.desc, data.status, data.id);
+    return { success: true };
+  } catch (err) {
+    console.error('commerce:update error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('commerce:delete', (_event, id: number) => {
+  if (!db) return { success: false };
+  try {
+    const stmt = db.prepare('DELETE FROM commerce WHERE id = ?');
+    stmt.run(id);
+    return { success: true };
+  } catch (err) {
+    console.error('commerce:delete error:', err);
+    return { success: false, error: String(err) };
+  }
 });
 
 // ========== 项目 (project) IPC ==========

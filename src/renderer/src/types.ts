@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿// 类型声明
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿// 类型声明
 export interface Directory {
   id: number;
   name: string;
@@ -224,6 +224,12 @@ declare global {
       addMarquee: (data: Partial<Marquee>) => Promise<Marquee | null>;
       updateMarquee: (id: number, data: Partial<Marquee>) => Promise<boolean>;
       deleteMarquee: (id: number) => Promise<boolean>;
+      // 副业项目
+      getCommerceList: (params: any) => Promise<{ success: boolean; list?: any[]; total?: number; error?: string }>;
+      getCommerceDetail: (id: number) => Promise<{ success: boolean; data?: any; error?: string }>;
+      addCommerce: (data: any) => Promise<{ success: boolean; id?: number; error?: string }>;
+      updateCommerce: (data: any) => Promise<{ success: boolean; error?: string }>;
+      deleteCommerce: (id: number) => Promise<{ success: boolean; error?: string }>;
 
       // 知识点
       getKnowledgePoints: (directoryId: number) => Promise<KnowledgePoint[]>;

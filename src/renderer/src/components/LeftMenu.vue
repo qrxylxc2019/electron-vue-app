@@ -14,6 +14,8 @@
         <img src="../assets/favicon.ico" alt="logo" />
       </div>
 
+      
+
       <!-- 一级：计划 -->
       <el-menu-item index="/plan">
         <el-icon><Calendar /></el-icon>
@@ -97,6 +99,19 @@
           <template #title><span>科目列表</span></template>
         </el-menu-item>
       </el-sub-menu>
+
+
+      <!-- 一级：副业 -->
+      <el-sub-menu index="/commerce">
+        <template #title>
+          <el-icon><Shop /></el-icon>
+          <span>副业</span>
+        </template>
+        <el-menu-item index="/commerce">
+          <el-icon><Goods /></el-icon>
+          <template #title><span>副业项目</span></template>
+        </el-menu-item>
+      </el-sub-menu>
     </el-menu>
     <div class="collapse-btn" @click="toggleCollapse">
       <el-icon v-if="isCollapsed"><ArrowRight /></el-icon>
@@ -108,7 +123,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { HomeFilled, Calendar, EditPen, Star, Folder, Notebook, ChatDotRound, Key, Collection, Cpu, Reading, ArrowLeft, ArrowRight, Edit, Grid, Picture, Document } from '@element-plus/icons-vue'
+import { HomeFilled, Calendar, EditPen, Star, Folder, Notebook, ChatDotRound, Key, Collection, Cpu, Reading, ArrowLeft, ArrowRight, Edit, Grid, Picture, Document, Shop, Goods } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const isCollapsed = ref(false)
@@ -161,6 +176,9 @@ const activeMenu = computed(() => {
   }
   if (path.startsWith('/token')) {
     return '/token'
+  }
+  if (path.startsWith('/commerce')) {
+    return '/commerce'
   }
   return path
 })

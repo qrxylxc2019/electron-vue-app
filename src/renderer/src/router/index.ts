@@ -21,6 +21,8 @@ import JiZi from '../views/JiZi/JiZi.vue';
 import HandWriting from '../views/HandWriting/HandWriting.vue';
 import Xinxi from '../views/Xinxi/Xinxi.vue';
 
+import Commerce from '../views/Commerce/Commerce.vue';
+
 const routes = [
   { path: '/', name: 'Home', component: DirectoryList },
   { path: '/quiz/:directoryId', name: 'Quiz', component: Quiz, props: true },
@@ -43,6 +45,7 @@ const routes = [
   { path: '/jizi', name: 'JiZi', component: JiZi },
   { path: '/handwriting', name: 'HandWriting', component: HandWriting },
   { path: '/xinxi', name: 'Xinxi', component: Xinxi },
+  { path: '/commerce', name: 'Commerce', component: Commerce },
 ];
 
 const router = createRouter({

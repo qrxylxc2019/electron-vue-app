@@ -121,7 +121,6 @@
 <script lang="ts" setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import request from '@/utils/request'
 import { Search, Plus, Edit, Delete } from '@element-plus/icons-vue'
 import RichEditor from '@/components/editor.vue'
 
@@ -183,10 +182,10 @@ const fetchCommerce = async () => {
     if (searchText.value) {
       params.conditions = { name: searchText.value, content: searchText.value }
     }
-    const res = await request.post('http://localhost:8000/api/commerce/get', params)
-    if (res.code === 200 && res.result?.list) {
-      commerceList.value = res.result.list
-      total.value = res.result.pagination?.total || 0
+    const res = await window.electronAPI.getCommerceList(params)
+    if (res.success && res.list) {
+      commerceList.value = res.list
+      total.value = res.total || 0
     } else {
       commerceList.value = []
       total.value = 0
@@ -232,8 +231,8 @@ const showAddDrawer = () => {
 const handleEdit = async (row: Commerce) => {
   isEdit.value = true
   try {
-    const res = await request.get(`http://localhost:8000/api/commerce/content?id=${row.id}`)
-    if (res.code === 200 && res.data) {
+    const res = await window.electronAPI.getCommerceDetail(row.id!)
+    if (res.success && res.data) {
       form.value = {
         id: res.data.id,
         name: res.data.name || '',
@@ -263,18 +262,18 @@ const handleSubmit = async () => {
     }
     let res
     if (isEdit.value && form.value.id) {
-      res = await request.post('http://localhost:8000/api/commerce/update', form.value)
+      res = await window.electronAPI.updateCommerce(form.value)
     } else {
       const data = { ...form.value }
       delete data.id
-      res = await request.post('http://localhost:8000/api/commerce/add', data)
+      res = await window.electronAPI.addCommerce(data)
     }
-    if (res.code === 200) {
+    if (res.success) {
       ElMessage.success(isEdit.value ? '更新成功' : '新增成功')
       drawerVisible.value = false
       fetchCommerce()
     } else {
-      ElMessage.error(res.message || '保存失败')
+      ElMessage.error(res.error || '保存失败')
     }
   } catch (error) {
     console.error('保存副业项目失败:', error)
@@ -290,12 +289,12 @@ const handleDelete = async (row: Commerce) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    const res = await request.post('http://localhost:8000/api/commerce/delete', { id: row.id })
-    if (res.code === 200) {
+    const res = await window.electronAPI.deleteCommerce(row.id!)
+    if (res.success) {
       ElMessage.success('删除成功')
       fetchCommerce()
     } else {
-      ElMessage.error(res.message || '删除失败')
+      ElMessage.error(res.error || '删除失败')
     }
   } catch (error) {
     if (error !== 'cancel') {
