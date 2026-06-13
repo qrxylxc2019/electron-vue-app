@@ -25,6 +25,7 @@ import SelfMedia from '../views/SelfMedia/SelfMedia.vue';
 import Password from '../views/Password/Password.vue';
 import Prompt from '../views/Prompt/Prompt.vue';
 import CodeAgent from '../views/CodeAgent/CodeAgent.vue';
+import KnowledgeBase from '../views/KnowledgeBase/KnowledgeBase.vue';
 
 const routes = [
   { path: '/', name: 'Home', component: DirectoryList },
@@ -53,6 +54,7 @@ const routes = [
   { path: '/password', name: 'Password', component: Password },
   { path: '/prompt', name: 'Prompt', component: Prompt },
   { path: '/codeagent', name: 'CodeAgent', component: CodeAgent },
+  { path: '/knowledge', name: 'KnowledgeBase', component: KnowledgeBase },
 ];
 
 const router = createRouter({

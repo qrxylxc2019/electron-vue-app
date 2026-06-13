@@ -261,6 +261,10 @@ const electronAPI = {
   generateSMImagePrompt: (summary: string, imageType: string) => ipcRenderer.invoke('sm:generateImagePrompt', summary, imageType),
   extractSMKeyPoints: (article: string) => ipcRenderer.invoke('sm:extractKeyPoints', article),
   optimizeSMForPlatform: (article: string, platform: string) => ipcRenderer.invoke('sm:optimizeForPlatform', article, platform),
+  // 知识库 Agent 搜索
+  kbGetFiles: () => ipcRenderer.invoke('kb:getFiles'),
+  kbAddFile: (data: any) => ipcRenderer.invoke('kb:addFile', data),
+  kbAgentSearch: (params: any) => ipcRenderer.invoke('kb:agentSearch', params),
 };
 
 // 暴露给渲染进程的 API

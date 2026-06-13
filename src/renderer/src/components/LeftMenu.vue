@@ -48,7 +48,7 @@
         </el-menu-item>
       </el-sub-menu>
 
-      <!-- 一级：学习汇总（二级：信息收藏、项目、笔记、信息查询） -->
+      <!-- 一级：学习汇总（二级：信息收藏、项目、笔记、爬虫、知识库） -->
       <el-sub-menu index="/summary">
         <template #title>
           <el-icon><Collection /></el-icon>
@@ -68,7 +68,11 @@
         </el-menu-item>
         <el-menu-item index="/xinxi">
           <el-icon><Document /></el-icon>
-          <template #title><span>信息查询</span></template>
+          <template #title><span>爬虫</span></template>
+        </el-menu-item>
+        <el-menu-item index="/knowledge">
+          <el-icon><Search /></el-icon>
+          <template #title><span>知识库</span></template>
         </el-menu-item>
         <el-menu-item index="/password">
           <el-icon><Lock /></el-icon>
@@ -148,7 +152,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { HomeFilled, Calendar, EditPen, Star, Folder, Notebook, ChatDotRound, Key, Collection, Cpu, Reading, ArrowLeft, ArrowRight, Edit, Grid, Picture, Document, Shop, Goods, Lock, VideoCamera, MagicStick } from '@element-plus/icons-vue'
+import { HomeFilled, Calendar, EditPen, Star, Folder, Notebook, ChatDotRound, Key, Collection, Cpu, Reading, ArrowLeft, ArrowRight, Edit, Grid, Picture, Document, Shop, Goods, Lock, VideoCamera, MagicStick, Search } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const isCollapsed = ref(false)
@@ -189,6 +193,9 @@ const activeMenu = computed(() => {
   }
   if (path.startsWith('/xinxi')) {
     return '/xinxi'
+  }
+  if (path.startsWith('/knowledge')) {
+    return '/knowledge'
   }
   if (path.startsWith('/yearplan')) {
     return '/yearplan'

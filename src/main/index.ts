@@ -6,6 +6,7 @@ import fs from 'fs';
 import { getOpenAIClient, getCurrentModel, PROMPTS, callAIWithFallback, setDeepSeekLocalToken } from './apikey';
 import { setupDeepSeekIpc, initDeepSeekClient, getDeepSeekClient } from './deepseek';
 import { DeepSeekClient } from './deepseek/client';
+import { setupKnowledgeBaseIPC } from './llm/knowledgeBase';
 
 let mainWindow: BrowserWindow | null = null;
 let db: Database.Database | null = null;
@@ -1698,6 +1699,7 @@ app.whenReady().then(() => {
   initDatabase();
   setupIpc();
   setupDeepSeekIpc(() => mainWindow);
+  setupKnowledgeBaseIPC();
   createWindow();
 
   app.on('activate', () => {
