@@ -115,6 +115,10 @@
           <el-icon><Goods /></el-icon>
           <template #title><span>副业项目</span></template>
         </el-menu-item>
+        <el-menu-item index="/selfmedia">
+          <el-icon><VideoCamera /></el-icon>
+          <template #title><span>自媒体运营</span></template>
+        </el-menu-item>
       </el-sub-menu>
 
       <!-- 一级：副业 -->
@@ -140,7 +144,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { HomeFilled, Calendar, EditPen, Star, Folder, Notebook, ChatDotRound, Key, Collection, Cpu, Reading, ArrowLeft, ArrowRight, Edit, Grid, Picture, Document, Shop, Goods, Lock } from '@element-plus/icons-vue'
+import { HomeFilled, Calendar, EditPen, Star, Folder, Notebook, ChatDotRound, Key, Collection, Cpu, Reading, ArrowLeft, ArrowRight, Edit, Grid, Picture, Document, Shop, Goods, Lock, VideoCamera } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const isCollapsed = ref(false)
@@ -196,6 +200,9 @@ const activeMenu = computed(() => {
   }
   if (path.startsWith('/commerce')) {
     return '/commerce'
+  }
+  if (path.startsWith('/selfmedia')) {
+    return '/selfmedia'
   }
   if (path.startsWith('/password')) {
     return '/password'

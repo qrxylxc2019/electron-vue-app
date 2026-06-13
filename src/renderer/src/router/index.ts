@@ -21,6 +21,7 @@ import JiZi from '../views/JiZi/JiZi.vue';
 import HandWriting from '../views/HandWriting/HandWriting.vue';
 import Xinxi from '../views/Xinxi/Xinxi.vue';
 import Commerce from '../views/Commerce/Commerce.vue';
+import SelfMedia from '../views/SelfMedia/SelfMedia.vue';
 import Password from '../views/Password/Password.vue';
 import Prompt from '../views/Prompt/Prompt.vue';
 
@@ -47,6 +48,7 @@ const routes = [
   { path: '/handwriting', name: 'HandWriting', component: HandWriting },
   { path: '/xinxi', name: 'Xinxi', component: Xinxi },
   { path: '/commerce', name: 'Commerce', component: Commerce },
+  { path: '/selfmedia', name: 'SelfMedia', component: SelfMedia },
   { path: '/password', name: 'Password', component: Password },
   { path: '/prompt', name: 'Prompt', component: Prompt },
 ];

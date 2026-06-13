@@ -371,11 +371,11 @@
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column prop="status" label="状态" width="109">
+              <el-table-column prop="status" label="状态" width="150">
                 <template #default="scope">
                   <el-button
                     :class="scope.row.status == '1' ? 'status-btn-completed' : 'status-btn-pending'"
-                    @click.stop="toggleSubPlanStatus(scope.row)"
+                    @click.stop="handleStatusBtnClick(scope.row)"
                   >
                     <template v-if="scope.row.status == '1'">
                       <el-icon><Check /></el-icon>已完成
@@ -1824,12 +1824,14 @@ export default {
     async getSubPlanList(parentId) {
       try {
         const list = await window.electronAPI.getSubPlans(parentId);
-        this.subPlanList = list.map((item, index) => ({
-          ...item,
-          index: index + 1
-        }));
+        this.subPlanList = list
+          .filter(item => item.status !== '1' && item.status !== '已完成')
+          .map((item, index) => ({
+            ...item,
+            index: index + 1
+          }));
       } catch (error) {
-        console.error('获取子计划失败:', error);
+        console.error('获取子计划错误:', error);
         this.subPlanList = [];
       }
     },
