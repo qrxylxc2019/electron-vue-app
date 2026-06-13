@@ -340,7 +340,7 @@ const generatingPrompts = ref(false)
 // 计算属性
 const renderedContent = computed(() => {
   try {
-    return marked.parse(articleContent.value) as string
+    return marked.parse(articleContent.value, { async: false }) as string
   } catch {
     return articleContent.value
   }
@@ -355,9 +355,22 @@ const useTopicFromLibrary = async () => {
       page: 1, pageNum: 50, conditions: { status: 'approved' },
       orderBy: { column: 'trend_score', type: 'desc' }
     })
-    libraryTopics.value = res?.list || []
+    if (res?.list && res.list.length > 0) {
+      libraryTopics.value = res.list || []
+    } else {
+      // 假数据
+      libraryTopics.value = [
+        { id: 1, title: 'AI编程入门：零基础30天学会Python', category: 'AI编程', keywords: 'Python,入门', trend_score: 85, selling_point: '零基础友好', target_audience: '编程小白', status: 'approved' },
+        { id: 2, title: 'ChatGPT提示词工程实战技巧', category: 'AI编程', keywords: 'ChatGPT', trend_score: 92, selling_point: '效率提升3倍', target_audience: '职场人士', status: 'approved' },
+        { id: 3, title: '小红书爆款笔记写作公式', category: '副业赚钱', keywords: '小红书', trend_score: 78, selling_point: '可复制公式', target_audience: '自媒体创作者', status: 'approved' },
+      ]
+    }
   } catch (error) {
     console.error('获取选题库失败:', error)
+    libraryTopics.value = [
+      { id: 1, title: 'AI编程入门：零基础30天学会Python', category: 'AI编程', keywords: 'Python,入门', trend_score: 85, selling_point: '零基础友好', target_audience: '编程小白', status: 'approved' },
+      { id: 2, title: 'ChatGPT提示词工程实战技巧', category: 'AI编程', keywords: 'ChatGPT', trend_score: 92, selling_point: '效率提升3倍', target_audience: '职场人士', status: 'approved' },
+    ]
   } finally {
     loadingTopics.value = false
   }

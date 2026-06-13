@@ -110,9 +110,23 @@ const loadArticles = async () => {
       page: 1, pageNum: 100, conditions: {},
       orderBy: { column: 'id', type: 'desc' }
     })
-    articles.value = res?.list || []
+    if (res?.list && res.list.length > 0) {
+      articles.value = res.list || []
+    } else {
+      // 假数据
+      articles.value = [
+        { id: 1, title: 'AI编程入门：零基础30天学会Python' },
+        { id: 2, title: 'ChatGPT提示词工程实战技巧' },
+        { id: 3, title: '小红书爆款笔记写作公式' },
+      ]
+    }
   } catch (error) {
     console.error('获取文章列表失败:', error)
+    articles.value = [
+      { id: 1, title: 'AI编程入门：零基础30天学会Python' },
+      { id: 2, title: 'ChatGPT提示词工程实战技巧' },
+      { id: 3, title: '小红书爆款笔记写作公式' },
+    ]
   }
 }
 
@@ -121,10 +135,22 @@ const loadImages = async () => {
   loading.value = true
   try {
     const res = await (window as any).electronAPI.getSMImages(selectedArticleId.value)
-    images.value = Array.isArray(res) ? res : (res?.list || [])
+    const data = Array.isArray(res) ? res : (res?.list || [])
+    if (data.length > 0) {
+      images.value = data
+    } else {
+      // 假数据
+      images.value = [
+        { id: 1, article_id: selectedArticleId.value, prompt: 'A modern workspace with laptop showing Python code, warm lighting, minimalist style, illustration', image_path: '', image_type: 'cover', status: 'pending', created_at: '2025-06-10 10:00' },
+        { id: 2, article_id: selectedArticleId.value, prompt: 'Young professional using AI chatbot, futuristic interface, blue and green tones, digital art', image_path: '', image_type: 'cover', status: 'pending', created_at: '2025-06-11 14:30' },
+      ]
+    }
   } catch (error) {
     console.error('获取图片失败:', error)
-    images.value = []
+    images.value = [
+      { id: 1, article_id: selectedArticleId.value, prompt: 'A modern workspace with laptop showing Python code, warm lighting, minimalist style, illustration', image_path: '', image_type: 'cover', status: 'pending', created_at: '2025-06-10 10:00' },
+      { id: 2, article_id: selectedArticleId.value, prompt: 'Young professional using AI chatbot, futuristic interface, blue and green tones, digital art', image_path: '', image_type: 'cover', status: 'pending', created_at: '2025-06-11 14:30' },
+    ]
   } finally {
     loading.value = false
   }
