@@ -9,7 +9,8 @@
 
 import fs from 'fs';
 import path from 'path';
-import { ipcMain } from 'electron';
+import { ipcMain, app } from 'electron';
+import { execSync } from 'child_process';
 import { callLLM } from './index';
 
 // 知识库根目录
@@ -37,11 +38,30 @@ interface SearchResult {
 
 // 简单的分词函数
 function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .replace(/[^\u4e00-\u9fa5a-z0-9]/g, ' ')
-    .split(/\s+/)
-    .filter(w => w.length > 1);
+  // 保留中文单字和英文单词
+  const tokens: string[] = [];
+  const cleaned = text.toLowerCase().replace(/[^\u4e00-\u9fa5a-z0-9]/g, ' ');
+  const words = cleaned.split(/\s+/).filter(w => w.length > 0);
+  
+  for (const word of words) {
+    if (/^[\u4e00-\u9fa5]+$/.test(word)) {
+      // 中文：保留单字和词组
+      if (word.length === 1) {
+        tokens.push(word);
+      } else {
+        tokens.push(word);
+        // 也拆分成单字，增加匹配概率
+        for (const char of word) {
+          tokens.push(char);
+        }
+      }
+    } else if (word.length > 1) {
+      // 英文/数字：保留长度>1的
+      tokens.push(word);
+    }
+  }
+  
+  return tokens;
 }
 
 // 计算 TF-IDF 分数
@@ -75,9 +95,55 @@ function calculateScore(query: string, content: string): number {
   return score / queryTokens.length;
 }
 
+// PDF 文本提取（使用 Python PyPDF2）
+function extractPdfText(filePath: string): string {
+  try {
+    // 使用 app.getAppPath() 定位脚本，确保开发和生产环境都能工作
+    let scriptPath: string;
+    try {
+      const appPath = app.getAppPath();
+      scriptPath = path.join(appPath, 'src', 'main', 'llm', 'pdf_extractor.py');
+      if (!fs.existsSync(scriptPath)) {
+        // 如果不在 appPath 下，尝试使用 __dirname（开发环境）
+        scriptPath = path.join(__dirname, 'pdf_extractor.py');
+      }
+    } catch {
+      scriptPath = path.join(__dirname, 'pdf_extractor.py');
+    }
+    
+    console.log(`[KB] PDF 脚本路径: ${scriptPath}`);
+    console.log(`[KB] 脚本存在: ${fs.existsSync(scriptPath)}`);
+    
+    const result = execSync(`python "${scriptPath}" "${filePath}"`, {
+      encoding: 'utf-8',
+      timeout: 30000,
+      maxBuffer: 10 * 1024 * 1024, // 10MB
+      env: {
+        ...process.env,
+        PYTHONIOENCODING: 'utf-8',
+      },
+    });
+    return result;
+  } catch (e: any) {
+    console.error(`[KB] PDF 解析失败 ${filePath}:`, e.message);
+    return '';
+  }
+}
+
 // 读取并分块文档
 function readDocumentChunks(filePath: string): DocumentChunk[] {
-  const content = fs.readFileSync(filePath, 'utf-8');
+  const ext = path.extname(filePath).toLowerCase();
+  let content: string;
+
+  if (ext === '.pdf') {
+    content = extractPdfText(filePath);
+    if (!content) {
+      return [];
+    }
+  } else {
+    content = fs.readFileSync(filePath, 'utf-8');
+  }
+
   const lines = content.split('\n');
   const chunks: DocumentChunk[] = [];
   
@@ -107,15 +173,15 @@ async function searchKnowledgeBase(query: string, files?: string[]): Promise<Sea
       .map(f => path.join(KB_DIR, f))
       .filter(f => fs.existsSync(f));
   } else {
-    // 读取目录下所有文件
-    try {
-      const entries = fs.readdirSync(KB_DIR, { withFileTypes: true });
-      kbFiles = entries
-        .filter(e => e.isFile() && !e.name.startsWith('.'))
-        .map(e => path.join(KB_DIR, e.name));
-    } catch (e) {
-      console.error('读取知识库目录失败:', e);
-    }
+    // 读取目录下所有文件（包括 PDF）
+  try {
+    const entries = fs.readdirSync(KB_DIR, { withFileTypes: true });
+    kbFiles = entries
+      .filter(e => e.isFile() && !e.name.startsWith('.') && (e.name.endsWith('.txt') || e.name.endsWith('.md') || e.name.endsWith('.pdf') || e.name.endsWith('.json')))
+      .map(e => path.join(KB_DIR, e.name));
+  } catch (e) {
+    console.error('读取知识库目录失败:', e);
+  }
   }
   
   if (kbFiles.length === 0) {
@@ -130,7 +196,8 @@ async function searchKnowledgeBase(query: string, files?: string[]): Promise<Sea
       const chunks = readDocumentChunks(filePath);
       for (const chunk of chunks) {
         const score = calculateScore(query, chunk.content);
-        if (score > 0.1) { // 阈值过滤
+        console.log(`[KB] ${chunk.file} L${chunk.startLine}-${chunk.endLine} score=${score.toFixed(3)}`);
+        if (score > 0.01) { // 阈值过滤
           allResults.push({
             file: chunk.file,
             content: chunk.content,
