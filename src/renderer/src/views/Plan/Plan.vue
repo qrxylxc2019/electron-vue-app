@@ -344,8 +344,9 @@
                 placeholder="请输入下级计划内容"
                 @keyup.enter="handleSubPlanInputEnter(index)"
                 style="flex: 1;"
+                size="large"
               ></el-input>
-              <el-button v-if="index === subPlanInputs.length - 1" type="primary" @click="handleSubPlanInputEnter(index)">新增</el-button>
+              <el-button v-if="index === subPlanInputs.length - 1" type="primary" size="large" @click="handleSubPlanInputEnter(index)">新增</el-button>
               <el-icon v-else class="delete-icon" @click="removeSubPlanInput(index)" style="cursor: pointer; color: #f56c6c; font-size: 20px; margin-top: 8px;"><Delete /></el-icon>
             </div>
           </div>
