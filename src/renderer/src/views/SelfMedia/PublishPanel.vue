@@ -318,7 +318,11 @@ const handleOptimize = async () => {
     const article = allArticles.value.find(a => a.id === optimizeArticleId.value)
     if (!article?.content) { ElMessage.warning('文章内容不存在'); return }
     const result = await (window as any).electronAPI.optimizeSMForPlatform(article.content, optimizePlatform.value)
-    optimizedContent.value = result || ''
+    if (result?.success) {
+      optimizedContent.value = result.data || ''
+    } else {
+      optimizedContent.value = typeof result === 'string' ? result : ''
+    }
     if (!optimizedContent.value) { ElMessage.warning('优化结果为空') }
   } catch (error) {
     console.error('平台优化失败:', error)

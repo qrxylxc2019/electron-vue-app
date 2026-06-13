@@ -20,7 +20,7 @@ export const DEFAULT_API_CONFIGS: Record<string, ApiProviderConfig> = {
     name: 'DeepSeek',
     baseURL: 'https://api.deepseek.com',
     defaultModel: 'deepseek-v4-flash',
-    apiKey: 'sk-793f0d8a79b547b996d39f2f1f8af852',
+    apiKey: 'sk-f225673464a848f49e400ad443f0b30d',
   },
   deepseekLocal: {
     name: 'DeepSeek本地版',

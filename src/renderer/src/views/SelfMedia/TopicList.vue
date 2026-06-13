@@ -337,11 +337,6 @@ const fetchData = async () => {
       // 假数据
       list.value = [
         { id: 1, title: 'AI编程入门：零基础30天学会Python', category: 'AI编程', keywords: 'Python,入门,零基础', trend_score: 85, selling_point: '零基础友好，30天速成', target_audience: '编程小白、大学生', status: 'approved', created_at: '2025-06-10 10:00', updated_at: '2025-06-10 10:00' },
-        { id: 2, title: 'ChatGPT提示词工程实战技巧', category: 'AI编程', keywords: 'ChatGPT,提示词,AI', trend_score: 92, selling_point: '提升AI工作效率3倍', target_audience: '职场人士、运营人员', status: 'pending', created_at: '2025-06-11 14:30', updated_at: '2025-06-11 14:30' },
-        { id: 3, title: '小红书爆款笔记写作公式', category: '副业赚钱', keywords: '小红书,爆款,写作', trend_score: 78, selling_point: '可复制的热门公式', target_audience: '自媒体创作者', status: 'approved', created_at: '2025-06-09 09:00', updated_at: '2025-06-09 09:00' },
-        { id: 4, title: '2025年AI副业赚钱指南', category: '副业赚钱', keywords: 'AI,副业,赚钱', trend_score: 88, selling_point: '实测月入过万的AI副业', target_audience: '想搞副业的人', status: 'pending', created_at: '2025-06-12 16:00', updated_at: '2025-06-12 16:00' },
-        { id: 5, title: '职场效率提升：AI工具清单', category: '职场成长', keywords: '效率,AI工具,职场', trend_score: 72, selling_point: '每天节省2小时', target_audience: '职场白领', status: 'rejected', created_at: '2025-06-08 11:00', updated_at: '2025-06-08 11:00' },
-        { id: 6, title: 'DeepSeek本地部署完整教程', category: 'AI编程', keywords: 'DeepSeek,本地部署,大模型', trend_score: 95, selling_point: '隐私安全，免费使用', target_audience: '开发者、技术爱好者', status: 'approved', created_at: '2025-06-13 08:00', updated_at: '2025-06-13 08:00' },
       ]
       total.value = list.value.length
     }
@@ -350,8 +345,6 @@ const fetchData = async () => {
     // 假数据兜底
     list.value = [
       { id: 1, title: 'AI编程入门：零基础30天学会Python', category: 'AI编程', keywords: 'Python,入门,零基础', trend_score: 85, selling_point: '零基础友好，30天速成', target_audience: '编程小白、大学生', status: 'approved', created_at: '2025-06-10 10:00', updated_at: '2025-06-10 10:00' },
-      { id: 2, title: 'ChatGPT提示词工程实战技巧', category: 'AI编程', keywords: 'ChatGPT,提示词,AI', trend_score: 92, selling_point: '提升AI工作效率3倍', target_audience: '职场人士、运营人员', status: 'pending', created_at: '2025-06-11 14:30', updated_at: '2025-06-11 14:30' },
-      { id: 3, title: '小红书爆款笔记写作公式', category: '副业赚钱', keywords: '小红书,爆款,写作', trend_score: 78, selling_point: '可复制的热门公式', target_audience: '自媒体创作者', status: 'approved', created_at: '2025-06-09 09:00', updated_at: '2025-06-09 09:00' },
     ]
     total.value = list.value.length
   } finally {

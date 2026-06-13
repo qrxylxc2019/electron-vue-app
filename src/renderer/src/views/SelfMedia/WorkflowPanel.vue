@@ -102,17 +102,37 @@
       <div v-if="currentStep === 2" class="step-panel">
         <div class="step-section">
           <h3>📋 审阅文章</h3>
-          <p class="section-desc">可在编辑器中直接修改，或通过反馈让 AI 重写</p>
+          <p class="section-desc">左侧编辑 Markdown，右侧实时预览渲染效果</p>
 
-          <div class="editor-container">
-            <RichEditor
-              ref="editorRef"
-              :contentHtml="articleContent"
-              height="400px"
-              :fontSize="18"
-              :showMenuBar="true"
-              placeholder="文章内容..."
-            />
+          <div class="review-split-layout">
+            <!-- 左侧：编辑器 -->
+            <div class="review-left">
+              <div class="review-panel-header">
+                <span>✏️ 编辑</span>
+                <el-tag size="small" type="info">Markdown</el-tag>
+              </div>
+              <div class="editor-container">
+                <RichEditor
+                  ref="editorRef"
+                  :contentHtml="articleContent"
+                  height="400px"
+                  :fontSize="18"
+                  :showMenuBar="true"
+                  placeholder="文章内容..."
+                />
+              </div>
+            </div>
+
+            <!-- 右侧：预览 -->
+            <div class="review-right">
+              <div class="review-panel-header">
+                <span>👁️ 预览</span>
+                <el-tag size="small" type="success">实时渲染</el-tag>
+              </div>
+              <div class="markdown-preview">
+                <div class="markdown-body" v-html="renderedContent"></div>
+              </div>
+            </div>
           </div>
 
           <!-- 版本历史 -->
@@ -307,6 +327,9 @@ interface TopicItem {
 // 步骤状态
 const currentStep = ref(0)
 
+// 编辑器模式: edit | preview
+const editorMode = ref<'edit' | 'preview'>('edit')
+
 // Step 0: 选题
 const selectedTopic = ref<TopicItem | null>(null)
 const manualTopic = ref('')
@@ -424,13 +447,17 @@ const generateArticle = async () => {
     }
 
     // 调用 AI 写文章
-    const content = await (window as any).electronAPI.writeSMArticle(
+    const result = await (window as any).electronAPI.writeSMArticle(
       topicTitle, articlePlatform.value, articleWordCount.value
     )
-    articleContent.value = content || ''
+    if (result?.success) {
+      articleContent.value = result.data || ''
+    } else {
+      throw new Error(result?.error || '写文章失败')
+    }
 
     // 保存文章到数据库
-    const wordCount = articleContent.value.replace(/<[^>]*>/g, '').length
+    const wordCount = (articleContent.value as string).replace(/<[^>]*>/g, '').length
     const articleRes = await (window as any).electronAPI.addSMArticle({
       topic_id: savedTopicId.value,
       title: topicTitle,
@@ -490,32 +517,37 @@ const rewriteArticle = async () => {
 
   generating.value = true
   try {
-    const newContent = await (window as any).electronAPI.rewriteSMArticle(
+    const rewriteResult = await (window as any).electronAPI.rewriteSMArticle(
       articleContent.value, rewriteFeedback.value
     )
-    if (newContent) {
-      articleContent.value = newContent
-      currentVersion.value++
-      versionHistory.value.push(newContent)
+    if (rewriteResult?.success) {
+      const newContent = rewriteResult.data
+      if (newContent) {
+        articleContent.value = newContent
+        currentVersion.value++
+        versionHistory.value.push(newContent)
 
-      // 保存新版本文章
-      if (savedArticleId.value) {
-        const wordCount = articleContent.value.replace(/<[^>]*>/g, '').length
-        await (window as any).electronAPI.addSMArticle({
-          topic_id: savedTopicId.value,
-          title: selectedTopic.value?.title || manualTopic.value,
-          content: articleContent.value,
-          word_count: wordCount,
-          platform: articlePlatform.value,
-          status: 'draft',
-          version: currentVersion.value,
-          parent_id: savedArticleId.value
-        })
+        // 保存新版本文章
+        if (savedArticleId.value) {
+          const wordCount = articleContent.value.replace(/<[^>]*>/g, '').length
+          await (window as any).electronAPI.addSMArticle({
+            topic_id: savedTopicId.value,
+            title: selectedTopic.value?.title || manualTopic.value,
+            content: articleContent.value,
+            word_count: wordCount,
+            platform: articlePlatform.value,
+            status: 'draft',
+            version: currentVersion.value,
+            parent_id: savedArticleId.value
+          })
+        }
+
+        ElMessage.success(`重写完成 (v${currentVersion.value})`)
+        showRewritePanel.value = false
+        rewriteFeedback.value = ''
       }
-
-      ElMessage.success(`重写完成 (v${currentVersion.value})`)
-      showRewritePanel.value = false
-      rewriteFeedback.value = ''
+    } else {
+      ElMessage.error(rewriteResult?.error || '重写失败')
     }
   } catch (error) {
     console.error('AI 重写失败:', error)
@@ -540,10 +572,14 @@ const extractVisualPoints = async () => {
   if (!articleContent.value) return
   extracting.value = true
   try {
-    const points = await (window as any).electronAPI.extractSMKeyPoints(articleContent.value)
-    if (Array.isArray(points) && points.length > 0) {
-      keyPoints.value = points
-      imagePrompts.value = new Array(points.length).fill('')
+    const pointsResult = await (window as any).electronAPI.extractSMKeyPoints(articleContent.value)
+    if (pointsResult?.success && Array.isArray(pointsResult.data) && pointsResult.data.length > 0) {
+      keyPoints.value = pointsResult.data
+      imagePrompts.value = new Array(pointsResult.data.length).fill('')
+    } else if (Array.isArray(pointsResult) && pointsResult.length > 0) {
+      // 兼容旧格式直接返回数组
+      keyPoints.value = pointsResult
+      imagePrompts.value = new Array(pointsResult.length).fill('')
     } else {
       ElMessage.warning('未能提取到视觉要点')
     }
@@ -560,9 +596,10 @@ const generateImagePrompts = async () => {
   try {
     for (let i = 0; i < keyPoints.value.length; i++) {
       if (!imagePrompts.value[i]) {
-        const prompt = await (window as any).electronAPI.generateSMImagePrompt(
+        const promptResult = await (window as any).electronAPI.generateSMImagePrompt(
           keyPoints.value[i], '封面配图'
         )
+        const prompt = promptResult?.success ? promptResult.data : (typeof promptResult === 'string' ? promptResult : '')
         imagePrompts.value[i] = prompt || ''
 
         // 保存到图片表
@@ -709,6 +746,170 @@ const resetWorkflow = () => {
   padding: 12px 32px;
   font-size: 16px;
   border-radius: 10px;
+}
+
+/* 审阅左右分栏布局 */
+.review-split-layout {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.review-left,
+.review-right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.review-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f5f3f0;
+  border-radius: 10px 10px 0 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b6560;
+  border: 1px solid #e8e4df;
+  border-bottom: none;
+}
+
+.review-left .editor-container {
+  border-radius: 0 0 10px 10px;
+  border: 1px solid #e8e4df;
+  overflow: hidden;
+  flex: 1;
+}
+
+.review-right .markdown-preview {
+  border-radius: 0 0 10px 10px;
+  border: 1px solid #e8e4df;
+  margin-bottom: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.review-right .markdown-body {
+  max-height: none;
+  flex: 1;
+}
+
+/* Markdown 预览 */
+.markdown-preview {
+  background: #fff;
+  overflow: hidden;
+}
+
+.markdown-body {
+  padding: 16px;
+  overflow-y: auto;
+  line-height: 1.8;
+  font-size: 15px;
+  color: #1a1a1a;
+}
+
+.markdown-body :deep(h1),
+.markdown-body :deep(h2),
+.markdown-body :deep(h3),
+.markdown-body :deep(h4) {
+  margin-top: 14px;
+  margin-bottom: 8px;
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.markdown-body :deep(h1) { font-size: 20px; }
+.markdown-body :deep(h2) { font-size: 18px; }
+.markdown-body :deep(h3) { font-size: 16px; }
+
+.markdown-body :deep(p) {
+  margin: 8px 0;
+}
+
+.markdown-body :deep(ul),
+.markdown-body :deep(ol) {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+
+.markdown-body :deep(li) {
+  margin: 4px 0;
+}
+
+.markdown-body :deep(blockquote) {
+  border-left: 4px solid #8b9a6d;
+  padding-left: 12px;
+  margin: 12px 0;
+  color: #6b6560;
+  background: #faf8f5;
+  padding: 8px 12px;
+  border-radius: 0 8px 8px 0;
+}
+
+.markdown-body :deep(code) {
+  background: #f5f3f0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  color: #e8686a;
+}
+
+.markdown-body :deep(pre) {
+  background: #1a1a1a;
+  color: #fff;
+  padding: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+
+.markdown-body :deep(pre code) {
+  background: transparent;
+  color: #fff;
+  padding: 0;
+}
+
+.markdown-body :deep(strong) {
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.markdown-body :deep(a) {
+  color: #8b9a6d;
+  text-decoration: none;
+}
+
+.markdown-body :deep(a:hover) {
+  text-decoration: underline;
+}
+
+.markdown-body :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+}
+
+.markdown-body :deep(th),
+.markdown-body :deep(td) {
+  border: 1px solid #e8e4df;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.markdown-body :deep(th) {
+  background: #f5f3f0;
+  font-weight: 600;
+}
+
+.markdown-body :deep(hr) {
+  border: none;
+  border-top: 1px solid #e8e4df;
+  margin: 16px 0;
 }
 
 /* Step 2: 审阅 */
