@@ -2267,6 +2267,17 @@ ipcMain.handle('plan:update', (_event, id: number, data: any) => {
   }
 });
 
+ipcMain.handle('plan:getSubPlans', (_event, parentId: number) => {
+  if (!db) return [];
+  try {
+    const stmt = db.prepare('SELECT * FROM plan WHERE preplanid = ? ORDER BY id DESC');
+    return stmt.all(parentId);
+  } catch (err) {
+    console.error('plan:getSubPlans error:', err);
+    return [];
+  }
+});
+
 ipcMain.handle('plan:delete', (_event, id: number) => {
   if (!db) return false;
   try {

@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿// 类型声明
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿// 类型声明
 export interface Directory {
   id: number;
   name: string;
@@ -219,6 +219,7 @@ declare global {
       addPlan: (data: Partial<Plan>) => Promise<Plan | null>;
       updatePlan: (id: number, data: Partial<Plan>) => Promise<boolean>;
       deletePlan: (id: number) => Promise<boolean>;
+      getSubPlans: (parentId: number) => Promise<Plan[]>;
       // 跑马灯
       getMarquees: () => Promise<Marquee[]>;
       addMarquee: (data: Partial<Marquee>) => Promise<Marquee | null>;

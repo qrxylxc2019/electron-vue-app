@@ -1821,8 +1821,16 @@ export default {
     },
 
     async getSubPlanList(parentId) {
-      // Electron 版本暂不支持下级计划功能
-      this.subPlanList = [];
+      try {
+        const list = await window.electronAPI.getSubPlans(parentId);
+        this.subPlanList = list.map((item, index) => ({
+          ...item,
+          index: index + 1
+        }));
+      } catch (error) {
+        console.error('获取子计划失败:', error);
+        this.subPlanList = [];
+      }
     },
 
     // 处理子计划输入框回车事件
@@ -1852,8 +1860,37 @@ export default {
 
     // 添加子计划
     async addSubPlan() {
-      // Electron 版本暂不支持下级计划功能
-      this.$message.warning("Electron 版本暂不支持子计划功能");
+      if (!this.currentParentPlan) return;
+      const validPlans = this.subPlanInputs.filter(input => input.trim());
+      if (validPlans.length === 0) {
+        this.$message.warning('请输入子计划内容');
+        return;
+      }
+      try {
+        for (const planText of validPlans) {
+          const planData = {
+            plan: planText.trim(),
+            date: new Date().toISOString().split('T')[0],
+            status: '未完成',
+            plantype: '普通',
+            type: 'plan',
+            subjectid: this.currentParentPlan.subjectid || null,
+            subjecttreeid: this.currentParentPlan.subjecttreeid || null,
+            preplanid: this.currentParentPlan.id,
+            planfinishtime: this.currentParentPlan.planfinishtime || null,
+            finishtime: null,
+            top: 0,
+            todayPlan: 0
+          };
+          await window.electronAPI.addPlan(planData);
+        }
+        this.$message.success(`成功添加 ${validPlans.length} 个子计划`);
+        this.subPlanInputs = [''];
+        this.getSubPlanList(this.currentParentPlan.id);
+      } catch (error) {
+        console.error('添加子计划失败:', error);
+        this.$message.error('添加子计划失败');
+      }
     },
 
     // 保存子计划（与addSubPlan相同逻辑，用于底部保存按钮）
@@ -1862,13 +1899,45 @@ export default {
     },
 
     async toggleSubPlanStatus(item) {
-      // Electron 版本暂不支持下级计划功能
-      this.$message.warning("Electron 版本暂不支持子计划功能");
+      try {
+        const newStatus = item.status === '已完成' ? '未完成' : '已完成';
+        const updateData = {
+          status: newStatus,
+          finishtime: newStatus === '已完成' ? new Date().toISOString().split('T')[0] : null
+        };
+        const success = await window.electronAPI.updatePlan(item.id, updateData);
+        if (success) {
+          item.status = newStatus;
+          this.$message.success(newStatus === '已完成' ? '子计划已完成' : '子计划已恢复');
+        } else {
+          this.$message.error('更新失败');
+        }
+      } catch (error) {
+        console.error('切换子计划状态失败:', error);
+        this.$message.error('切换子计划状态失败');
+      }
     },
 
     async deleteSubPlan(item) {
-      // Electron 版本暂不支持下级计划功能
-      this.$message.warning("Electron 版本暂不支持子计划功能");
+      try {
+        await this.$confirm('确定删除该子计划?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        });
+        const success = await window.electronAPI.deletePlan(item.id);
+        if (success) {
+          this.$message.success('删除成功');
+          this.getSubPlanList(this.currentParentPlan.id);
+        } else {
+          this.$message.error('删除失败');
+        }
+      } catch (error) {
+        if (error !== 'cancel') {
+          console.error('删除子计划失败:', error);
+          this.$message.error('删除子计划失败');
+        }
+      }
     },
 
     // ========== 跑马灯相关方法 ==========

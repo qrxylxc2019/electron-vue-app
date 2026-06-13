@@ -133,6 +133,7 @@ const electronAPI = {
   addPlan: (data: any) => ipcRenderer.invoke('plan:add', data),
   updatePlan: (id: number, data: any) => ipcRenderer.invoke('plan:update', id, data),
   deletePlan: (id: number) => ipcRenderer.invoke('plan:delete', id),
+  getSubPlans: (parentId: number) => ipcRenderer.invoke('plan:getSubPlans', parentId),
 
   // 跑马灯
   getMarquees: () => ipcRenderer.invoke('marquee:getAll'),
