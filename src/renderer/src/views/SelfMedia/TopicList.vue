@@ -48,7 +48,7 @@
       <div v-for="item in list" :key="item.id" class="topic-card">
         <div class="card-header">
           <div class="card-title">{{ item.title }}</div>
-          <el-tag :type="getStatusType(item.status)" size="small">
+          <el-tag :type="getStatusType(item.status)" size="large">
             {{ getStatusLabel(item.status) }}
           </el-tag>
         </div>
@@ -79,7 +79,7 @@
           <el-tag
             v-for="kw in parseKeywords(item.keywords)"
             :key="kw"
-            size="small"
+            size="large"
             type="info"
             class="keyword-tag"
           >
@@ -88,13 +88,13 @@
         </div>
 
         <div class="card-actions">
-          <el-button size="small" @click="handleEdit(item)">
+          <el-button size="large" @click="handleEdit(item)">
             <el-icon style="margin-right: 4px;"><Edit /></el-icon>编辑
           </el-button>
-          <el-button size="small" type="primary" @click="$emit('select-topic', item)">
+          <el-button size="large" type="primary" @click="$emit('select-topic', item)">
             <span style="margin-right: 4px;">🚀</span>选入创作
           </el-button>
-          <el-button size="small" type="danger" @click="handleDelete(item)">
+          <el-button size="large" type="danger" @click="handleDelete(item)">
             <el-icon style="margin-right: 4px;"><Delete /></el-icon>删除
           </el-button>
         </div>
@@ -145,7 +145,7 @@
       <div v-if="aiResults.length > 0" class="ai-results">
         <div class="ai-results-header">
           <span>✨ AI 生成了 {{ aiResults.length }} 个选题</span>
-          <el-button size="small" type="primary" @click="saveAllAITopics">
+          <el-button size="large" type="primary" @click="saveAllAITopics">
             全部保存
           </el-button>
         </div>
@@ -157,7 +157,7 @@
             <span v-if="topic.trendScore">🔥 {{ topic.trendScore }}分</span>
           </div>
           <el-button
-            size="small"
+            size="large"
             :type="topic._saved ? 'success' : 'default'"
             :disabled="topic._saved"
             @click="saveSingleAITopic(topic)"
@@ -335,17 +335,13 @@ const fetchData = async () => {
       total.value = res.total || 0
     } else {
       // 假数据
-      list.value = [
-        { id: 1, title: 'AI编程入门：零基础30天学会Python', category: 'AI编程', keywords: 'Python,入门,零基础', trend_score: 85, selling_point: '零基础友好，30天速成', target_audience: '编程小白、大学生', status: 'approved', created_at: '2025-06-10 10:00', updated_at: '2025-06-10 10:00' },
-      ]
+      list.value = []
       total.value = list.value.length
     }
   } catch (error) {
     console.error('获取选题失败:', error)
     // 假数据兜底
-    list.value = [
-      { id: 1, title: 'AI编程入门：零基础30天学会Python', category: 'AI编程', keywords: 'Python,入门,零基础', trend_score: 85, selling_point: '零基础友好，30天速成', target_audience: '编程小白、大学生', status: 'approved', created_at: '2025-06-10 10:00', updated_at: '2025-06-10 10:00' },
-    ]
+    list.value = []
     total.value = list.value.length
   } finally {
     loading.value = false
@@ -434,16 +430,26 @@ const generateAITopics = async () => {
   aiResults.value = []
   try {
     const result = await (window as any).electronAPI.generateSMTopics(aiCategory.value, 5)
-    if (typeof result === 'string') {
+    
+    // IPC 返回 { success: true, data: [...] } 格式
+    let topics: any[] = []
+    if (result?.success && Array.isArray(result.data)) {
+      topics = result.data
+    } else if (typeof result === 'string') {
       const jsonMatch = result.match(/\[[\s\S]*\]/)
       if (jsonMatch) {
-        aiResults.value = JSON.parse(jsonMatch[0]).map((t: any) => ({ ...t, _saved: false }))
+        topics = JSON.parse(jsonMatch[0])
       }
     } else if (Array.isArray(result)) {
-      aiResults.value = result.map((t: any) => ({ ...t, _saved: false }))
+      topics = result
     }
+    
+    aiResults.value = topics.map((t: any) => ({ ...t, _saved: false }))
+    
     if (aiResults.value.length === 0) {
       ElMessage.warning('未能生成选题，请重试')
+    } else {
+      ElMessage.success(`已生成 ${aiResults.value.length} 个选题`)
     }
   } catch (error) {
     console.error('AI 生成选题失败:', error)

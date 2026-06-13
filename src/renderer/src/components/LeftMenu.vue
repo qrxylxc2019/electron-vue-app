@@ -76,7 +76,7 @@
         </el-menu-item>
       </el-sub-menu>
 
-      <!-- 一级：编程（二级：Claude、Token） -->
+      <!-- 一级：编程（二级：Claude、Token、Agent） -->
       <el-sub-menu index="/code">
         <template #title>
           <el-icon><Cpu /></el-icon>
@@ -89,6 +89,10 @@
         <el-menu-item index="/token">
           <el-icon><Key /></el-icon>
           <template #title><span>Token</span></template>
+        </el-menu-item>
+        <el-menu-item index="/codeagent">
+          <el-icon><MagicStick /></el-icon>
+          <template #title><span>Agent</span></template>
         </el-menu-item>
       </el-sub-menu>
 
@@ -144,7 +148,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { HomeFilled, Calendar, EditPen, Star, Folder, Notebook, ChatDotRound, Key, Collection, Cpu, Reading, ArrowLeft, ArrowRight, Edit, Grid, Picture, Document, Shop, Goods, Lock, VideoCamera } from '@element-plus/icons-vue'
+import { HomeFilled, Calendar, EditPen, Star, Folder, Notebook, ChatDotRound, Key, Collection, Cpu, Reading, ArrowLeft, ArrowRight, Edit, Grid, Picture, Document, Shop, Goods, Lock, VideoCamera, MagicStick } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const isCollapsed = ref(false)
@@ -197,6 +201,9 @@ const activeMenu = computed(() => {
   }
   if (path.startsWith('/token')) {
     return '/token'
+  }
+  if (path.startsWith('/codeagent')) {
+    return '/codeagent'
   }
   if (path.startsWith('/commerce')) {
     return '/commerce'

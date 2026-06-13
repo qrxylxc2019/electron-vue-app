@@ -24,6 +24,7 @@ import Commerce from '../views/Commerce/Commerce.vue';
 import SelfMedia from '../views/SelfMedia/SelfMedia.vue';
 import Password from '../views/Password/Password.vue';
 import Prompt from '../views/Prompt/Prompt.vue';
+import CodeAgent from '../views/CodeAgent/CodeAgent.vue';
 
 const routes = [
   { path: '/', name: 'Home', component: DirectoryList },
@@ -51,6 +52,7 @@ const routes = [
   { path: '/selfmedia', name: 'SelfMedia', component: SelfMedia },
   { path: '/password', name: 'Password', component: Password },
   { path: '/prompt', name: 'Prompt', component: Prompt },
+  { path: '/codeagent', name: 'CodeAgent', component: CodeAgent },
 ];
 
 const router = createRouter({
