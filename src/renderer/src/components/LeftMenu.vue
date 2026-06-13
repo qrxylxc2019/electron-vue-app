@@ -370,4 +370,33 @@ const activeMenu = computed(() => {
   color: #8b9a6d !important;
   font-weight: 600;
 }
+/* 滚动条优化：默认隐藏，悬停显示，不占空间 */
+.menu-container::-webkit-scrollbar {
+  width: 6px;
+  background: transparent;
+}
+
+.menu-container::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+  transition: background 0.3s;
+}
+
+.left-menu:hover .menu-container::-webkit-scrollbar-thumb {
+  background: #b8b3ab;
+}
+
+.left-menu:hover .menu-container::-webkit-scrollbar-thumb:hover {
+  background: #a09a92;
+}
+
+/* Firefox 滚动条 */
+.menu-container {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.left-menu:hover .menu-container {
+  scrollbar-color: #b8b3ab transparent;
+}
 </style>
