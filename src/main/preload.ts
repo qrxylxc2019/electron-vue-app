@@ -233,6 +233,34 @@ const electronAPI = {
   addPrompt: (data: any) => ipcRenderer.invoke('prompt:add', data),
   updatePrompt: (data: any) => ipcRenderer.invoke('prompt:update', data),
   deletePrompt: (id: number) => ipcRenderer.invoke('prompt:delete', id),
+
+  // 自媒体运营
+  // 选题
+  getSMTopics: (params: any) => ipcRenderer.invoke('sm:getTopics', params),
+  addSMTopic: (data: any) => ipcRenderer.invoke('sm:addTopic', data),
+  updateSMTopic: (id: number, data: any) => ipcRenderer.invoke('sm:updateTopic', id, data),
+  deleteSMTopic: (id: number) => ipcRenderer.invoke('sm:deleteTopic', id),
+  // 文案
+  getSMArticles: (params: any) => ipcRenderer.invoke('sm:getArticles', params),
+  getSMArticleById: (id: number) => ipcRenderer.invoke('sm:getArticleById', id),
+  addSMArticle: (data: any) => ipcRenderer.invoke('sm:addArticle', data),
+  updateSMArticle: (id: number, data: any) => ipcRenderer.invoke('sm:updateArticle', id, data),
+  deleteSMArticle: (id: number) => ipcRenderer.invoke('sm:deleteArticle', id),
+  // 图片
+  getSMImages: (articleId: number) => ipcRenderer.invoke('sm:getImages', articleId),
+  addSMImage: (data: any) => ipcRenderer.invoke('sm:addImage', data),
+  deleteSMImage: (id: number) => ipcRenderer.invoke('sm:deleteImage', id),
+  // 发布
+  getSMPublishRecords: (params: any) => ipcRenderer.invoke('sm:getPublishRecords', params),
+  addSMPublishRecord: (data: any) => ipcRenderer.invoke('sm:addPublishRecord', data),
+  updateSMPublishRecord: (id: number, data: any) => ipcRenderer.invoke('sm:updatePublishRecord', id, data),
+  // AI 生成
+  generateSMTopics: (category: string, count: number) => ipcRenderer.invoke('sm:generateTopics', category, count),
+  writeSMArticle: (topic: string, platform: string, wordCount: number) => ipcRenderer.invoke('sm:writeArticle', topic, platform, wordCount),
+  rewriteSMArticle: (article: string, feedback: string) => ipcRenderer.invoke('sm:rewriteArticle', article, feedback),
+  generateSMImagePrompt: (summary: string, imageType: string) => ipcRenderer.invoke('sm:generateImagePrompt', summary, imageType),
+  extractSMKeyPoints: (article: string) => ipcRenderer.invoke('sm:extractKeyPoints', article),
+  optimizeSMForPlatform: (article: string, platform: string) => ipcRenderer.invoke('sm:optimizeForPlatform', article, platform),
 };
 
 // 暴露给渲染进程的 API

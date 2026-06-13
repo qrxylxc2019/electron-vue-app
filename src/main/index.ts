@@ -180,7 +180,72 @@ function initDatabase() {
       )
     `);
 
-    // 副业项目表
+    // 自媒体运营表 - 选题
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS sm_topics (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        category TEXT DEFAULT 'AI编程',
+        keywords TEXT,
+        trend_score INTEGER DEFAULT 50,
+        selling_point TEXT,
+        target_audience TEXT,
+        status TEXT DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // 自媒体运营表 - 文案
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS sm_articles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        topic_id INTEGER,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        summary TEXT,
+        word_count INTEGER DEFAULT 0,
+        platform TEXT DEFAULT 'xiaohongshu',
+        platform_versions TEXT,
+        status TEXT DEFAULT 'draft',
+        version INTEGER DEFAULT 1,
+        parent_id INTEGER DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (topic_id) REFERENCES sm_topics(id),
+        FOREIGN KEY (parent_id) REFERENCES sm_articles(id)
+      )
+    `);
+
+    // 自媒体运营表 - 图片
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS sm_images (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        article_id INTEGER NOT NULL,
+        prompt TEXT,
+        image_path TEXT,
+        image_type TEXT DEFAULT 'cover',
+        status TEXT DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (article_id) REFERENCES sm_articles(id)
+      )
+    `);
+
+    // 自媒体运营表 - 发布记录
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS sm_publish_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        article_id INTEGER NOT NULL,
+        platform TEXT NOT NULL,
+        status TEXT DEFAULT 'scheduled',
+        scheduled_at TIMESTAMP,
+        published_at TIMESTAMP,
+        platform_post_id TEXT,
+        error_message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (article_id) REFERENCES sm_articles(id)
+      )
+    `);
     db.exec(`
       CREATE TABLE IF NOT EXISTS commerce (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -4066,6 +4131,404 @@ ${knowledgeListText}
   }
 
   return { success: true, result: result.data };
+});
+
+// ========== 自媒体运营 (self-media) IPC ==========
+
+// 选题管理
+ipcMain.handle('sm:getTopics', (_event, params: any = {}) => {
+  if (!db) return { success: false, list: [], total: 0 };
+  try {
+    const { page = 1, pageSize = 10, status, keyword } = params;
+    const offset = (page - 1) * pageSize;
+    let whereClause = 'WHERE 1=1';
+    const queryParams: any[] = [];
+    
+    if (status) {
+      whereClause += ' AND status = ?';
+      queryParams.push(status);
+    }
+    if (keyword) {
+      whereClause += ' AND (title LIKE ? OR keywords LIKE ?)';
+      queryParams.push(`%${keyword}%`, `%${keyword}%`);
+    }
+    
+    const countStmt = db.prepare(`SELECT COUNT(*) as total FROM sm_topics ${whereClause}`);
+    const countResult = countStmt.get(...queryParams) as { total: number };
+    const total = countResult?.total || 0;
+    
+    const stmt = db.prepare(`SELECT * FROM sm_topics ${whereClause} ORDER BY updated_at DESC LIMIT ? OFFSET ?`);
+    const list = stmt.all(...queryParams, pageSize, offset);
+    
+    return { success: true, list, total };
+  } catch (err) {
+    console.error('sm:getTopics error:', err);
+    return { success: false, list: [], total: 0, error: String(err) };
+  }
+});
+
+ipcMain.handle('sm:addTopic', (_event, data: any) => {
+  if (!db) return { success: false };
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO sm_topics (title, category, keywords, trend_score, selling_point, target_audience, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(
+      data.title,
+      data.category || 'AI编程',
+      data.keywords ? JSON.stringify(data.keywords) : null,
+      data.trend_score || 50,
+      data.selling_point || null,
+      data.target_audience || null,
+      data.status || 'pending'
+    );
+    return { success: true, id: result.lastInsertRowid };
+  } catch (err) {
+    console.error('sm:addTopic error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('sm:updateTopic', (_event, id: number, data: any) => {
+  if (!db) return { success: false };
+  try {
+    const fields: string[] = [];
+    const values: any[] = [];
+    
+    if (data.title !== undefined) { fields.push('title = ?'); values.push(data.title); }
+    if (data.category !== undefined) { fields.push('category = ?'); values.push(data.category); }
+    if (data.keywords !== undefined) { fields.push('keywords = ?'); values.push(JSON.stringify(data.keywords)); }
+    if (data.trend_score !== undefined) { fields.push('trend_score = ?'); values.push(data.trend_score); }
+    if (data.selling_point !== undefined) { fields.push('selling_point = ?'); values.push(data.selling_point); }
+    if (data.target_audience !== undefined) { fields.push('target_audience = ?'); values.push(data.target_audience); }
+    if (data.status !== undefined) { fields.push('status = ?'); values.push(data.status); }
+    
+    fields.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(id);
+    
+    const stmt = db.prepare(`UPDATE sm_topics SET ${fields.join(', ')} WHERE id = ?`);
+    stmt.run(...values);
+    return { success: true };
+  } catch (err) {
+    console.error('sm:updateTopic error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('sm:deleteTopic', (_event, id: number) => {
+  if (!db) return { success: false };
+  try {
+    // 先删除关联的文案和图片
+    db.prepare('DELETE FROM sm_images WHERE article_id IN (SELECT id FROM sm_articles WHERE topic_id = ?)').run(id);
+    db.prepare('DELETE FROM sm_publish_records WHERE article_id IN (SELECT id FROM sm_articles WHERE topic_id = ?)').run(id);
+    db.prepare('DELETE FROM sm_articles WHERE topic_id = ?').run(id);
+    db.prepare('DELETE FROM sm_topics WHERE id = ?').run(id);
+    return { success: true };
+  } catch (err) {
+    console.error('sm:deleteTopic error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+// 文案管理
+ipcMain.handle('sm:getArticles', (_event, params: any = {}) => {
+  if (!db) return { success: false, list: [], total: 0 };
+  try {
+    const { page = 1, pageSize = 10, topic_id, status, keyword } = params;
+    const offset = (page - 1) * pageSize;
+    let whereClause = 'WHERE 1=1';
+    const queryParams: any[] = [];
+    
+    if (topic_id) {
+      whereClause += ' AND topic_id = ?';
+      queryParams.push(topic_id);
+    }
+    if (status) {
+      whereClause += ' AND status = ?';
+      queryParams.push(status);
+    }
+    if (keyword) {
+      whereClause += ' AND (title LIKE ? OR content LIKE ?)';
+      queryParams.push(`%${keyword}%`, `%${keyword}%`);
+    }
+    
+    const countStmt = db.prepare(`SELECT COUNT(*) as total FROM sm_articles ${whereClause}`);
+    const countResult = countStmt.get(...queryParams) as { total: number };
+    const total = countResult?.total || 0;
+    
+    const stmt = db.prepare(`SELECT * FROM sm_articles ${whereClause} ORDER BY updated_at DESC LIMIT ? OFFSET ?`);
+    const list = stmt.all(...queryParams, pageSize, offset);
+    
+    return { success: true, list, total };
+  } catch (err) {
+    console.error('sm:getArticles error:', err);
+    return { success: false, list: [], total: 0, error: String(err) };
+  }
+});
+
+ipcMain.handle('sm:getArticleById', (_event, id: number) => {
+  if (!db) return { success: false };
+  try {
+    const stmt = db.prepare('SELECT * FROM sm_articles WHERE id = ?');
+    const article = stmt.get(id);
+    return { success: true, data: article };
+  } catch (err) {
+    console.error('sm:getArticleById error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('sm:addArticle', (_event, data: any) => {
+  if (!db) return { success: false };
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO sm_articles (topic_id, title, content, summary, word_count, platform_versions, status, version)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(
+      data.topic_id || null,
+      data.title,
+      data.content,
+      data.summary || null,
+      data.word_count || 0,
+      data.platform_versions ? JSON.stringify(data.platform_versions) : null,
+      data.status || 'draft',
+      1
+    );
+    return { success: true, id: result.lastInsertRowid };
+  } catch (err) {
+    console.error('sm:addArticle error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('sm:updateArticle', (_event, id: number, data: any) => {
+  if (!db) return { success: false };
+  try {
+    const fields: string[] = [];
+    const values: any[] = [];
+    
+    if (data.title !== undefined) { fields.push('title = ?'); values.push(data.title); }
+    if (data.content !== undefined) { fields.push('content = ?'); values.push(data.content); }
+    if (data.summary !== undefined) { fields.push('summary = ?'); values.push(data.summary); }
+    if (data.word_count !== undefined) { fields.push('word_count = ?'); values.push(data.word_count); }
+    if (data.platform_versions !== undefined) { fields.push('platform_versions = ?'); values.push(JSON.stringify(data.platform_versions)); }
+    if (data.status !== undefined) { fields.push('status = ?'); values.push(data.status); }
+    if (data.version !== undefined) { fields.push('version = ?'); values.push(data.version); }
+    if (data.parent_id !== undefined) { fields.push('parent_id = ?'); values.push(data.parent_id); }
+    
+    fields.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(id);
+    
+    const stmt = db.prepare(`UPDATE sm_articles SET ${fields.join(', ')} WHERE id = ?`);
+    stmt.run(...values);
+    return { success: true };
+  } catch (err) {
+    console.error('sm:updateArticle error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('sm:deleteArticle', (_event, id: number) => {
+  if (!db) return { success: false };
+  try {
+    db.prepare('DELETE FROM sm_images WHERE article_id = ?').run(id);
+    db.prepare('DELETE FROM sm_publish_records WHERE article_id = ?').run(id);
+    db.prepare('DELETE FROM sm_articles WHERE id = ?').run(id);
+    return { success: true };
+  } catch (err) {
+    console.error('sm:deleteArticle error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+// 图片管理
+ipcMain.handle('sm:getImages', (_event, articleId: number) => {
+  if (!db) return { success: false, list: [] };
+  try {
+    const stmt = db.prepare('SELECT * FROM sm_images WHERE article_id = ? ORDER BY id');
+    const list = stmt.all(articleId);
+    return { success: true, list };
+  } catch (err) {
+    console.error('sm:getImages error:', err);
+    return { success: false, list: [], error: String(err) };
+  }
+});
+
+ipcMain.handle('sm:addImage', (_event, data: any) => {
+  if (!db) return { success: false };
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO sm_images (article_id, prompt, image_path, image_type, status)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(
+      data.article_id,
+      data.prompt || null,
+      data.image_path || null,
+      data.image_type || 'cover',
+      data.status || 'pending'
+    );
+    return { success: true, id: result.lastInsertRowid };
+  } catch (err) {
+    console.error('sm:addImage error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('sm:deleteImage', (_event, id: number) => {
+  if (!db) return { success: false };
+  try {
+    db.prepare('DELETE FROM sm_images WHERE id = ?').run(id);
+    return { success: true };
+  } catch (err) {
+    console.error('sm:deleteImage error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+// 发布记录
+ipcMain.handle('sm:getPublishRecords', (_event, params: any = {}) => {
+  if (!db) return { success: false, list: [], total: 0 };
+  try {
+    const { page = 1, pageSize = 10, article_id, platform } = params;
+    const offset = (page - 1) * pageSize;
+    let whereClause = 'WHERE 1=1';
+    const queryParams: any[] = [];
+    
+    if (article_id) {
+      whereClause += ' AND article_id = ?';
+      queryParams.push(article_id);
+    }
+    if (platform) {
+      whereClause += ' AND platform = ?';
+      queryParams.push(platform);
+    }
+    
+    const countStmt = db.prepare(`SELECT COUNT(*) as total FROM sm_publish_records ${whereClause}`);
+    const countResult = countStmt.get(...queryParams) as { total: number };
+    const total = countResult?.total || 0;
+    
+    const stmt = db.prepare(`SELECT * FROM sm_publish_records ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`);
+    const list = stmt.all(...queryParams, pageSize, offset);
+    
+    return { success: true, list, total };
+  } catch (err) {
+    console.error('sm:getPublishRecords error:', err);
+    return { success: false, list: [], total: 0, error: String(err) };
+  }
+});
+
+ipcMain.handle('sm:addPublishRecord', (_event, data: any) => {
+  if (!db) return { success: false };
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO sm_publish_records (article_id, platform, status, scheduled_at, platform_post_id)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(
+      data.article_id,
+      data.platform,
+      data.status || 'scheduled',
+      data.scheduled_at || null,
+      data.platform_post_id || null
+    );
+    return { success: true, id: result.lastInsertRowid };
+  } catch (err) {
+    console.error('sm:addPublishRecord error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('sm:updatePublishRecord', (_event, id: number, data: any) => {
+  if (!db) return { success: false };
+  try {
+    const fields: string[] = [];
+    const values: any[] = [];
+    
+    if (data.status !== undefined) { fields.push('status = ?'); values.push(data.status); }
+    if (data.published_at !== undefined) { fields.push('published_at = ?'); values.push(data.published_at); }
+    if (data.platform_post_id !== undefined) { fields.push('platform_post_id = ?'); values.push(data.platform_post_id); }
+    if (data.error_message !== undefined) { fields.push('error_message = ?'); values.push(data.error_message); }
+    
+    fields.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(id);
+    
+    const stmt = db.prepare(`UPDATE sm_publish_records SET ${fields.join(', ')} WHERE id = ?`);
+    stmt.run(...values);
+    return { success: true };
+  } catch (err) {
+    console.error('sm:updatePublishRecord error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+// AI 生成接口
+ipcMain.handle('sm:generateTopics', async (_event, category: string, count: number = 5) => {
+  try {
+    const { generateTopics } = await import('./llm');
+    const topics = await generateTopics(category, count);
+    return { success: true, data: topics };
+  } catch (err) {
+    console.error('sm:generateTopics error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('sm:writeArticle', async (_event, topic: string, platform: string, wordCount: number = 1000) => {
+  try {
+    const { writeArticle } = await import('./llm');
+    const article = await writeArticle(topic, platform, wordCount);
+    return { success: true, data: article };
+  } catch (err) {
+    console.error('sm:writeArticle error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('sm:rewriteArticle', async (_event, article: string, feedback: string) => {
+  try {
+    const { rewriteArticle } = await import('./llm');
+    const result = await rewriteArticle(article, feedback);
+    return { success: true, data: result };
+  } catch (err) {
+    console.error('sm:rewriteArticle error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('sm:generateImagePrompt', async (_event, summary: string, imageType: string) => {
+  try {
+    const { generateImagePrompt } = await import('./llm');
+    const prompt = await generateImagePrompt(summary, imageType);
+    return { success: true, data: prompt };
+  } catch (err) {
+    console.error('sm:generateImagePrompt error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('sm:extractKeyPoints', async (_event, article: string) => {
+  try {
+    const { extractKeyPoints } = await import('./llm');
+    const points = await extractKeyPoints(article);
+    return { success: true, data: points };
+  } catch (err) {
+    console.error('sm:extractKeyPoints error:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('sm:optimizeForPlatform', async (_event, article: string, platform: string) => {
+  try {
+    const { optimizeForPlatform } = await import('./llm');
+    const result = await optimizeForPlatform(article, platform);
+    return { success: true, data: result };
+  } catch (err) {
+    console.error('sm:optimizeForPlatform error:', err);
+    return { success: false, error: String(err) };
+  }
 });
 
 app.on('window-all-closed', () => {
